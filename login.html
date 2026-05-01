@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход — SFS Market Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      padding: 20px;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .login-logo {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .login-logo-img {
+      height: 48px;
+      width: auto;
+      display: inline-block;
+      vertical-align: top;
+    }
+    .login-title {
+      text-align: center;
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 32px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+    .form-group input {
+      width: 100%;
+      height: 46px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 0 16px;
+      font-size: 15px;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      background: #f8fafc;
+    }
+    .form-group input:focus {
+      border-color: #0ea5e9;
+      box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
+      background: #fff;
+    }
+    .form-error {
+      color: #ef4444;
+      font-size: 13px;
+      margin-top: 6px;
+      display: none;
+    }
+    .form-error.visible {
+      display: block;
+    }
+    .login-btn {
+      width: 100%;
+      height: 48px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #0ea5e9, #0284c7);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    .login-btn:hover {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      box-shadow: 0 8px 24px rgba(14,165,233,0.3);
+      transform: translateY(-1px);
+    }
+    .login-btn:active {
+      transform: translateY(0);
+    }
+    .login-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .login-footer a {
+      color: #0ea5e9;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .login-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-card">
+    <div class="login-logo">
+      <img class="login-logo-img" src="images/sfs-market-logo.png" alt="SFS Market" width="160" height="56">
+    </div>
+    <p class="login-title">Панель управления</p>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="loginEmail">Логин</label>
+        <input type="text" id="loginEmail" placeholder="admin" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label for="loginPass">Пароль</label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+      <p class="form-error" id="loginError">Неверный логин или пароль</p>
+      <button type="submit" class="login-btn">Войти</button>
+    </form>
+
+    <div class="login-footer">
+      <a href="index.html">← Вернуться на сайт</a>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const login = document.getElementById('loginEmail').value.trim();
+      const pass = document.getElementById('loginPass').value;
+      const err = document.getElementById('loginError');
+
+      // Simple auth (replace with real API later)
+      if (login === 'admin' && pass === 'admin123') {
+        localStorage.setItem('emirate_admin', JSON.stringify({ user: 'admin', ts: Date.now() }));
+        window.location.href = 'admin.html';
+      } else {
+        err.classList.add('visible');
+        setTimeout(() => err.classList.remove('visible'), 3000);
+      }
+    });
+
+    // If already logged in, redirect
+    if (localStorage.getItem('emirate_admin')) {
+      window.location.href = 'admin.html';
+    }
+  </script>
+</body>
+</html>

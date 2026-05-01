@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Emirate Co</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="admin-sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <img class="sidebar-logo-img" src="images/sfs-market-logo.png" alt="SFS Market" width="160" height="56">
+      <span class="sidebar-badge">Admin</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <p class="sidebar-section-title">Основное</p>
+
+      <a class="sidebar-link active" data-page="dashboard">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Дашборд
+      </a>
+
+      <a class="sidebar-link" data-page="orders">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+        CRM / Заказы
+        <span class="link-badge">12</span>
+      </a>
+
+      <a class="sidebar-link" data-page="clients">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Клиенты
+      </a>
+
+      <p class="sidebar-section-title">Управление</p>
+
+      <a class="sidebar-link" data-page="products">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        Продукты
+      </a>
+
+      <a class="sidebar-link" data-page="banners">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M8 15h8"/></svg>
+        Баннеры
+      </a>
+
+      <a class="sidebar-link" data-page="suppliers">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h6"/><path d="M9 13h6"/></svg>
+        Поставщики
+      </a>
+
+      <a class="sidebar-link" data-page="finance">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Финансы
+      </a>
+
+      <p class="sidebar-section-title">Настройки</p>
+
+      <a class="sidebar-link" href="index.html">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z"/></svg>
+        Открыть сайт
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar">A</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">Администратор</div>
+          <div class="sidebar-user-role">Super Admin</div>
+        </div>
+        <button class="sidebar-logout" id="logoutBtn" title="Выйти">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <div class="admin-main">
+
+    <!-- HEADER -->
+    <header class="admin-header">
+      <h1 class="admin-header-title" id="pageTitle">Дашборд</h1>
+      <div class="admin-header-search">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="search" placeholder="Поиск..." autocomplete="off">
+      </div>
+      <div class="admin-header-actions">
+        <button class="admin-header-btn" title="Уведомления">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span class="notif-dot"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ==================== DASHBOARD ==================== -->
+    <div class="admin-content">
+      <div class="admin-page active" id="page-dashboard">
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-card-header">
+              <span>Продажи сегодня</span>
+              <div class="stat-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+            </div>
+            <div class="stat-value">12 450 000</div>
+            <div class="stat-change up">↑ 12.5% за неделю</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-header">
+              <span>Заказы</span>
+              <div class="stat-icon green"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg></div>
+            </div>
+            <div class="stat-value">48</div>
+            <div class="stat-change up">↑ 8.2% за неделю</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-header">
+              <span>Клиенты</span>
+              <div class="stat-icon purple"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            </div>
+            <div class="stat-value">1 284</div>
+            <div class="stat-change up">↑ 3.1% за месяц</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-header">
+              <span>Товаров</span>
+              <div class="stat-icon orange"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
+            </div>
+            <div class="stat-value">956</div>
+            <div class="stat-change down">↓ 2 отключено</div>
+          </div>
+        </div>
+
+        <!-- Recent orders on dashboard -->
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3>Последние заказы</h3>
+          </div>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Клиент</th>
+                <th>Сумма</th>
+                <th>Статус</th>
+                <th>Дата</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>#10048</td><td>Алишер Каримов</td><td>15 490 000 сум</td><td><span class="status-badge new"><span class="status-dot"></span>Новый</span></td><td>09.04.2026</td></tr>
+              <tr><td>#10047</td><td>Дилноза Рахимова</td><td>4 250 000 сум</td><td><span class="status-badge processing"><span class="status-dot"></span>В обработке</span></td><td>09.04.2026</td></tr>
+              <tr><td>#10046</td><td>Бехзод Усмонов</td><td>22 900 000 сум</td><td><span class="status-badge completed"><span class="status-dot"></span>Выполнен</span></td><td>08.04.2026</td></tr>
+              <tr><td>#10045</td><td>Малика Назарова</td><td>8 350 000 сум</td><td><span class="status-badge completed"><span class="status-dot"></span>Выполнен</span></td><td>08.04.2026</td></tr>
+              <tr><td>#10044</td><td>Шахзод Мирзаев</td><td>3 200 000 сум</td><td><span class="status-badge cancelled"><span class="status-dot"></span>Отменён</span></td><td>07.04.2026</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ==================== CRM / ORDERS ==================== -->
+      <div class="admin-page" id="page-orders">
+        <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+          <div class="stat-card">
+            <div class="stat-card-header"><span>Новые</span><div class="stat-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div></div>
+            <div class="stat-value">12</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-header"><span>В обработке</span><div class="stat-icon purple"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div>
+            <div class="stat-value">8</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-header"><span>Выполнены</span><div class="stat-icon green"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div></div>
+            <div class="stat-value">156</div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3>Все заказы</h3>
+            <div class="table-toolbar">
+              <label class="orders-status-filter">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                <select id="ordersStatusFilter">
+                  <option value="all">Статус: все</option>
+                  <option value="processing">В обработке</option>
+                  <option value="ready_to_ship">Готов к перевозке</option>
+                  <option value="out_of_stock">Нет товара</option>
+                  <option value="successful">Успешный</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <table class="admin-table" id="ordersTable">
+            <thead>
+              <tr><th>ID</th><th>Клиент</th><th>Телефон</th><th>Товары</th><th>Сумма</th><th>Статус</th><th>Дата</th><th>Действия</th></tr>
+            </thead>
+            <tbody id="ordersBody"></tbody>
+          </table>
+          <div class="table-footer">
+            <span id="ordersCount">Показано 0</span>
+            <div class="pagination"><button class="active">1</button><button>2</button><button>3</button><button>→</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== CLIENTS ==================== -->
+      <div class="admin-page" id="page-clients">
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3>Клиенты</h3>
+            <div class="table-toolbar">
+              <button class="filter-btn" id="clientsFilterBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Фильтр</button>
+              <button class="btn-add" id="addClientBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Добавить</button>
+            </div>
+          </div>
+          <table class="admin-table">
+            <thead>
+              <tr><th>ID</th><th>Имя</th><th>Телефон</th><th>Email</th><th>Заказов</th><th>Сумма покупок</th><th>Дата регистрации</th><th>Действия</th></tr>
+            </thead>
+            <tbody id="clientsBody"></tbody>
+          </table>
+          <div class="table-footer">
+            <span id="clientsCount">Показано 1–10</span>
+            <div class="pagination"><button class="active">1</button><button>2</button><button>→</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PRODUCTS ==================== -->
+      <div class="admin-page" id="page-suppliers">
+        <div class="table-card supplier-editor-card">
+          <div class="table-card-header">
+            <h3>Create Supplier</h3>
+          </div>
+          <div class="supplier-feedback" id="supplierFeedback" hidden></div>
+          <form id="supplierForm" class="supplier-form">
+            <input type="hidden" id="supplierId">
+
+            <div class="supplier-grid">
+              <div class="form-group">
+                <label class="required" for="supplierName">Name</label>
+                <input type="text" id="supplierName" placeholder="Название поставщика" required>
+                <span class="form-hint">Необходимо заполнить поле Name.</span>
+              </div>
+              <div class="form-group">
+                <label for="supplierPhone">Телефон</label>
+                <input type="text" id="supplierPhone" placeholder="+998 90 123 45 67">
+              </div>
+              <div class="form-group">
+                <label for="supplierStatus">Status</label>
+                <select id="supplierStatus">
+                  <option value="active">Активный</option>
+                  <option value="inactive">Неактивный</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="supplierLat">Lat</label>
+                <input type="text" id="supplierLat" placeholder="41.311081">
+              </div>
+              <div class="form-group">
+                <label for="supplierLng">Lng</label>
+                <input type="text" id="supplierLng" placeholder="69.240562">
+              </div>
+            </div>
+
+            <div class="supplier-form-actions">
+              <button type="button" class="btn-filter-reset" id="supplierResetBtn">Очистить</button>
+              <button type="submit" class="btn-add" id="supplierSaveBtn">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Создать поставщика
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3>Поставщики</h3>
+            <div class="table-toolbar">
+              <button class="btn-add" id="addSupplierBtn">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Новый поставщик
+              </button>
+            </div>
+          </div>
+          <table class="admin-table" id="suppliersTable">
+            <thead>
+              <tr><th>Name</th><th>Телефон</th><th>Status</th><th>Координаты</th><th>Обновлено</th><th>Действия</th></tr>
+            </thead>
+            <tbody id="suppliersBody"></tbody>
+          </table>
+          <div class="table-footer">
+            <span id="suppliersCount">Показано 0</span>
+            <div class="pagination"><button class="active">1</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PRODUCTS ==================== -->
+      <div class="admin-page" id="page-products">
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3>Продукты</h3>
+            <div class="table-toolbar">
+              <button class="filter-btn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Фильтр</button>
+              <button class="btn-add" id="addProductBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Добавить</button>
+            </div>
+          </div>
+          <table class="admin-table">
+            <thead>
+              <tr><th>Товар</th><th>Категория</th><th>Цена</th><th>Старая цена</th><th>Статус</th><th>Создано</th><th>Действия</th></tr>
+            </thead>
+            <tbody id="productsBody"></tbody>
+          </table>
+          <div class="table-footer">
+            <span id="productsCount">Показано 0</span>
+            <div class="pagination"><button class="active">1</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== FINANCE ==================== -->
+      <div class="admin-page" id="page-banners">
+        <div class="table-card banner-editor-card">
+          <div class="table-card-header">
+            <h3>Главный баннер</h3>
+          </div>
+          <div class="banner-access-note" id="bannerAccessNote" hidden></div>
+          <div class="banner-feedback" id="bannerFeedback" hidden></div>
+          <div class="banner-editor-content">
+            <div class="banner-preview" id="bannerLivePreview">
+              <div class="banner-preview-tag">🔥 Акция недели</div>
+              <h4>Скидки до 30% на электронику</h4>
+              <p>Рассрочка 0-0-12 месяцев без переплат. Бесплатная доставка по Ташкенту.</p>
+              <div class="banner-preview-buttons">
+                <span>Смотреть предложения</span>
+                <span>Перейти в каталог</span>
+              </div>
+            </div>
+
+            <form class="banner-form" id="bannerForm">
+              <input type="hidden" id="bannerId">
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="required" for="bannerTag">Метка</label>
+                  <input type="text" id="bannerTag" placeholder="🔥 Акция недели" required>
+                </div>
+                <div class="form-group">
+                  <label for="bannerPriority">Приоритет</label>
+                  <input type="number" id="bannerPriority" value="100" min="1">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="required" for="bannerTitle">Заголовок</label>
+                <input type="text" id="bannerTitle" placeholder="Скидки до 30% на электронику" required>
+              </div>
+
+              <div class="form-group">
+                <label class="required" for="bannerDesc">Описание</label>
+                <textarea id="bannerDesc" rows="4" placeholder="Короткий текст для баннера" required></textarea>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="bannerPrimaryText">Кнопка 1: текст</label>
+                  <input type="text" id="bannerPrimaryText" placeholder="Смотреть предложения">
+                </div>
+                <div class="form-group">
+                  <label for="bannerPrimaryUrl">Кнопка 1: ссылка</label>
+                  <input type="text" id="bannerPrimaryUrl" placeholder="#">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="bannerSecondaryText">Кнопка 2: текст</label>
+                  <input type="text" id="bannerSecondaryText" placeholder="Перейти в каталог">
+                </div>
+                <div class="form-group">
+                  <label for="bannerSecondaryUrl">Кнопка 2: ссылка</label>
+                  <input type="text" id="bannerSecondaryUrl" placeholder="catalog.html">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="bannerImageInput">Изображение (опционально)</label>
+                  <input type="file" id="bannerImageInput" accept="image/*">
+                  <span class="form-hint banner-image-hint" id="bannerImageMeta">Изображение не выбрано</span>
+                </div>
+                <div class="form-group">
+                  <label for="bannerActive">Статус</label>
+                  <select id="bannerActive">
+                    <option value="true">Включен</option>
+                    <option value="false">Отключен</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="banner-form-actions">
+                <button type="button" class="btn-filter-reset" id="bannerResetBtn">Очистить</button>
+                <button type="button" class="btn-filter-reset" id="bannerRestoreDefaultBtn">Вернуть дефолт</button>
+                <button type="submit" class="btn-add" id="bannerSaveBtn">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                  Сохранить слайд
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="table-card banner-list-card">
+          <div class="table-card-header">
+            <h3>Слайды баннера</h3>
+            <div class="table-toolbar">
+              <button class="btn-add" id="addBannerBtn">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Новый слайд
+              </button>
+            </div>
+          </div>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Слайд</th>
+                <th>Кнопки</th>
+                <th>Статус</th>
+                <th>Приоритет</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="bannersBody"></tbody>
+          </table>
+          <div class="table-footer">
+            <span id="bannersCount">Показано 0</span>
+            <div class="pagination"><button class="active">1</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== FINANCE ==================== -->
+      <div class="admin-page" id="page-finance">
+        <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+          <div class="stat-card">
+            <div class="stat-card-header"><span>Общий доход</span><div class="stat-icon green"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div></div>
+            <div class="stat-value">248 500 000</div>
+            <div class="stat-change up">↑ 15.3% за месяц</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-header"><span>Расходы</span><div class="stat-icon orange"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></div></div>
+            <div class="stat-value">82 100 000</div>
+            <div class="stat-change down">↓ 4.2% за месяц</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-header"><span>Чистая прибыль</span><div class="stat-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div></div>
+            <div class="stat-value">166 400 000</div>
+            <div class="stat-change up">↑ 22.1% за месяц</div>
+          </div>
+        </div>
+
+        <div class="table-card intake-card">
+          <div class="table-card-header">
+            <h3>Приёмка товаров</h3>
+            <div class="table-toolbar">
+              <button class="btn-add" id="addIntakeBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Новая приёмка</button>
+            </div>
+          </div>
+          <div class="intake-filters">
+            <div class="intake-filter-control intake-filter-search">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input type="search" id="intakeSearch" placeholder="Поиск по накладной или контрагенту">
+            </div>
+            <select id="intakeCounterpartyTypeFilter" class="intake-filter-control">
+              <option value="all">Тип контрагента: все</option>
+              <option value="Поставщик">Поставщик</option>
+              <option value="Сервис">Сервис</option>
+              <option value="Логистика">Логистика</option>
+            </select>
+            <select id="intakeCounterpartyFilter" class="intake-filter-control">
+              <option value="all">Контрагент: все</option>
+            </select>
+            <select id="intakeTypeFilter" class="intake-filter-control">
+              <option value="all">Тип операции: все</option>
+              <option value="income">Приёмка</option>
+              <option value="expense">Списание</option>
+              <option value="transfer">Перемещение</option>
+            </select>
+          </div>
+
+          <div class="intake-create-panel" id="intakeCreatePanel" hidden>
+            <h4>Новая приёмка</h4>
+            <form id="intakeCreateForm" class="intake-create-form">
+              <div class="intake-create-grid">
+                <div class="form-group">
+                  <label class="required" for="intakeCreateInvoice">Накладная</label>
+                  <input type="text" id="intakeCreateInvoice" placeholder="P252200" required>
+                </div>
+                <div class="form-group">
+                  <label for="intakeCreateCounterpartyType">Тип контрагента</label>
+                  <select id="intakeCreateCounterpartyType">
+                    <option value="Поставщик">Поставщик</option>
+                    <option value="Сервис">Сервис</option>
+                    <option value="Логистика">Логистика</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="intakeCreateCounterparty">Контрагент</label>
+                  <select id="intakeCreateCounterparty"></select>
+                </div>
+                <div class="form-group" id="intakeCreateCounterpartyManualWrap" hidden>
+                  <label class="required" for="intakeCreateCounterpartyManual">Контрагент (вручную)</label>
+                  <input type="text" id="intakeCreateCounterpartyManual" placeholder="Введите название">
+                </div>
+                <div class="form-group">
+                  <label for="intakeCreateType">Тип операции</label>
+                  <select id="intakeCreateType">
+                    <option value="income">Приёмка</option>
+                    <option value="expense">Списание</option>
+                    <option value="transfer">Перемещение</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="intakeCreateDescription">Описание</label>
+                  <input type="text" id="intakeCreateDescription" placeholder="Описание операции">
+                </div>
+                <div class="form-group">
+                  <label for="intakeCreateValue1">Значение 1</label>
+                  <input type="text" id="intakeCreateValue1" placeholder="0 сум">
+                </div>
+                <div class="form-group">
+                  <label for="intakeCreateValue2">Значение 2</label>
+                  <input type="text" id="intakeCreateValue2" placeholder="0 UZS">
+                </div>
+                <div class="form-group">
+                  <label for="intakeCreatePin">ПИН</label>
+                  <input type="text" id="intakeCreatePin" placeholder="T123456">
+                </div>
+              </div>
+              <div class="intake-create-actions">
+                <button type="button" class="btn-filter-reset" id="intakeCreateCancelBtn">Отмена</button>
+                <button type="submit" class="btn-add">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                  Сохранить приёмку
+                </button>
+              </div>
+            </form>
+          </div>
+          <table class="admin-table intake-table">
+            <thead>
+              <tr>
+                <th>№</th>
+                <th>Накладная</th>
+                <th>Контрагент</th>
+                <th>Тип контрагента</th>
+                <th>Тип</th>
+                <th>Описание</th>
+                <th>Значение 1</th>
+                <th>Значение 2</th>
+                <th>Дата</th>
+                <th>ПИН</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="intakeBody"></tbody>
+          </table>
+          <div class="table-footer">
+            <span id="intakeCountText">Показано 0</span>
+            <div class="pagination"><button class="active">1</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PRODUCT EDITOR ==================== -->
+      <div class="admin-page" id="page-product-editor">
+        <div class="editor-breadcrumb">
+          <a href="#" onclick="switchPage('products'); return false;">Продукты</a>
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+          <span id="editorBreadcrumb">Добавить</span>
+        </div>
+
+        <div class="editor-layout">
+          <!-- LEFT: Form -->
+          <div class="editor-form">
+
+            <!-- TAB: Основные -->
+            <div class="editor-tab-content active" data-tab="basic">
+              <div class="editor-section">
+                <div class="form-group">
+                  <label>Категория</label>
+                  <select id="pCategory">
+                    <option value="">Выберите ...</option>
+                    <option value="Смартфоны">Смартфоны</option>
+                    <option value="Ноутбуки">Ноутбуки</option>
+                    <option value="ТВ и аудио">ТВ и аудио</option>
+                    <option value="Бытовая техника">Бытовая техника</option>
+                    <option value="Аксессуары">Аксессуары</option>
+                    <option value="Товары для дома">Товары для дома</option>
+                    <option value="Красота и здоровье">Красота и здоровье</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="required">Название Uz</label>
+                  <input type="text" id="pNameUz" placeholder="Mahsulot nomi">
+                  <span class="form-hint">Необходимо заполнить «Название Uz».</span>
+                </div>
+                <div class="form-group">
+                  <label class="required">Название Ru</label>
+                  <input type="text" id="pNameRu" placeholder="Название товара">
+                  <span class="form-hint">Необходимо заполнить «Название Ru».</span>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Group Id</label>
+                    <select id="pGroupId"><option value="">Select ...</option></select>
+                  </div>
+                  <div class="form-group">
+                    <label>Group Name Id</label>
+                    <select id="pGroupNameId"><option value="">Select ...</option></select>
+                  </div>
+                </div>
+                <div class="form-row form-row-3">
+                  <div class="form-group">
+                    <label>Модель</label>
+                    <input type="text" id="pModel" placeholder="">
+                  </div>
+                  <div class="form-group">
+                    <label>Бренд</label>
+                    <select id="pBrand">
+                      <option value="">Выберите ...</option>
+                      <option value="Apple">Apple</option>
+                      <option value="Samsung">Samsung</option>
+                      <option value="Xiaomi">Xiaomi</option>
+                      <option value="Huawei">Huawei</option>
+                      <option value="Sony">Sony</option>
+                      <option value="LG">LG</option>
+                      <option value="Dyson">Dyson</option>
+                      <option value="Другое">Другое</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Barcode</label>
+                    <input type="text" id="pBarcode" placeholder="">
+                  </div>
+                </div>
+                <div class="form-row form-row-5">
+                  <div class="form-group">
+                    <label>Состояния</label>
+                    <input type="text" id="pCondition" value="Есть в наличии" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label>Статус</label>
+                    <select id="pStatus">
+                      <option value="active">Включено</option>
+                      <option value="inactive">Отключено</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Статус рассрочки</label>
+                    <select id="pInstallment">
+                      <option value="active">Активный</option>
+                      <option value="inactive">Неактивный</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>АКЦИЯ</label>
+                    <select id="pPromo">
+                      <option value="no">Нет</option>
+                      <option value="yes">Да</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Express доставка</label>
+                    <select id="pExpress">
+                      <option value="no">Нет</option>
+                      <option value="yes">Да</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Приоритет</label>
+                    <input type="number" id="pPriority" value="300">
+                  </div>
+                  <div class="form-group">
+                    <label>Область доставки</label>
+                    <input type="text" id="pDeliveryArea" placeholder="">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Описание -->
+            <div class="editor-tab-content" data-tab="description">
+              <div class="editor-section">
+                <div class="form-group">
+                  <label>Описание Uz</label>
+                  <textarea id="pDescUz" rows="6" placeholder="Mahsulot haqida ma'lumot..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Описание Ru</label>
+                  <textarea id="pDescRu" rows="6" placeholder="Описание товара..."></textarea>
+                </div>
+                <div class="editor-live-preview">
+                  <div class="editor-live-preview-head">Предпросмотр на карточке товара</div>
+                  <div class="editor-live-description" id="editorDescriptionPreview">
+                    <p class="editor-live-empty">Введите описание, чтобы увидеть предпросмотр.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Характеристики -->
+            <div class="editor-tab-content" data-tab="specs">
+              <div class="editor-section">
+                <div class="specs-header">
+                  <h4>Характеристики товара</h4>
+                  <button class="btn-add btn-sm" id="addSpecBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Добавить</button>
+                </div>
+                <div id="specsContainer">
+                  <div class="spec-row">
+                    <div class="spec-field">
+                      <label>Название Ru</label>
+                      <input type="text" placeholder="Напр. Память" class="spec-key-ru">
+                    </div>
+                    <div class="spec-field">
+                      <label>Название Uz</label>
+                      <input type="text" placeholder="Masalan: Xotira" class="spec-key-uz">
+                    </div>
+                    <div class="spec-field">
+                      <label>Значение Ru</label>
+                      <input type="text" placeholder="Напр. 256 GB" class="spec-value-ru">
+                    </div>
+                    <div class="spec-field">
+                      <label>Значение Uz</label>
+                      <input type="text" placeholder="Masalan: 256 GB" class="spec-value-uz">
+                    </div>
+                    <button class="action-btn delete spec-remove" title="Удалить"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+                  </div>
+                </div>
+                <div class="editor-live-preview">
+                  <div class="editor-live-preview-head">Предпросмотр на карточке товара</div>
+                  <div class="editor-live-specs" id="editorSpecsPreview">
+                    <p class="editor-live-empty">Добавьте характеристики, чтобы увидеть предпросмотр.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Цена -->
+            <div class="editor-tab-content" data-tab="price">
+              <div class="editor-section">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="required">Цена на сайте (сум)</label>
+                    <input type="text" id="pPrice" placeholder="15 490 000">
+                  </div>
+                  <div class="form-group">
+                    <label>Старая цена (сум)</label>
+                    <input type="text" id="pOldPrice" placeholder="16 900 000">
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Margin Price</label>
+                    <input type="text" id="pMarginPrice" placeholder="">
+                  </div>
+                  <div class="form-group">
+                    <label>Себестоимость (сум)</label>
+                    <input type="text" id="pCostPrice" placeholder="">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Рассрочка (мес.)</label>
+                  <select id="pInstallmentMonths">
+                    <option value="">Нет</option>
+                    <option value="3">3 месяца</option>
+                    <option value="6">6 месяцев</option>
+                    <option value="9">9 месяцев</option>
+                    <option value="12">12 месяцев</option>
+                    <option value="18">18 месяцев</option>
+                    <option value="24">24 месяца</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Фото -->
+            <div class="editor-tab-content" data-tab="photos">
+              <div class="editor-section">
+                <div class="color-variants-editor">
+                  <div class="specs-header">
+                    <h4>Варианты по цветам</h4>
+                  </div>
+                  <div class="color-attribute-grid">
+                    <div class="form-group">
+                      <label>Название Ru</label>
+                      <input type="text" id="pColorAttrNameRu" placeholder="Цвет" value="Цвет">
+                    </div>
+                    <div class="form-group">
+                      <label>Название Uz</label>
+                      <input type="text" id="pColorAttrNameUz" placeholder="rang" value="rang">
+                    </div>
+                    <div class="form-group">
+                      <label>Status</label>
+                      <select id="pColorAttrStatus">
+                        <option value="active">Включено</option>
+                        <option value="inactive">Отключено</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Type</label>
+                      <select id="pColorAttrType">
+                        <option value="image">Изображение</option>
+                        <option value="text">Текст</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="color-variant-form-grid">
+                    <div class="form-group">
+                      <label>Название цвета Ru</label>
+                      <input type="text" id="pColorNameRu" placeholder="Natural Titanium">
+                    </div>
+                    <div class="form-group">
+                      <label>Название цвета Uz</label>
+                      <input type="text" id="pColorNameUz" placeholder="Natural Titanium">
+                    </div>
+                    <div class="form-group">
+                      <label>Цвет кнопки (HEX)</label>
+                      <input type="text" id="pColorHex" placeholder="#c4b5a0">
+                    </div>
+                    <div class="form-group">
+                      <label>Статус цвета</label>
+                      <select id="pColorStatus">
+                        <option value="active">Включено</option>
+                        <option value="inactive">Отключено</option>
+                      </select>
+                    </div>
+                    <div class="form-group color-variant-actions-group">
+                      <label>&nbsp;</label>
+                      <div class="color-variant-actions">
+                        <button type="button" class="btn-filter-reset" id="colorVariantResetBtn">Очистить</button>
+                        <button type="button" class="btn-add btn-sm" id="colorVariantSaveBtn">+ Добавить цвет</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="color-variant-upload">
+                    <label class="upload-btn" for="colorVariantPhotoInput">Добавить фото для этого цвета</label>
+                    <input type="file" id="colorVariantPhotoInput" accept="image/*" multiple hidden>
+                    <span class="upload-hint">Можно загрузить несколько фото. Они будут показываться при выборе этого цвета.</span>
+                  </div>
+                  <div class="photo-preview-grid" id="colorVariantPhotoPreview"></div>
+                  <div class="color-variants-list" id="colorVariantsList"></div>
+                </div>
+                <div class="photo-upload-zone" id="photoDropZone">
+                  <svg width="48" height="48" fill="none" stroke="#94a3b8" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                  <p>Перетащите фото сюда или</p>
+                  <label class="upload-btn" for="photoInput">Выберите файлы</label>
+                  <input type="file" id="photoInput" accept="image/*" multiple hidden>
+                  <span class="upload-hint">PNG, JPG, WEBP — до 5MB каждый</span>
+                </div>
+                <div class="photo-preview-grid" id="photoPreviewGrid"></div>
+              </div>
+            </div>
+
+            <!-- TAB: Видео -->
+            <div class="editor-tab-content" data-tab="video">
+              <div class="editor-section">
+                <div class="form-group">
+                  <label>YouTube ссылка</label>
+                  <input type="url" id="pVideoUrl" placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+                <div class="video-preview" id="videoPreview"></div>
+              </div>
+            </div>
+
+            <!-- TAB: Похожие товары -->
+            <div class="editor-tab-content" data-tab="similar">
+              <div class="editor-section">
+                <div class="form-group">
+                  <label>Поиск похожих товаров</label>
+                  <input type="text" id="pSimilarSearch" placeholder="Введите название товара...">
+                </div>
+                <div class="similar-list" id="similarList">
+                  <p class="empty-hint">Добавьте похожие товары через поиск выше</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: С этим товаром -->
+            <div class="editor-tab-content" data-tab="related">
+              <div class="editor-section">
+                <div class="form-group">
+                  <label>Поиск сопутствующих товаров</label>
+                  <input type="text" id="pRelatedSearch" placeholder="Введите название товара...">
+                </div>
+                <div class="similar-list" id="relatedList">
+                  <p class="empty-hint">Добавьте сопутствующие товары через поиск выше</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- SAVE BAR -->
+            <div class="editor-actions">
+              <button class="btn-cancel" id="editorCancelBtn">Отмена</button>
+              <button class="btn-save" id="productSaveBtn">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Сохранить
+              </button>
+            </div>
+          </div>
+
+          <!-- RIGHT: Tabs navigation -->
+          <div class="editor-tabs">
+            <a class="editor-tab active" data-tab="basic">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              Основные
+            </a>
+            <a class="editor-tab" data-tab="description">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              Описание
+            </a>
+            <a class="editor-tab" data-tab="specs">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Характеристики
+            </a>
+            <a class="editor-tab" data-tab="price">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+              Цена
+            </a>
+            <a class="editor-tab" data-tab="photos">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              Фото
+            </a>
+            <a class="editor-tab" data-tab="video">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              Видео
+            </a>
+            <a class="editor-tab" data-tab="similar">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              Похожие товары
+            </a>
+            <a class="editor-tab" data-tab="related">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+              С этим товаром
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /admin-content -->
+  </div><!-- /admin-main -->
+
+  <script src="admin.js"></script>
+</body>
+</html>

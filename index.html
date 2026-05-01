@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emirate Co — Интернет-магазин электроники</title>
+  <meta name="description" content="Emirate Co — интернет-магазин электроники, бытовой техники и аксессуаров. Доставка по Узбекистану.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">
+        <img class="logo-img" src="images/sfs-market-logo.png" alt="SFS Market" width="160" height="56">
+      </a>
+
+      <div class="catalog-control">
+        <a class="catalog-btn" href="catalog.html">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <span data-i18n="header.catalog">Каталог</span>
+        </a>
+        <button class="catalog-toggle" id="catalogToggle" type="button" aria-label="Открыть категории" aria-expanded="false">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+
+      <form class="search-bar" role="search">
+        <svg class="search-icon" width="18" height="18" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="search" data-i18n-placeholder="header.search" placeholder="Поиск товаров, брендов и категорий..." autocomplete="off">
+        <button type="submit" data-i18n="header.searchBtn">Найти</button>
+      </form>
+
+      <div class="header-actions">
+        <a href="#" class="header-action-btn" title="Избранное">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          <span data-i18n="header.favorites">Избранное</span>
+        </a>
+        <button class="header-action-btn lang-switch" id="langSwitch" title="Сменить язык">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z"/></svg>
+          <span data-i18n="topbar.lang">Рус</span>
+        </button>
+        <a href="login.html" class="header-action-btn" title="Профиль">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span data-i18n="header.login">Войти</span>
+        </a>
+        <a href="#" class="header-action-btn cart-action" title="Корзина">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+          <span data-i18n="header.cart">Корзина</span>
+          <i class="cart-badge" id="cartCount">0</i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== CATALOG DROPDOWN ===== -->
+  <div class="catalog-dropdown" id="catalogDropdown">
+    <div class="container catalog-dropdown-inner">
+      <div class="catalog-col">
+        <h4 data-i18n="dropdown.phones">📱 Смартфоны и гаджеты</h4>
+        <a href="#" data-i18n="dropdown.smartphones">Смартфоны</a>
+        <a href="#" data-i18n="dropdown.smartwatches">Умные часы</a>
+        <a href="#" data-i18n="dropdown.fitbands">Фитнес-браслеты</a>
+        <a href="#" data-i18n="dropdown.accessories">Аксессуары</a>
+      </div>
+      <div class="catalog-col">
+        <h4 data-i18n="dropdown.laptops">💻 Ноутбуки и ПК</h4>
+        <a href="#" data-i18n="dropdown.laptop">Ноутбуки</a>
+        <a href="#" data-i18n="dropdown.monitors">Мониторы</a>
+        <a href="#" data-i18n="dropdown.components">Комплектующие</a>
+        <a href="#" data-i18n="dropdown.periphery">Периферия</a>
+      </div>
+      <div class="catalog-col">
+        <h4 data-i18n="dropdown.tv">📺 ТВ и аудио</h4>
+        <a href="#" data-i18n="dropdown.tvs">Телевизоры</a>
+        <a href="#" data-i18n="dropdown.soundbars">Саундбары</a>
+        <a href="#" data-i18n="dropdown.headphones">Наушники</a>
+        <a href="#" data-i18n="dropdown.speakers">Колонки</a>
+      </div>
+      <div class="catalog-col">
+        <h4 data-i18n="dropdown.home">🏠 Для дома</h4>
+        <a href="#" data-i18n="dropdown.vacuum">Пылесосы</a>
+        <a href="#" data-i18n="dropdown.climate">Климат</a>
+        <a href="#" data-i18n="dropdown.kitchen">Кухонная техника</a>
+        <a href="#" data-i18n="dropdown.beauty">Красота и здоровье</a>
+      </div>
+    </div>
+  </div>
+
+  <main>
+
+    <!-- ===== HERO ===== -->
+    <section class="hero hero--full container">
+      <div class="hero-main">
+        <div class="hero-slider">
+          <div class="hero-slide active" id="heroSlide">
+            <div class="hero-slide-text">
+              <span class="hero-tag" data-i18n="hero.tag">🔥 Акция недели</span>
+              <h1 data-i18n-html="hero.title">Скидки до <span class="text-accent">30%</span> на&nbsp;электронику</h1>
+              <p data-i18n="hero.desc">Рассрочка 0-0-12 месяцев без переплат. Бесплатная доставка по Ташкенту.</p>
+              <div class="hero-btns">
+                <a href="#" class="btn-primary" data-i18n="hero.offers">Смотреть предложения</a>
+                <a href="catalog.html" class="btn-outline" data-i18n="hero.goCatalog">Перейти в каталог</a>
+              </div>
+            </div>
+            <div class="hero-slide-visual">
+              <div class="hero-device-mockup">
+                <svg width="120" height="120" fill="none" stroke="#4db8e8" stroke-width="1.2" viewBox="0 0 24 24" opacity=".4"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="hero-dots">
+            <button class="dot active"></button>
+            <button class="dot"></button>
+            <button class="dot"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SMARTPHONES ===== -->
+    <section class="container section category-section" data-category="smartphones">
+      <div class="section-header">
+        <h2 data-i18n="cat.smartphones">📱 Смартфоны</h2>
+        <a href="catalog.html" class="section-link" data-i18n="section.allProducts">Все товары →</a>
+      </div>
+      <div class="carousel-wrapper">
+        <button class="carousel-arrow carousel-arrow--left" type="button" aria-label="Назад">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="carousel-track" id="carouselSmartphones"></div>
+        <button class="carousel-arrow carousel-arrow--right" type="button" aria-label="Вперёд">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== HOME APPLIANCES ===== -->
+    <section class="container section category-section" data-category="appliances">
+      <div class="section-header">
+        <h2 data-i18n="cat.appliances">🏠 Бытовая техника</h2>
+        <a href="catalog.html" class="section-link" data-i18n="section.allProducts">Все товары →</a>
+      </div>
+      <div class="carousel-wrapper">
+        <button class="carousel-arrow carousel-arrow--left" type="button" aria-label="Назад">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="carousel-track" id="carouselAppliances"></div>
+        <button class="carousel-arrow carousel-arrow--right" type="button" aria-label="Вперёд">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== ACCESSORIES ===== -->
+    <section class="container section category-section" data-category="accessories">
+      <div class="section-header">
+        <h2 data-i18n="cat.accessories">🎧 Аксессуары</h2>
+        <a href="catalog.html" class="section-link" data-i18n="section.allProducts">Все товары →</a>
+      </div>
+      <div class="carousel-wrapper">
+        <button class="carousel-arrow carousel-arrow--left" type="button" aria-label="Назад">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="carousel-track" id="carouselAccessories"></div>
+        <button class="carousel-arrow carousel-arrow--right" type="button" aria-label="Вперёд">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== LAZY-LOADED PRODUCTS FEED ===== -->
+    <section class="container section" id="feedSection" style="display:none">
+      <div class="section-header">
+        <h2 data-i18n="section.recommended">Рекомендуем вам</h2>
+      </div>
+      <div class="products-grid" id="feedGrid"></div>
+    </section>
+    <div id="feedTrigger" style="height:1px"></div>
+
+    <!-- ===== BRANDS ===== -->
+    <section class="container section">
+      <div class="section-header">
+        <h2 data-i18n="section.brands">Популярные бренды</h2>
+      </div>
+      <div class="brands-grid">
+        <a href="#" class="brand-card">Apple</a>
+        <a href="#" class="brand-card">Samsung</a>
+        <a href="#" class="brand-card">Xiaomi</a>
+        <a href="#" class="brand-card">Sony</a>
+        <a href="#" class="brand-card">LG</a>
+        <a href="#" class="brand-card">Dyson</a>
+        <a href="#" class="brand-card">Huawei</a>
+        <a href="#" class="brand-card">JBL</a>
+      </div>
+    </section>
+
+    <!-- ===== PERKS ===== -->
+    <section class="container section">
+      <div class="perks-grid">
+        <article class="perk-card">
+          <div class="perk-icon"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg></div>
+          <h3 data-i18n="perk.installment">0-0-12</h3>
+          <p data-i18n="perk.installmentDesc">Рассрочка без переплат на любой товар</p>
+        </article>
+        <article class="perk-card">
+          <div class="perk-icon"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8zM5 21a2 2 0 100-4 2 2 0 000 4zM19 21a2 2 0 100-4 2 2 0 000 4z"/></svg></div>
+          <h3 data-i18n="perk.delivery">24 часа</h3>
+          <p data-i18n="perk.deliveryDesc">Бесплатная доставка по Ташкенту</p>
+        </article>
+        <article class="perk-card">
+          <div class="perk-icon"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <h3 data-i18n="perk.guarantee">Гарантия</h3>
+          <p data-i18n="perk.guaranteeDesc">Только оригинальная продукция</p>
+        </article>
+        <article class="perk-card">
+          <div class="perk-icon"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+          <h3 data-i18n="perk.support">Поддержка</h3>
+          <p data-i18n="perk.supportDesc">Консультация 7 дней в неделю</p>
+        </article>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-about">
+        <div class="footer-logo"><img class="logo-img" src="images/sfs-market-logo.png" alt="SFS Market" width="160" height="56"></div>
+        <p data-i18n="footer.desc">Интернет-магазин электроники, бытовой техники и товаров для дома с доставкой по Узбекистану.</p>
+        <div class="footer-socials">
+          <a href="#" title="Telegram"><svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6.54l-1.37 6.49c-.1.46-.37.57-.74.35l-2.05-1.51-1 .96c-.1.1-.2.2-.4.2l.15-2.08 3.82-3.45c.17-.15-.04-.23-.26-.09l-4.72 2.97-2.04-.63c-.44-.14-.45-.44.09-.66l7.98-3.08c.37-.14.69.09.54.53z"/></svg></a>
+          <a href="#" title="Instagram"><svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85 0 3.2-.01 3.58-.07 4.85-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.65.07-4.85.07-3.2 0-3.58-.01-4.85-.07-3.26-.15-4.77-1.7-4.92-4.92-.06-1.27-.07-1.65-.07-4.85 0-3.2.01-3.58.07-4.85C2.38 3.86 3.9 2.31 7.15 2.23 8.42 2.17 8.8 2.16 12 2.16zM12 0C8.74 0 8.33.01 7.05.07 2.7.27.27 2.7.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.2 4.36 2.62 6.78 6.98 6.98C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c4.35-.2 6.78-2.62 6.98-6.98.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.2-4.35-2.62-6.78-6.98-6.98C15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 100 12.32 6.16 6.16 0 000-12.32zM12 16a4 4 0 110-8 4 4 0 010 8zm6.41-11.85a1.44 1.44 0 100 2.88 1.44 1.44 0 000-2.88z"/></svg></a>
+          <a href="#" title="Facebook"><svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.07C24 5.41 18.63 0 12 0S0 5.41 0 12.07c0 6.03 4.39 11.02 10.13 11.93v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.95.93-1.95 1.89v2.26h3.33l-.53 3.49h-2.8v8.44C19.61 23.09 24 18.1 24 12.07z"/></svg></a>
+          <a href="#" title="YouTube"><svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M23.5 6.19a3.02 3.02 0 00-2.12-2.14C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.38.55A3.02 3.02 0 00.5 6.19 31.56 31.56 0 000 12a31.56 31.56 0 00.5 5.81 3.02 3.02 0 002.12 2.14c1.87.55 9.38.55 9.38.55s7.5 0 9.38-.55a3.02 3.02 0 002.12-2.14A31.56 31.56 0 0024 12a31.56 31.56 0 00-.5-5.81zM9.55 15.57V8.43L15.82 12l-6.27 3.57z"/></svg></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4 data-i18n="footer.buyers">Покупателям</h4>
+        <a href="#" data-i18n="footer.deliveryLink">Доставка</a>
+        <a href="#" data-i18n="footer.paymentLink">Оплата</a>
+        <a href="#" data-i18n="footer.installmentLink">Рассрочка</a>
+        <a href="#" data-i18n="footer.warrantyLink">Гарантия и возврат</a>
+        <a href="#" data-i18n="footer.faq">FAQ</a>
+      </div>
+      <div class="footer-col">
+        <h4 data-i18n="footer.company">Компания</h4>
+        <a href="#" data-i18n="footer.aboutLink">О нас</a>
+        <a href="#" data-i18n="footer.contactsLink">Контакты</a>
+        <a href="#" data-i18n="footer.careers">Вакансии</a>
+        <a href="#" data-i18n="footer.offer">Публичная оферта</a>
+        <a href="#" data-i18n="footer.privacy">Политика конфиденциальности</a>
+      </div>
+      <div class="footer-col">
+        <h4 data-i18n="footer.contactsTitle">Контакты</h4>
+        <a href="tel:+998712000000">+998 71 200-00-00</a>
+        <a href="mailto:info@emirateco.uz">info@emirateco.uz</a>
+        <p class="footer-address" data-i18n="footer.address">Ташкент, ул. Мустакиллик, 1</p>
+        <p class="footer-schedule" data-i18n="footer.schedule">Пн–Вс: 09:00–21:00</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container footer-bottom-inner">
+        <p data-i18n="footer.copyright">© 2026 Emirate Co. Все права защищены.</p>
+        <div class="payment-icons"><span>Payme</span><span>Click</span><span>Uzum</span><span>Visa</span><span>Mastercard</span></div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== MOBILE NAVIGATION ===== -->
+  <nav class="mobile-nav">
+    <a href="index.html" class="mobile-nav-item active">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      <span data-i18n="mobnav.home">Главная</span>
+    </a>
+    <a href="catalog.html" class="mobile-nav-item">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <span data-i18n="mobnav.catalog">Каталог</span>
+    </a>
+    <a href="#" class="mobile-nav-item">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      <span data-i18n="mobnav.favorites">Избранное</span>
+    </a>
+    <a href="#" class="mobile-nav-item">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+      <span data-i18n="mobnav.cart">Корзина</span>
+    </a>
+    <a href="#" class="mobile-nav-item">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span data-i18n="mobnav.profile">Профиль</span>
+    </a>
+  </nav>
+
+  <!-- ===== SCROLL TO TOP ===== -->
+  <button class="scroll-top" id="scrollTop" title="Наверх">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg>
+  </button>
+
+  <script src="translations.js"></script>
+  <script src="common.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
