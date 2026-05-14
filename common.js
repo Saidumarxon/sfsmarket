@@ -223,6 +223,48 @@ function syncFavoritesUI(scope = document) {
   syncWishlistButtons(scope);
 }
 
+function syncMobileNavActive() {
+  const items = Array.from(document.querySelectorAll(".mobile-nav .mobile-nav-item"));
+  if (!items.length) return;
+
+  const { pathname, search } = window.location;
+  const currentPath = pathname.split("/").pop() || "index.html";
+  const params = new URLSearchParams(search);
+
+  let activeKey = "";
+
+  if (currentPath === "index.html" || currentPath === "") {
+    activeKey = "home";
+  } else if (currentPath === "login.html") {
+    activeKey = "profile";
+  } else if (currentPath === "catalog.html" && params.get("favorites") === "1") {
+    activeKey = "favorites";
+  } else if (currentPath === "catalog.html" && params.get("cart") === "1") {
+    activeKey = "cart";
+  } else if (currentPath === "catalog.html" || currentPath === "product.html" || currentPath === "checkout.html") {
+    activeKey = "catalog";
+  }
+
+  items.forEach((item) => {
+    const href = item.getAttribute("href") || "";
+    let itemKey = "";
+
+    if (href.includes("favorites=1")) {
+      itemKey = "favorites";
+    } else if (href.includes("cart=1")) {
+      itemKey = "cart";
+    } else if (href.includes("login.html")) {
+      itemKey = "profile";
+    } else if (href.includes("catalog.html")) {
+      itemKey = "catalog";
+    } else if (href.includes("index.html")) {
+      itemKey = "home";
+    }
+
+    item.classList.toggle("active", itemKey === activeKey);
+  });
+}
+
 function toggleFavorite(productId, forceState) {
   const id = normalizeFavoriteId(productId);
   if (!id) return false;
@@ -284,6 +326,7 @@ function addViewedProduct(product) {
 
 syncCartCount();
 syncFavoritesUI();
+syncMobileNavActive();
 window.emirateIncrementCart = incrementCart;
 window.emirateAddToCart = addToCart;
 window.emirateSetCartQty = setCartQty;
