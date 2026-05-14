@@ -1631,7 +1631,7 @@ img { max-width: 100%; display: block; }
   }
 
   .logo-img {
-    height: 34px;
+    height: 30px;
     width: auto;
   }
 
@@ -1642,7 +1642,7 @@ img { max-width: 100%; display: block; }
 
   .catalog-control .catalog-btn {
     justify-content: center;
-    padding: 0 12px;
+    padding: 0 10px;
   }
 
   .catalog-control .catalog-btn span {
@@ -1653,6 +1653,7 @@ img { max-width: 100%; display: block; }
     flex: 1 1 auto;
     min-width: 0;
     max-width: none;
+    overflow: hidden;
   }
 
   .search-bar input,
@@ -1663,7 +1664,19 @@ img { max-width: 100%; display: block; }
   }
 
   .search-bar button {
-    padding: 0 14px;
+    flex-shrink: 0;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .search-bar input {
+    min-width: 0;
+    padding-left: 38px;
+    font-size: 13px;
+  }
+
+  .catalog-toggle {
+    width: 38px;
   }
 
   .header-actions {
