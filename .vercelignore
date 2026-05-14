@@ -1,2 +1,11 @@
-next-app
-next-app/**
+/*
+!.vercelignore
+!.gitignore
+!vercel.json
+!*.html
+!*.css
+!*.js
+!images
+!images/**
+!supabase
+!supabase/**
