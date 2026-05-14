@@ -54,8 +54,36 @@ checkoutItemsPreviewEl?.addEventListener("click", (event) => {
   renderCheckoutSummary();
 });
 
-checkoutFormPageEl?.addEventListener("submit", (event) => {
+checkoutFormPageEl?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const { items, total, count } = getCartTotals();
+  if (!count) return;
+
+  const fd = new FormData(checkoutFormPageEl);
+  const orderRow = {
+    phone: String(fd.get("phone") || "").trim(),
+    full_name: String(fd.get("full_name") || "").trim(),
+    region: String(fd.get("region") || "").trim(),
+    city: String(fd.get("city") || "").trim(),
+    address: String(fd.get("address") || "").trim(),
+    comment_text: String(fd.get("comment") || "").trim(),
+    delivery_method: String(fd.get("delivery") || "").trim(),
+    payment_method: String(fd.get("payment") || "").trim(),
+    items,
+    total_amount: total
+  };
+
+  if (window.emirateSupabaseApi?.isConfigured?.()) {
+    const res = await window.emirateSupabaseApi.insertOrder(orderRow);
+    if (!res.ok) {
+      alert(
+        "Не удалось сохранить заказ в Supabase. Проверьте таблицу orders и политики RLS (файл supabase/schema.sql).\n" +
+          (res.error || "")
+      );
+      return;
+    }
+  }
+
   alert("Заказ принят! Мы свяжемся с вами в ближайшее время.");
   window.emirateClearCart?.();
   checkoutFormPageEl.reset();

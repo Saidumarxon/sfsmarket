@@ -959,6 +959,31 @@
     </div><!-- /admin-content -->
   </div><!-- /admin-main -->
 
-  <script src="admin.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="emirate-supabase-api.js"></script>
+  <script>
+    (async function emirateAdminEntry() {
+      function hasSupabase() {
+        return !!(window.emirateSupabase && window.emirateSupabaseApi && window.emirateSupabaseApi.isConfigured());
+      }
+      if (hasSupabase()) {
+        var sb = window.emirateSupabase;
+        var sessionRes = await sb.auth.getSession();
+        if (!sessionRes.data || !sessionRes.data.session) {
+          window.location.href = "login.html";
+          return;
+        }
+        var email = (sessionRes.data.session.user && sessionRes.data.session.user.email) || "admin";
+        localStorage.setItem("emirate_admin", JSON.stringify({ user: email, role: "admin", ts: Date.now() }));
+      } else if (!localStorage.getItem("emirate_admin")) {
+        window.location.href = "login.html";
+        return;
+      }
+      var tag = document.createElement("script");
+      tag.src = "admin.js";
+      document.body.appendChild(tag);
+    })();
+  </script>
 </body>
 </html>

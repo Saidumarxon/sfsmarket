@@ -114,24 +114,29 @@ function loadAdminProductsForCatalog() {
   }
 }
 
-const sourceProducts = (() => {
+function mergeProductIntoList(merged, byKey, item) {
+  const key = normalizeTitleKey(item.title);
+  const existingIndex = byKey.get(key);
+  if (existingIndex === undefined) {
+    byKey.set(key, merged.length);
+    merged.push(item);
+    return;
+  }
+  merged[existingIndex] = {
+    ...merged[existingIndex],
+    ...item
+  };
+}
+
+function buildSourceProducts(remoteList) {
   const merged = [...catalogProducts];
   const byKey = new Map(merged.map((item, index) => [normalizeTitleKey(item.title), index]));
-  loadAdminProductsForCatalog().forEach((item) => {
-    const key = normalizeTitleKey(item.title);
-    const existingIndex = byKey.get(key);
-    if (existingIndex === undefined) {
-      byKey.set(key, merged.length);
-      merged.push(item);
-      return;
-    }
-    merged[existingIndex] = {
-      ...merged[existingIndex],
-      ...item
-    };
-  });
+  loadAdminProductsForCatalog().forEach((item) => mergeProductIntoList(merged, byKey, item));
+  (remoteList || []).forEach((item) => mergeProductIntoList(merged, byKey, item));
   return merged.sort((a, b) => (Number(a.priority) || 300) - (Number(b.priority) || 300));
-})();
+}
+
+let sourceProducts = buildSourceProducts([]);
 
 function money(value) {
   return value.toLocaleString("ru-RU") + " сум";
@@ -416,6 +421,19 @@ if (isCartMode) {
 }
 
 applyFiltersAndSort();
+
+void (async () => {
+  const api = window.emirateSupabaseApi;
+  if (!api || !api.isConfigured()) return;
+  try {
+    const remote = await api.fetchPublicCatalogProducts();
+    if (!remote.length) return;
+    sourceProducts = buildSourceProducts(remote);
+    applyFiltersAndSort();
+  } catch (err) {
+    console.warn("[Supabase] catalog", err);
+  }
+})();
 
 // Events
 applyFiltersBtn?.addEventListener("click", applyFiltersAndSort);

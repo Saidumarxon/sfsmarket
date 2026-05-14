@@ -69,7 +69,14 @@ sidebarLinks.forEach(link => {
 });
 
 // ===== LOGOUT =====
-document.getElementById('logoutBtn').addEventListener('click', function() {
+document.getElementById('logoutBtn').addEventListener('click', async function() {
+  if (window.emirateSupabaseApi?.isConfigured?.() && window.emirateSupabase) {
+    try {
+      await window.emirateSupabase.auth.signOut();
+    } catch (_) {
+      // ignore
+    }
+  }
   localStorage.removeItem('emirate_admin');
   window.location.href = 'login.html';
 });
@@ -512,6 +519,7 @@ function persistProductsData(focusProductId = null) {
   try {
     localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(optimizedData));
     productsData = optimizedData.map(normalizeProductRecord);
+    void window.emirateSupabaseApi?.pushAdminProductsPayload?.(optimizedData);
     return true;
   } catch (error) {
     console.error('Failed to persist products data', error);
@@ -532,6 +540,7 @@ function persistProductsData(focusProductId = null) {
       });
       localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(emergencyData));
       productsData = emergencyData.map(normalizeProductRecord);
+      void window.emirateSupabaseApi?.pushAdminProductsPayload?.(emergencyData);
       alert('Сохранили в аварийном режиме: часть фото была автоматически удалена из старых записей, чтобы освободить память.');
       return true;
     } catch (innerError) {
@@ -1324,6 +1333,27 @@ syncIntakeCounterpartyControls();
 resetBannerForm();
 setBannerReadonlyMode();
 resetSupplierForm();
+
+void (async () => {
+  try {
+    const raw = await window.emirateSupabaseApi?.pullAdminProductsRaw?.();
+    if (!raw || !raw.length) return;
+    const byId = new Map(productsData.map((p) => [p.id, p]));
+    raw.forEach((item) => {
+      const n = normalizeProductRecord(item);
+      if (n && n.id) byId.set(n.id, n);
+    });
+    productsData = Array.from(byId.values());
+    try {
+      localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(productsData));
+    } catch (_) {
+      // quota: keep in-memory only
+    }
+    renderProducts();
+  } catch (err) {
+    console.warn('[Supabase] admin products pull', err);
+  }
+})();
 
 document.getElementById('addClientBtn')?.addEventListener('click', addClient);
 document.getElementById('supplierForm')?.addEventListener('submit', saveSupplier);

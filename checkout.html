@@ -58,23 +58,23 @@
       <div class="checkout-layout">
         <form class="checkout-form" id="checkoutFormPage">
           <div class="checkout-grid">
-            <label>Телефон*<input type="tel" required placeholder="+998 (__) ___-__-__"></label>
-            <label>Ф.И.О*<input type="text" required placeholder="Введите имя"></label>
-            <label>Область*<input type="text" required placeholder="Выберите"></label>
-            <label>Город / Район*<input type="text" required placeholder="Выберите"></label>
+            <label>Телефон*<input name="phone" type="tel" required placeholder="+998 (__) ___-__-__"></label>
+            <label>Ф.И.О*<input name="full_name" type="text" required placeholder="Введите имя"></label>
+            <label>Область*<input name="region" type="text" required placeholder="Выберите"></label>
+            <label>Город / Район*<input name="city" type="text" required placeholder="Выберите"></label>
           </div>
           <h4>Способ получения</h4>
           <div class="checkout-radio-group">
-            <label><input type="radio" name="delivery" checked> Доставка до двери</label>
-            <label><input type="radio" name="delivery"> Самовывоз</label>
+            <label><input type="radio" name="delivery" value="door" checked> Доставка до двери</label>
+            <label><input type="radio" name="delivery" value="pickup"> Самовывоз</label>
           </div>
-          <label>Адрес*<input type="text" required placeholder="Улица, дом, квартира"></label>
-          <label>Комментарий к заказу<textarea rows="4" placeholder="Дополнительные пожелания"></textarea></label>
+          <label>Адрес*<input name="address" type="text" required placeholder="Улица, дом, квартира"></label>
+          <label>Комментарий к заказу<textarea name="comment" rows="4" placeholder="Дополнительные пожелания"></textarea></label>
           <h4>Способ оплаты</h4>
           <div class="checkout-radio-group">
-            <label><input type="radio" name="payment" checked> Через приложение или карту</label>
-            <label><input type="radio" name="payment"> При получении (Наличными)</label>
-            <label><input type="radio" name="payment"> Оплата с лицевого счета</label>
+            <label><input type="radio" name="payment" value="app" checked> Через приложение или карту</label>
+            <label><input type="radio" name="payment" value="cash"> При получении (Наличными)</label>
+            <label><input type="radio" name="payment" value="account"> Оплата с лицевого счета</label>
           </div>
           <label class="checkout-agree"><input type="checkbox" required> Я согласен с правилами покупки товаров</label>
           <div class="checkout-actions">
@@ -91,6 +91,9 @@
     </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="emirate-supabase-api.js"></script>
   <script src="common.js"></script>
   <script src="checkout.js"></script>
 </body>

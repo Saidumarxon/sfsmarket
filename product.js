@@ -207,7 +207,7 @@ function resolvePageProduct() {
   return resolvedAdmin || selected || fallbackCurrentProduct();
 }
 
-const currentProduct = resolvePageProduct();
+let currentProduct = resolvePageProduct();
 
 function renderMainImage(src, title, options = {}) {
   if (!mainImageEl) return;
@@ -397,6 +397,26 @@ function hydratePageProduct(product) {
 
 hydratePageProduct(currentProduct);
 window.emirateAddViewedProduct?.(currentProduct);
+
+void (async () => {
+  const api = window.emirateSupabaseApi;
+  if (!api || !api.isConfigured()) return;
+  const q = new URLSearchParams(window.location.search).get("product") || "";
+  if (!q.trim()) return;
+  try {
+    const remote = await api.fetchProductForPageByTitle(q);
+    if (!remote) return;
+    currentProduct = { ...currentProduct, ...remote };
+    hydratePageProduct(currentProduct);
+    document.querySelectorAll(".wishlist-btn").forEach((btn) => {
+      btn.setAttribute("data-product-id", currentProduct.title || "product");
+    });
+    window.emirateSyncFavoritesUI?.();
+  } catch (err) {
+    console.warn("[Supabase] product", err);
+  }
+})();
+
 colorOptionsRowEl?.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-color-id]");
   if (!button) return;

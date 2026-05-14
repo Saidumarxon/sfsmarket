@@ -126,8 +126,8 @@
 
     <form id="loginForm">
       <div class="form-group">
-        <label for="loginEmail">Логин</label>
-        <input type="text" id="loginEmail" placeholder="admin" autocomplete="username" required>
+        <label for="loginEmail">Email (Supabase) или логин</label>
+        <input type="text" id="loginEmail" placeholder="you@mail.com или admin" autocomplete="username" required>
       </div>
       <div class="form-group">
         <label for="loginPass">Пароль</label>
@@ -142,27 +142,57 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="emirate-supabase-api.js"></script>
   <script>
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const login = document.getElementById('loginEmail').value.trim();
-      const pass = document.getElementById('loginPass').value;
-      const err = document.getElementById('loginError');
+    (async function bootLogin() {
+      if (window.emirateSupabaseApi && window.emirateSupabaseApi.isConfigured()) {
+        var sb = window.emirateSupabase;
+        var r = await sb.auth.getSession();
+        if (r.data && r.data.session) {
+          window.location.href = "admin.html";
+          return;
+        }
+      } else if (localStorage.getItem("emirate_admin")) {
+        window.location.href = "admin.html";
+      }
+    })();
 
-      // Simple auth (replace with real API later)
-      if (login === 'admin' && pass === 'admin123') {
-        localStorage.setItem('emirate_admin', JSON.stringify({ user: 'admin', ts: Date.now() }));
-        window.location.href = 'admin.html';
+    document.getElementById("loginForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var login = document.getElementById("loginEmail").value.trim();
+      var pass = document.getElementById("loginPass").value;
+      var err = document.getElementById("loginError");
+
+      if (window.emirateSupabaseApi && window.emirateSupabaseApi.isConfigured()) {
+        var sb = window.emirateSupabase;
+        var res = await sb.auth.signInWithPassword({ email: login, password: pass });
+        if (res.error) {
+          err.textContent = res.error.message || "Ошибка входа";
+          err.classList.add("visible");
+          setTimeout(function () {
+            err.classList.remove("visible");
+          }, 5000);
+          return;
+        }
+        var em = (res.data.user && res.data.user.email) || login;
+        localStorage.setItem("emirate_admin", JSON.stringify({ user: em, role: "admin", ts: Date.now() }));
+        window.location.href = "admin.html";
+        return;
+      }
+
+      if (login === "admin" && pass === "admin123") {
+        localStorage.setItem("emirate_admin", JSON.stringify({ user: "admin", role: "admin", ts: Date.now() }));
+        window.location.href = "admin.html";
       } else {
-        err.classList.add('visible');
-        setTimeout(() => err.classList.remove('visible'), 3000);
+        err.textContent = "Неверный логин или пароль";
+        err.classList.add("visible");
+        setTimeout(function () {
+          err.classList.remove("visible");
+        }, 3000);
       }
     });
-
-    // If already logged in, redirect
-    if (localStorage.getItem('emirate_admin')) {
-      window.location.href = 'admin.html';
-    }
   </script>
 </body>
 </html>
