@@ -148,7 +148,7 @@ img { max-width: 100%; display: block; }
   display: flex;
   align-items: center;
   gap: 16px;
-  height: 72px;
+  height: 88px;
 }
 
 /* Logo */
@@ -161,7 +161,7 @@ img { max-width: 100%; display: block; }
 }
 
 .logo-img {
-  height: 44px;
+  height: 64px;
   width: auto;
   display: block;
 }
@@ -1621,6 +1621,10 @@ img { max-width: 100%; display: block; }
     height: auto;
     padding: 10px 0;
     gap: 10px;
+  }
+
+  .logo-img {
+    height: 54px;
   }
 
   .search-bar {
