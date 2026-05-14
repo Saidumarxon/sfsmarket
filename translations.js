@@ -1,0 +1,168 @@
+/* ── Emirate Co — i18n translations (RU / UZ) ── */
+window.TRANSLATIONS = {
+  /* ===== TOPBAR ===== */
+  "topbar.city":            { ru: "Ташкент",              uz: "Toshkent" },
+  "topbar.lang":            { ru: "Рус",                  uz: "Uzb" },
+  "topbar.currency":        { ru: "UZS",                  uz: "UZS" },
+  "topbar.about":           { ru: "О нас",                uz: "Biz haqimizda" },
+  "topbar.delivery":        { ru: "Доставка и оплата",    uz: "Yetkazib berish va to'lov" },
+  "topbar.contacts":        { ru: "Контакты",             uz: "Kontaktlar" },
+  "topbar.home":            { ru: "Главная",              uz: "Bosh sahifa" },
+
+  /* ===== HEADER ===== */
+  "header.catalog":         { ru: "Каталог",              uz: "Katalog" },
+  "header.search":          { ru: "Поиск товаров, брендов и категорий...", uz: "Mahsulot, brend va kategoriyalarni qidirish..." },
+  "header.searchBtn":       { ru: "Найти",                uz: "Qidirish" },
+  "header.favorites":       { ru: "Избранное",            uz: "Sevimlilar" },
+  "header.login":           { ru: "Войти",                uz: "Kirish" },
+  "header.cart":            { ru: "Корзина",              uz: "Savat" },
+
+  /* ===== CATALOG DROPDOWN ===== */
+  "dropdown.phones":        { ru: "📱 Смартфоны и гаджеты",  uz: "📱 Smartfonlar va gadjetlar" },
+  "dropdown.smartphones":   { ru: "Смартфоны",            uz: "Smartfonlar" },
+  "dropdown.smartwatches":  { ru: "Умные часы",           uz: "Aqlli soatlar" },
+  "dropdown.fitbands":      { ru: "Фитнес-браслеты",      uz: "Fitnes bilakuzuklar" },
+  "dropdown.accessories":   { ru: "Аксессуары",           uz: "Aksessuarlar" },
+  "dropdown.laptops":       { ru: "💻 Ноутбуки и ПК",     uz: "💻 Noutbuklar va kompyuterlar" },
+  "dropdown.laptop":        { ru: "Ноутбуки",             uz: "Noutbuklar" },
+  "dropdown.monitors":      { ru: "Мониторы",             uz: "Monitorlar" },
+  "dropdown.components":    { ru: "Комплектующие",        uz: "Komplektlovchilar" },
+  "dropdown.periphery":     { ru: "Периферия",            uz: "Periferiya" },
+  "dropdown.tv":            { ru: "📺 ТВ и аудио",        uz: "📺 TV va audio" },
+  "dropdown.tvs":           { ru: "Телевизоры",           uz: "Televizorlar" },
+  "dropdown.soundbars":     { ru: "Саундбары",            uz: "Soundbarlar" },
+  "dropdown.headphones":    { ru: "Наушники",             uz: "Quloqchinlar" },
+  "dropdown.speakers":      { ru: "Колонки",              uz: "Kolonkalar" },
+  "dropdown.home":          { ru: "🏠 Для дома",          uz: "🏠 Uy uchun" },
+  "dropdown.vacuum":        { ru: "Пылесосы",             uz: "Changyutgichlar" },
+  "dropdown.climate":       { ru: "Климат",               uz: "Iqlim texnikasi" },
+  "dropdown.kitchen":       { ru: "Кухонная техника",     uz: "Oshxona texnikasi" },
+  "dropdown.beauty":        { ru: "Красота и здоровье",   uz: "Go'zallik va salomatlik" },
+
+  /* ===== HERO ===== */
+  "hero.tag":               { ru: "🔥 Акция недели",      uz: "🔥 Hafta aksiyasi" },
+  "hero.title":             { ru: 'Скидки до <span class="text-accent">30%</span> на\u00a0электронику', uz: 'Elektronikaga <span class="text-accent">30%</span> gacha chegirma' },
+  "hero.desc":              { ru: "Рассрочка 0-0-12 месяцев без переплат. Бесплатная доставка по Ташкенту.", uz: "0-0-12 oy muddatga bo'lib to'lash. Toshkent bo'ylab bepul yetkazib berish." },
+  "hero.offers":            { ru: "Смотреть предложения",  uz: "Takliflarni ko'rish" },
+  "hero.goCatalog":         { ru: "Перейти в каталог",     uz: "Katalogga o'tish" },
+
+  /* ===== CATEGORIES ===== */
+  "cat.title":              { ru: "Популярные категории", uz: "Mashhur kategoriyalar" },
+  "cat.viewAll":            { ru: "Смотреть все →",       uz: "Hammasini ko'rish →" },
+  "cat.smartphones":        { ru: "Смартфоны",            uz: "Smartfonlar" },
+  "cat.laptops":            { ru: "Ноутбуки",             uz: "Noutbuklar" },
+  "cat.tvs":                { ru: "Телевизоры",           uz: "Televizorlar" },
+  "cat.headphones":         { ru: "Наушники",             uz: "Quloqchinlar" },
+  "cat.vacuum":             { ru: "Пылесосы",             uz: "Changyutgichlar" },
+  "cat.climate":            { ru: "Климат",               uz: "Iqlim" },
+  "cat.watches":            { ru: "Умные часы",           uz: "Aqlli soatlar" },
+  "cat.gaming":             { ru: "Игровые",              uz: "O'yin qurilmalari" },
+
+  /* ===== SECTIONS ===== */
+  "section.hits":           { ru: "Хиты продаж",          uz: "Eng ko'p sotilganlar" },
+  "section.allProducts":    { ru: "Все товары →",         uz: "Barcha mahsulotlar →" },
+  "section.new":            { ru: "Новинки",              uz: "Yangi mahsulotlar" },
+  "section.viewAllNew":     { ru: "Смотреть все →",       uz: "Hammasini ko'rish →" },
+  "section.brands":         { ru: "Популярные бренды",    uz: "Mashhur brendlar" },
+
+  /* ===== OFFER BANNER ===== */
+  "offer.tag":              { ru: "⏰ Только до воскресенья", uz: "⏰ Faqat yakshanba kunigacha" },
+  "offer.title":            { ru: "Суперцены на смартфоны и\u00a0ноутбуки", uz: "Smartfon va noutbuklarga super narxlar" },
+  "offer.desc":             { ru: "Дополнительная скидка 5% при оплате онлайн. Рассрочка без первоначального взноса.", uz: "Onlayn to'lovda qo'shimcha 5% chegirma. Boshlang'ich to'lovsiz bo'lib to'lash." },
+  "offer.btn":              { ru: "Забрать скидку",       uz: "Chegirmani olish" },
+
+  /* ===== PERKS ===== */
+  "perk.installment":       { ru: "0-0-12",               uz: "0-0-12" },
+  "perk.installmentDesc":   { ru: "Рассрочка без переплат на любой товар", uz: "Har qanday mahsulotga ortiqcha to'lovsiz bo'lib to'lash" },
+  "perk.delivery":          { ru: "24 часа",              uz: "24 soat" },
+  "perk.deliveryDesc":      { ru: "Бесплатная доставка по Ташкенту", uz: "Toshkent bo'ylab bepul yetkazib berish" },
+  "perk.guarantee":         { ru: "Гарантия",             uz: "Kafolat" },
+  "perk.guaranteeDesc":     { ru: "Только оригинальная продукция", uz: "Faqat original mahsulotlar" },
+  "perk.support":           { ru: "Поддержка",            uz: "Qo'llab-quvvatlash" },
+  "perk.supportDesc":       { ru: "Консультация 7 дней в неделю", uz: "Haftada 7 kun maslahat" },
+
+  /* ===== FOOTER ===== */
+  "footer.desc":            { ru: "Интернет-магазин электроники, бытовой техники и товаров для дома с доставкой по Узбекистану.", uz: "O'zbekiston bo'ylab yetkazib berish bilan elektronika, maishiy texnika va uy-ro'zg'or buyumlari internet-do'koni." },
+  "footer.buyers":          { ru: "Покупателям",          uz: "Xaridorlar uchun" },
+  "footer.deliveryLink":    { ru: "Доставка",             uz: "Yetkazib berish" },
+  "footer.paymentLink":     { ru: "Оплата",               uz: "To'lov" },
+  "footer.installmentLink": { ru: "Рассрочка",            uz: "Bo'lib to'lash" },
+  "footer.warrantyLink":    { ru: "Гарантия и возврат",   uz: "Kafolat va qaytarish" },
+  "footer.faq":             { ru: "FAQ",                  uz: "FAQ" },
+  "footer.company":         { ru: "Компания",             uz: "Kompaniya" },
+  "footer.aboutLink":       { ru: "О нас",                uz: "Biz haqimizda" },
+  "footer.contactsLink":    { ru: "Контакты",             uz: "Kontaktlar" },
+  "footer.careers":         { ru: "Вакансии",             uz: "Vakansiyalar" },
+  "footer.offer":           { ru: "Публичная оферта",     uz: "Ommaviy oferta" },
+  "footer.privacy":         { ru: "Политика конфиденциальности", uz: "Maxfiylik siyosati" },
+  "footer.contactsTitle":   { ru: "Контакты",             uz: "Kontaktlar" },
+  "footer.address":         { ru: "Ташкент, ул. Мустакиллик, 1", uz: "Toshkent, Mustaqillik ko'chasi, 1" },
+  "footer.schedule":        { ru: "Пн–Вс: 09:00–21:00",  uz: "Du–Ya: 09:00–21:00" },
+  "footer.copyright":       { ru: "© 2026 Emirate Co. Все права защищены.", uz: "© 2026 Emirate Co. Barcha huquqlar himoyalangan." },
+
+  /* ===== MOBILE NAV ===== */
+  "mobnav.home":            { ru: "Главная",              uz: "Bosh sahifa" },
+  "mobnav.catalog":         { ru: "Каталог",              uz: "Katalog" },
+  "mobnav.favorites":       { ru: "Избранное",            uz: "Sevimlilar" },
+  "mobnav.cart":            { ru: "Корзина",              uz: "Savat" },
+  "mobnav.profile":         { ru: "Профиль",              uz: "Profil" },
+
+  /* ===== CATALOG PAGE ===== */
+  "catalog.breadHome":      { ru: "Главная",              uz: "Bosh sahifa" },
+  "catalog.breadCatalog":   { ru: "Каталог",              uz: "Katalog" },
+  "catalog.pageTitle":      { ru: "Каталог товаров",      uz: "Mahsulotlar katalogi" },
+  "catalog.found":          { ru: "товаров",              uz: "mahsulot" },
+  "catalog.filters":        { ru: "Фильтры",             uz: "Filtrlar" },
+  "catalog.category":       { ru: "Категория",            uz: "Kategoriya" },
+  "catalog.price":          { ru: "Цена (сум)",           uz: "Narxi (so'm)" },
+  "catalog.brand":          { ru: "Бренд",                uz: "Brend" },
+  "catalog.rating":         { ru: "Рейтинг",              uz: "Reyting" },
+  "catalog.ratingAbove":    { ru: "и выше",               uz: "va yuqori" },
+  "catalog.apply":          { ru: "Применить",            uz: "Qo'llash" },
+  "catalog.reset":          { ru: "Сбросить",             uz: "Tozalash" },
+  "catalog.sortPopular":    { ru: "По популярности",      uz: "Mashhurligi bo'yicha" },
+  "catalog.sortCheap":      { ru: "Сначала дешевле",      uz: "Avval arzonlari" },
+  "catalog.sortExpensive":  { ru: "Сначала дороже",       uz: "Avval qimmatlari" },
+  "catalog.sortRating":     { ru: "По рейтингу",          uz: "Reyting bo'yicha" },
+
+  /* ===== CATALOG categories / filter labels ===== */
+  "filter.smartphones":     { ru: "Смартфоны",            uz: "Smartfonlar" },
+  "filter.laptops":         { ru: "Ноутбуки",             uz: "Noutbuklar" },
+  "filter.tvs":             { ru: "Телевизоры",           uz: "Televizorlar" },
+  "filter.audio":           { ru: "Аудио",                uz: "Audio" },
+  "filter.appliances":      { ru: "Бытовая техника",      uz: "Maishiy texnika" },
+
+  /* ===== PRODUCT PAGE ===== */
+  "product.reviews":        { ru: "отзыва",               uz: "sharh" },
+  "product.inStock":        { ru: "В наличии",            uz: "Mavjud" },
+  "product.installment":    { ru: "в рассрочку 0-0-12",   uz: "0-0-12 bo'lib to'lash" },
+  "product.color":          { ru: "Цвет",                 uz: "Rang" },
+  "product.memory":         { ru: "Память",               uz: "Xotira" },
+  "product.buyNow":         { ru: "Купить сейчас",        uz: "Hozir sotib olish" },
+  "product.addCart":        { ru: "В корзину",            uz: "Savatga" },
+  "product.deliveryTitle":  { ru: "Доставка по Ташкенту за 24 часа", uz: "Toshkent bo'ylab 24 soatda yetkazib berish" },
+  "product.deliveryFree":   { ru: "Бесплатно от 500 000 сум", uz: "500 000 so'mdan bepul" },
+  "product.warrantyTitle":  { ru: "Официальная гарантия 12 месяцев", uz: "12 oylik rasmiy kafolat" },
+  "product.warrantyReturn": { ru: "Обмен и возврат 14 дней", uz: "14 kun almashtirish va qaytarish" },
+  "product.payTitle":       { ru: "Оплата: наличные, карта, рассрочка", uz: "To'lov: naqd, karta, bo'lib to'lash" },
+  "product.payMethods":     { ru: "Payme, Click, Uzum, Visa, Mastercard", uz: "Payme, Click, Uzum, Visa, Mastercard" },
+  "product.tabDesc":        { ru: "Описание",             uz: "Tavsif" },
+  "product.tabSpecs":       { ru: "Характеристики",       uz: "Xususiyatlar" },
+  "product.tabReviews":     { ru: "Отзывы",               uz: "Sharhlar" },
+  "product.aboutTitle":     { ru: "О товаре",             uz: "Mahsulot haqida" },
+
+  /* ===== PRODUCT CARD (in grid) ===== */
+  "card.addCart":           { ru: "В корзину",            uz: "Savatga" },
+  "card.quickBuy":          { ru: "Быстрый просмотр",     uz: "Tezkor ko'rish" },
+  "card.installment":       { ru: "рассрочка",            uz: "bo'lib to'lash" },
+
+  /* ===== CART PAGE ===== */
+  "cart.title":             { ru: "Корзина",              uz: "Savat" },
+  "cart.empty":             { ru: "Ваша корзина пуста",   uz: "Savatingiz bo'sh" },
+  "cart.emptyDesc":         { ru: "Добавьте товары из каталога", uz: "Katalogdan mahsulot qo'shing" },
+  "cart.goShopping":        { ru: "Перейти в каталог",    uz: "Katalogga o'tish" },
+  "cart.subtotal":          { ru: "Подытог",              uz: "Oraliq summa" },
+  "cart.discount":          { ru: "Скидка",               uz: "Chegirma" },
+  "cart.total":             { ru: "Итого",                uz: "Jami" },
+  "cart.checkout":          { ru: "Оформить заказ",       uz: "Buyurtma berish" },
+};
