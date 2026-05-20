@@ -1,4 +1,4 @@
-/* ========================================
+﻿/* ========================================
    EMIRATE CO — Admin Panel Logic
    ======================================== */
 
@@ -434,7 +434,7 @@ async function deleteProductAndSync(id) {
   if (!confirm('РЈРґР°Р»РёС‚СЊ СЌС‚РѕС‚ С‚РѕРІР°СЂ?')) return;
   const removedProduct = productsData.find((p) => p.id === id) || null;
   productsData = productsData.filter((p) => p.id !== id);
-  if (!persistProductsData()) return;
+  if (!await persistProductsData()) return;
   const deleteRes = await window.emirateSupabaseApi?.deleteAdminProduct?.(id);
   if (deleteRes && deleteRes.ok === false) {
     console.warn('[Supabase] delete product', deleteRes.error);
@@ -555,40 +555,23 @@ function trimProductMediaForStorage(sourceData, focusProductId = null) {
   });
 }
 
-function persistProductsData(focusProductId = null) {
+async function persistProductsData(focusProductId = null) {
   const optimizedData = trimProductMediaForStorage(productsData, focusProductId);
+  const syncRes = await verifyProductsSupabaseSync(optimizedData);
+  if (!syncRes?.ok) {
+    console.warn('[Supabase] strict product sync failed', syncRes?.error);
+    alert('Товар не сохранён. Сохранение разрешено только в Supabase. Проверьте вход в админку через Supabase, таблицу products и policies.');
+    return false;
+  }
   try {
     localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(optimizedData));
     productsData = optimizedData.map(normalizeProductRecord);
-    void window.emirateSupabaseApi?.pushAdminProductsPayload?.(optimizedData);
     return true;
   } catch (error) {
-    console.error('Failed to persist products data', error);
-    // Last resort: aggressively keep only one cover per product and retry.
-    try {
-      const emergencyData = cloneProductsData(optimizedData).map((product) => {
-        const isFocused = focusProductId && product.id === focusProductId;
-        return {
-          ...product,
-          photos: Array.isArray(product.photos) ? product.photos.slice(0, isFocused ? 3 : 1) : [],
-          colors: Array.isArray(product.colors)
-            ? product.colors.map((variant) => ({
-                ...variant,
-                photos: Array.isArray(variant.photos) ? (isFocused ? variant.photos.slice(0, 1) : []) : []
-              }))
-            : []
-        };
-      });
-      localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(emergencyData));
-      productsData = emergencyData.map(normalizeProductRecord);
-      void window.emirateSupabaseApi?.pushAdminProductsPayload?.(emergencyData);
-      alert('Сохранили в аварийном режиме: часть фото была автоматически удалена из старых записей, чтобы освободить память.');
-      return true;
-    } catch (innerError) {
-      console.error('Emergency persist failed', innerError);
-      alert('Не удалось сохранить товар. Переполнена память браузера. Удалите часть старых товаров или очистите хранилище сайта.');
-      return false;
-    }
+    console.error('Failed to update local mirror after Supabase sync', error);
+    productsData = optimizedData.map(normalizeProductRecord);
+    alert('Товар записан в Supabase, но локальный кэш браузера не обновился. Это не мешает общей базе, но локальный список может устареть до перезагрузки.');
+    return true;
   }
 }
 
@@ -2144,12 +2127,7 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
     }));
   }
 
-  if (!persistProductsData(focusPersistId)) return;
-  const syncRes = await verifyProductsSupabaseSync(productsData);
-  if (!syncRes?.ok) {
-    console.warn('[Supabase] product sync skipped/failed', syncRes?.error);
-    alert('Товар сохранён только локально в этом браузере. В общую базу Supabase запись не ушла. Проверьте, что вы вошли через Supabase и что таблица products / policies настроены правильно.');
-  }
+  if (!await persistProductsData(focusPersistId)) return;
   if (removedMediaUrls.length) {
     void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.(removedMediaUrls);
   }
@@ -2158,10 +2136,10 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
 });
 
 // Delete product
-function deleteProduct(id) {
+async function deleteProduct(id) {
   if (!confirm('Удалить этот товар?')) return;
   productsData = productsData.filter(p => p.id !== id);
-  if (!persistProductsData()) return;
+  if (!await persistProductsData()) return;
   renderProducts();
 }
 
@@ -2465,3 +2443,4 @@ window.openEditorForProduct = openEditorForProduct;
 window.deleteProduct = deleteProductAndSync;
 window.removePhoto = removePhoto;
 window.removeColorVariantPhoto = removeColorVariantPhoto;
+
