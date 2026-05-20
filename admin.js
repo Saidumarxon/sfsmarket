@@ -560,7 +560,10 @@ function trimProductMediaForStorage(sourceData, focusProductId = null) {
 
 async function persistProductsData(focusProductId = null) {
   const optimizedData = trimProductMediaForStorage(productsData, focusProductId);
-  const syncRes = await verifyProductsSupabaseSync(optimizedData);
+  const payloadForSync = focusProductId
+    ? optimizedData.filter((item) => item.id === focusProductId)
+    : optimizedData;
+  const syncRes = await verifyProductsSupabaseSync(payloadForSync);
   if (!syncRes?.ok) {
     console.warn('[Supabase] strict product sync failed', syncRes?.error);
     const reason = String(syncRes?.error || 'unknown_error');
@@ -1373,19 +1376,57 @@ resetBannerForm();
 setBannerReadonlyMode();
 resetSupplierForm();
 
+function readLocalProductsCache() {
+  try {
+    const raw = localStorage.getItem(ADMIN_PRODUCTS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function showSupabaseStorageBanner() {
+  if (window.emirateSupabaseApi?.isConfigured?.()) return;
+  const host = document.querySelector('.admin-content') || document.querySelector('.admin-main');
+  if (!host || document.getElementById('supabaseStorageBanner')) return;
+  const el = document.createElement('div');
+  el.id = 'supabaseStorageBanner';
+  el.setAttribute('role', 'alert');
+  el.style.cssText = 'margin:12px 16px;padding:12px 14px;border-radius:10px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;font-size:14px;line-height:1.45;';
+  el.textContent = 'Supabase не настроен на сервере: товары сохраняются только в этом браузере. Добавьте EMIRATE_SUPABASE_URL и EMIRATE_SUPABASE_ANON_KEY в настройках хостинга (Vercel → Environment Variables) и перезадеплойте сайт.';
+  host.prepend(el);
+}
+
+showSupabaseStorageBanner();
+
 void (async () => {
   try {
     const raw = await window.emirateSupabaseApi?.pullAdminProductsRaw?.();
-    if (!raw || !raw.length) return;
-    productsData = raw
-      .map((item) => normalizeProductRecord(item))
-      .filter((item) => item && item.id);
-    try {
-      localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(productsData));
-    } catch (error) {
-      // quota: keep in-memory only
+    if (raw && raw.length) {
+      productsData = raw
+        .map((item) => normalizeProductRecord(item))
+        .filter((item) => item && item.id);
+      try {
+        localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(productsData));
+      } catch (error) {
+        // quota: keep in-memory only
+      }
+      renderProducts();
+      return;
     }
+    if (!window.emirateSupabaseApi?.isConfigured?.()) return;
+    const local = readLocalProductsCache();
+    if (!local.length) return;
+    productsData = local.map((item) => normalizeProductRecord(item)).filter((item) => item && item.id);
     renderProducts();
+    const syncRes = await verifyProductsSupabaseSync(productsData);
+    if (syncRes?.ok) {
+      try {
+        localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(productsData));
+      } catch (_) {}
+      alert('Локальные товары из этого браузера перенесены в общую базу Supabase. Теперь они видны всем посетителям сайта.');
+    }
   } catch (err) {
     console.warn('[Supabase] admin products pull', err);
   }

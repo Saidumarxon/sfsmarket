@@ -1,6 +1,9 @@
 /**
- * Copy to supabase-config.js and fill in real values.
- * Dashboard → Project Settings → Data API (or API): Project URL + anon / publishable key.
+ * Local dev: copy to supabase-config.js and fill in real values.
+ * Production (Vercel): set Environment Variables — file is generated at deploy:
+ *   EMIRATE_SUPABASE_URL, EMIRATE_SUPABASE_ANON_KEY
+ *   optional: EMIRATE_SUPABASE_STORAGE_BUCKET (default product-media)
+ * Dashboard → Project Settings → Data API: Project URL + anon / publishable key.
  */
 (function () {
   var url = "PASTE_PROJECT_URL_HERE";
