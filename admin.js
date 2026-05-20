@@ -592,6 +592,17 @@ function persistProductsData(focusProductId = null) {
   }
 }
 
+async function verifyProductsSupabaseSync(data) {
+  if (!window.emirateSupabaseApi?.isConfigured?.()) {
+    return { ok: false, error: 'no_client' };
+  }
+  try {
+    return await window.emirateSupabaseApi.pushAdminProductsPayload(data);
+  } catch (error) {
+    return { ok: false, error: error?.message || String(error) };
+  }
+}
+
 function normalizeProductRecord(product) {
   const p = product || {};
   const priority = Number(p.priority);
@@ -2134,6 +2145,11 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
   }
 
   if (!persistProductsData(focusPersistId)) return;
+  const syncRes = await verifyProductsSupabaseSync(productsData);
+  if (!syncRes?.ok) {
+    console.warn('[Supabase] product sync skipped/failed', syncRes?.error);
+    alert('Товар сохранён только локально в этом браузере. В общую базу Supabase запись не ушла. Проверьте, что вы вошли через Supabase и что таблица products / policies настроены правильно.');
+  }
   if (removedMediaUrls.length) {
     void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.(removedMediaUrls);
   }

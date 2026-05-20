@@ -189,9 +189,9 @@
 
   async function pushAdminProductsPayload(productsArray) {
     var sb = client();
-    if (!sb) return;
+    if (!sb) return { ok: false, error: "no_client" };
     var sessionRes = await sb.auth.getSession();
-    if (!sessionRes.data || !sessionRes.data.session) return;
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
     var rows = (productsArray || []).map(function (item) {
       var payload = JSON.parse(JSON.stringify(item || {}));
       var adminId = String(payload.id || "").trim();
@@ -201,9 +201,13 @@
       var priority = Number(payload.priority) || 300;
       return { admin_id: adminId, title: title, status: status, priority: priority, payload: payload };
     }).filter(Boolean);
-    if (!rows.length) return;
+    if (!rows.length) return { ok: true, rows: 0 };
     var res = await sb.from("products").upsert(rows, { onConflict: "admin_id" });
-    if (res.error) console.warn("[Supabase] pushAdminProductsPayload", res.error);
+    if (res.error) {
+      console.warn("[Supabase] pushAdminProductsPayload", res.error);
+      return { ok: false, error: res.error.message || String(res.error) };
+    }
+    return { ok: true, rows: rows.length };
   }
 
   async function deleteAdminProduct(adminId) {
