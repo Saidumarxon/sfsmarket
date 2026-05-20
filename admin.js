@@ -648,8 +648,40 @@ function normalizeProductRecord(product) {
       nameUz: String(colorMeta.nameUz || 'rang').trim() || 'rang',
       status: colorMeta.status === 'inactive' ? 'inactive' : 'active',
       type: colorMeta.type === 'text' ? 'text' : 'image'
-    }
+    },
+    priceUsd: window.emirateExchange?.parseUsdInput
+      ? window.emirateExchange.parseUsdInput(p.priceUsd)
+      : Number(String(p.priceUsd || '').replace(/[^\d.]/g, '')) || 0,
+    oldPriceUsd: window.emirateExchange?.parseUsdInput
+      ? window.emirateExchange.parseUsdInput(p.oldPriceUsd)
+      : Number(String(p.oldPriceUsd || '').replace(/[^\d.]/g, '')) || 0
   };
+}
+
+function updateNbuRateLine() {
+  const el = document.getElementById('pNbuRateLine');
+  if (!el || !window.emirateExchange) return;
+  const meta = window.emirateExchange.getNbuRateMeta();
+  const when = meta.fetchedAt
+    ? new Date(meta.fetchedAt).toLocaleString('ru-RU')
+    : 'кэш';
+  el.textContent = `Курс NBU (продажа USD): ${meta.rate.toLocaleString('ru-RU')} сум · источник: ${meta.source} · ${when} · на витрине +20%`;
+}
+
+function updateStorefrontPricePreview() {
+  const el = document.getElementById('pStorefrontPreview');
+  if (!el || !window.emirateExchange?.previewStorefrontFromUsd) return;
+  const usd = window.emirateExchange.parseUsdInput(document.getElementById('pPriceUsd')?.value);
+  if (usd <= 0) {
+    el.textContent = 'Укажите цену в USD — на витрине будет: курс NBU (продажа) × USD × 1.2. Или заполните цену в сумах.';
+    return;
+  }
+  const preview = window.emirateExchange.previewStorefrontFromUsd(
+    usd,
+    document.getElementById('pOldPriceUsd')?.value
+  );
+  el.textContent = `На витрине: ${window.emirateExchange.formatUzs(preview.price)} (база ${window.emirateExchange.formatUzs(preview.base)} + 20%)` +
+    (preview.oldPrice > preview.price ? ` · старая: ${window.emirateExchange.formatUzs(preview.oldPrice)}` : '');
 }
 
 let productsData = loadProductsData().map(normalizeProductRecord);
@@ -2000,8 +2032,11 @@ function openEditorForProduct(id) {
   document.getElementById('pDeliveryArea').value = p.deliveryArea || '';
   document.getElementById('pDescUz').value = p.descUz || '';
   document.getElementById('pDescRu').value = p.descRu || '';
+  document.getElementById('pPriceUsd').value = p.priceUsd > 0 ? String(p.priceUsd) : '';
+  document.getElementById('pOldPriceUsd').value = p.oldPriceUsd > 0 ? String(p.oldPriceUsd) : '';
   document.getElementById('pPrice').value = p.price || '';
   document.getElementById('pOldPrice').value = p.oldPrice || '';
+  updateStorefrontPricePreview();
   renderSpecsRows(Array.isArray(p.specs) ? p.specs : []);
   productColorVariants = Array.isArray(p.colors) ? p.colors.map((item) => ({
     id: String(item?.id || `color_${Date.now()}_${Math.floor(Math.random() * 1000)}`),
@@ -2056,8 +2091,11 @@ function clearEditorForm() {
   document.getElementById('pDeliveryArea').value = '';
   document.getElementById('pDescUz').value = '';
   document.getElementById('pDescRu').value = '';
+  document.getElementById('pPriceUsd').value = '';
+  document.getElementById('pOldPriceUsd').value = '';
   document.getElementById('pPrice').value = '';
   document.getElementById('pOldPrice').value = '';
+  updateStorefrontPricePreview();
   document.getElementById('pMarginPrice').value = '';
   document.getElementById('pCostPrice').value = '';
   document.getElementById('pInstallmentMonths').value = '';
@@ -2142,6 +2180,32 @@ document.getElementById('editorCancelBtn').addEventListener('click', function() 
 });
 
 // Save product
+document.getElementById('refreshNbuRateBtn')?.addEventListener('click', async function() {
+  const btn = this;
+  btn.disabled = true;
+  try {
+    const res = await window.emirateExchange?.refreshNbuUsdSellRate?.(true);
+    if (!res?.ok) {
+      alert('Не удалось обновить курс с nbu.uz. Используется последний сохранённый курс.');
+    }
+    updateNbuRateLine();
+    updateStorefrontPricePreview();
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+['pPriceUsd', 'pOldPriceUsd'].forEach((id) => {
+  document.getElementById(id)?.addEventListener('input', updateStorefrontPricePreview);
+});
+
+void (async () => {
+  if (!window.emirateExchange?.refreshNbuUsdSellRate) return;
+  await window.emirateExchange.refreshNbuUsdSellRate(false);
+  updateNbuRateLine();
+  updateStorefrontPricePreview();
+})();
+
 document.getElementById('productSaveBtn').addEventListener('click', async function() {
   if (activeAssetUploads > 0) {
     alert('Дождитесь завершения загрузки фото, затем сохраните товар.');
@@ -2159,6 +2223,8 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
   const descUz = document.getElementById('pDescUz').value.trim();
   const descRu = document.getElementById('pDescRu').value.trim();
   const priority = Number(document.getElementById('pPriority').value);
+  const priceUsd = document.getElementById('pPriceUsd').value.trim();
+  const oldPriceUsd = document.getElementById('pOldPriceUsd').value.trim();
   const price = document.getElementById('pPrice').value.trim();
   const oldPrice = document.getElementById('pOldPrice').value.trim();
   const brand = document.getElementById('pBrand').value;
@@ -2206,6 +2272,16 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
     return;
   }
 
+  const hasUsd = window.emirateExchange?.parseUsdInput?.(priceUsd) > 0;
+  if (!hasUsd && !price) {
+    alert('Укажите цену в USD или цену в сумах.');
+    editorTabs.forEach(t => t.classList.remove('active'));
+    editorTabContents.forEach(c => c.classList.remove('active'));
+    document.querySelector('.editor-tab[data-tab="price"]')?.classList.add('active');
+    document.querySelector('.editor-tab-content[data-tab="price"]')?.classList.add('active');
+    return;
+  }
+
   const today = new Date();
   const dd = String(today.getDate()).padStart(2, '0');
   const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -2235,6 +2311,8 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
         colorMeta,
         colors,
         priority: Number.isFinite(priority) ? priority : 300,
+        priceUsd,
+        oldPriceUsd,
         price,
         oldPrice,
         brand,
@@ -2254,6 +2332,8 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
       nameRu,
       nameUz,
       category,
+      priceUsd,
+      oldPriceUsd,
       price,
       oldPrice,
       status,

@@ -123,13 +123,15 @@ function readAdminProducts() {
         const title = item.nameRu || item.nameUz || "Товар";
         const rawPrice = parsePriceText(item.price);
         const rawOldPrice = parsePriceText(item.oldPrice) || rawPrice;
-        const marked = window.emirateSupabaseApi?.applyStorefrontMarkupToPrices
-          ? window.emirateSupabaseApi.applyStorefrontMarkupToPrices(rawPrice, rawOldPrice)
-          : (() => {
-              const price = Math.round(rawPrice * 1.2);
-              const oldPrice = rawOldPrice > 0 ? Math.round(rawOldPrice * 1.2) : price;
-              return { price, oldPrice: Math.max(oldPrice, price) };
-            })();
+        const marked = window.emirateExchange?.resolveStorefrontPricesFromProduct
+          ? window.emirateExchange.resolveStorefrontPricesFromProduct(item)
+          : window.emirateSupabaseApi?.applyStorefrontMarkupToPrices
+            ? window.emirateSupabaseApi.applyStorefrontMarkupToPrices(rawPrice, rawOldPrice)
+            : (() => {
+                const price = Math.round(rawPrice * 1.2);
+                const oldPrice = rawOldPrice > 0 ? Math.round(rawOldPrice * 1.2) : price;
+                return { price, oldPrice: Math.max(oldPrice, price) };
+              })();
         const price = marked.price;
         const oldPrice = marked.oldPrice;
         const photos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];

@@ -8,6 +8,8 @@
 !supabase-config.prod.js
 !scripts
 !scripts/**
+!api
+!api/**
 !images
 !images/**
 !supabase

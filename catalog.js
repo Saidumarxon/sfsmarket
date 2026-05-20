@@ -64,10 +64,7 @@ function loadAdminProductsForCatalog() {
     return parsed
       .filter((item) => item && item.status !== "inactive")
       .map((item) => {
-        const marked = applyStorefrontPrices(
-          parseMoneyText(item.price),
-          parseMoneyText(item.oldPrice) || parseMoneyText(item.price)
-        );
+        const marked = applyStorefrontPrices(item);
         return {
         title: item.nameRu || item.nameUz || "Товар",
         sku: item.id || "",
@@ -155,12 +152,20 @@ function parseMoneyText(text) {
   return Number(String(text || "").replace(/\s+/g, "").replace(/[^\d]/g, "")) || 0;
 }
 
-function applyStorefrontPrices(price, oldPrice) {
-  if (window.emirateSupabaseApi?.applyStorefrontMarkupToPrices) {
-    return window.emirateSupabaseApi.applyStorefrontMarkupToPrices(price, oldPrice);
+function applyStorefrontPrices(itemOrPrice, oldPriceMaybe) {
+  if (typeof itemOrPrice === "object" && itemOrPrice) {
+    if (window.emirateExchange?.resolveStorefrontPricesFromProduct) {
+      return window.emirateExchange.resolveStorefrontPricesFromProduct(itemOrPrice);
+    }
+    const row = itemOrPrice;
+    itemOrPrice = parseMoneyText(row.price);
+    oldPriceMaybe = parseMoneyText(row.oldPrice) || itemOrPrice;
   }
-  const base = Number(price) || 0;
-  const oldBase = Number(oldPrice) || 0;
+  if (window.emirateSupabaseApi?.applyStorefrontMarkupToPrices) {
+    return window.emirateSupabaseApi.applyStorefrontMarkupToPrices(itemOrPrice, oldPriceMaybe);
+  }
+  const base = Number(itemOrPrice) || 0;
+  const oldBase = Number(oldPriceMaybe) || 0;
   if (base <= 0) return { price: 0, oldPrice: 0 };
   const markedPrice = Math.round(base * 1.2);
   const markedOld = oldBase > 0 ? Math.round(oldBase * 1.2) : markedPrice;

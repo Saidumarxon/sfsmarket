@@ -69,9 +69,13 @@
   function mapAdminPayloadToCatalogItem(item) {
     if (!item || typeof item !== "object") return null;
     if (item.status === "inactive") return null;
-    var rawPrice = parseMoneyText(item.price);
-    var rawOldPrice = parseMoneyText(item.oldPrice) || rawPrice;
-    var marked = applyStorefrontMarkupToPrices(rawPrice, rawOldPrice);
+    var marked =
+      window.emirateExchange && window.emirateExchange.resolveStorefrontPricesFromProduct
+        ? window.emirateExchange.resolveStorefrontPricesFromProduct(item)
+        : applyStorefrontMarkupToPrices(
+            parseMoneyText(item.price),
+            parseMoneyText(item.oldPrice) || parseMoneyText(item.price)
+          );
     return {
       title: item.nameRu || item.nameUz || "Товар",
       sku: item.id || "",

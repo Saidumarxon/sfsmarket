@@ -758,14 +758,30 @@
             <!-- TAB: Цена -->
             <div class="editor-tab-content" data-tab="price">
               <div class="editor-section">
+                <p class="form-hint" id="pNbuRateLine" style="margin:0 0 12px;font-size:13px;color:#64748b;">
+                  Курс NBU (продажа USD): загрузка… · на витрине +20%
+                </p>
+                <button type="button" class="btn-filter-reset" id="refreshNbuRateBtn" style="margin-bottom:14px;">Обновить курс с nbu.uz</button>
                 <div class="form-row">
                   <div class="form-group">
-                    <label class="required">Цена на сайте (сум)</label>
-                    <input type="text" id="pPrice" placeholder="15 490 000">
+                    <label>Цена закупа (USD)</label>
+                    <input type="text" id="pPriceUsd" inputmode="decimal" placeholder="например 1000">
+                    <small class="form-hint">Приоритет для витрины: USD × курс NBU × 1.2</small>
+                  </div>
+                  <div class="form-group">
+                    <label>Старая цена (USD)</label>
+                    <input type="text" id="pOldPriceUsd" inputmode="decimal" placeholder="опционально">
+                  </div>
+                </div>
+                <p class="form-hint" id="pStorefrontPreview" style="margin:8px 0 14px;font-size:13px;color:#0f766e;"></p>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Цена в сум (вручную)</label>
+                    <input type="text" id="pPrice" placeholder="если без USD">
                   </div>
                   <div class="form-group">
                     <label>Старая цена (сум)</label>
-                    <input type="text" id="pOldPrice" placeholder="16 900 000">
+                    <input type="text" id="pOldPrice" placeholder="если без USD">
                   </div>
                 </div>
                 <div class="form-row">
@@ -962,6 +978,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase-config.js"></script>
   <script src="supabase-config.prod.js"></script>
+  <script src="emirate-exchange.js"></script>
   <script src="emirate-supabase-api.js"></script>
   <script>
     (async function emirateAdminEntry() {

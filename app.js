@@ -168,15 +168,17 @@ function getAdminProductsForStorefront() {
     return parsed
       .filter((item) => item && item.status !== "inactive")
       .map((item) => {
-        const marked = window.emirateSupabaseApi?.applyStorefrontMarkupToPrices
-          ? window.emirateSupabaseApi.applyStorefrontMarkupToPrices(parseMoney(item.price), parseMoney(item.oldPrice))
-          : (() => {
-              const base = parseMoney(item.price);
-              const oldBase = parseMoney(item.oldPrice);
-              const price = Math.round(base * 1.2);
-              const oldPrice = oldBase > 0 ? Math.round(oldBase * 1.2) : price;
-              return { price, oldPrice: Math.max(oldPrice, price) };
-            })();
+        const marked = window.emirateExchange?.resolveStorefrontPricesFromProduct
+          ? window.emirateExchange.resolveStorefrontPricesFromProduct(item)
+          : window.emirateSupabaseApi?.applyStorefrontMarkupToPrices
+            ? window.emirateSupabaseApi.applyStorefrontMarkupToPrices(parseMoney(item.price), parseMoney(item.oldPrice))
+            : (() => {
+                const base = parseMoney(item.price);
+                const oldBase = parseMoney(item.oldPrice);
+                const price = Math.round(base * 1.2);
+                const oldPrice = oldBase > 0 ? Math.round(oldBase * 1.2) : price;
+                return { price, oldPrice: Math.max(oldPrice, price) };
+              })();
         const priceNum = marked.price;
         const safeOldPrice = marked.oldPrice;
         const discount = Math.max(0, Math.round((1 - priceNum / (safeOldPrice || priceNum || 1)) * 100));
