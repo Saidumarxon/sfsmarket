@@ -404,6 +404,47 @@ function loadProductsData() {
 }
 
 const PRODUCTS_STORAGE_SOFT_LIMIT = 4_300_000;
+let activeAssetUploads = 0;
+
+function setAssetUploadState(isUploading) {
+  activeAssetUploads += isUploading ? 1 : -1;
+  if (activeAssetUploads < 0) activeAssetUploads = 0;
+  const saveBtn = document.getElementById('productSaveBtn');
+  if (!saveBtn) return;
+  saveBtn.disabled = activeAssetUploads > 0;
+  saveBtn.textContent = activeAssetUploads > 0 ? 'Загрузка фото...' : 'Сохранить товар';
+}
+
+function collectProductMediaUrls(product) {
+  const urls = [];
+  if (Array.isArray(product?.photos)) {
+    urls.push(...product.photos.filter(Boolean));
+  }
+  if (Array.isArray(product?.colors)) {
+    product.colors.forEach((variant) => {
+      if (Array.isArray(variant?.photos)) {
+        urls.push(...variant.photos.filter(Boolean));
+      }
+    });
+  }
+  return Array.from(new Set(urls.filter((value) => /^https?:\/\//i.test(String(value)))));
+}
+
+async function deleteProductAndSync(id) {
+  if (!confirm('РЈРґР°Р»РёС‚СЊ СЌС‚РѕС‚ С‚РѕРІР°СЂ?')) return;
+  const removedProduct = productsData.find((p) => p.id === id) || null;
+  productsData = productsData.filter((p) => p.id !== id);
+  if (!persistProductsData()) return;
+  const deleteRes = await window.emirateSupabaseApi?.deleteAdminProduct?.(id);
+  if (deleteRes && deleteRes.ok === false) {
+    console.warn('[Supabase] delete product', deleteRes.error);
+    alert('Товар удален локально, но запись в Supabase не удалось удалить. Проверьте admin_users и policies.');
+  }
+  if (removedProduct) {
+    void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.(collectProductMediaUrls(removedProduct));
+  }
+  renderProducts();
+}
 
 function cloneProductsData(data) {
   return JSON.parse(JSON.stringify(Array.isArray(data) ? data : []));
@@ -1338,15 +1379,12 @@ void (async () => {
   try {
     const raw = await window.emirateSupabaseApi?.pullAdminProductsRaw?.();
     if (!raw || !raw.length) return;
-    const byId = new Map(productsData.map((p) => [p.id, p]));
-    raw.forEach((item) => {
-      const n = normalizeProductRecord(item);
-      if (n && n.id) byId.set(n.id, n);
-    });
-    productsData = Array.from(byId.values());
+    productsData = raw
+      .map((item) => normalizeProductRecord(item))
+      .filter((item) => item && item.id);
     try {
       localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(productsData));
-    } catch (_) {
+    } catch (error) {
       // quota: keep in-memory only
     }
     renderProducts();
@@ -1962,7 +2000,11 @@ document.getElementById('editorCancelBtn').addEventListener('click', function() 
 });
 
 // Save product
-document.getElementById('productSaveBtn').addEventListener('click', function() {
+document.getElementById('productSaveBtn').addEventListener('click', async function() {
+  if (activeAssetUploads > 0) {
+    alert('Дождитесь завершения загрузки фото, затем сохраните товар.');
+    return;
+  }
   const nameRu = document.getElementById('pNameRu').value.trim();
   const nameUz = document.getElementById('pNameUz').value.trim();
   const category = document.getElementById('pCategory').value;
@@ -2028,12 +2070,14 @@ document.getElementById('productSaveBtn').addEventListener('click', function() {
   const yyyy = today.getFullYear();
   const dateStr = `${dd}.${mm}.${yyyy}`;
   let focusPersistId = editingProductId;
+  let removedMediaUrls = [];
 
   if (editingProductId) {
     const idx = productsData.findIndex(p => p.id === editingProductId);
     if (idx !== -1) {
+      const previousProduct = productsData[idx];
       productsData[idx] = normalizeProductRecord({
-        ...productsData[idx],
+        ...previousProduct,
         nameRu,
         nameUz,
         category,
@@ -2056,6 +2100,9 @@ document.getElementById('productSaveBtn').addEventListener('click', function() {
         date: dateStr,
         photos: [...uploadedPhotos]
       });
+      const previousUrls = collectProductMediaUrls(previousProduct);
+      const nextUrls = collectProductMediaUrls(productsData[idx]);
+      removedMediaUrls = previousUrls.filter((url) => !nextUrls.includes(url));
     }
   } else {
     const newId = 'T' + (Math.floor(Math.random() * 90000) + 10000);
@@ -2087,6 +2134,9 @@ document.getElementById('productSaveBtn').addEventListener('click', function() {
   }
 
   if (!persistProductsData(focusPersistId)) return;
+  if (removedMediaUrls.length) {
+    void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.(removedMediaUrls);
+  }
   renderProducts();
   switchPage('products');
 });
@@ -2175,7 +2225,7 @@ async function toOptimizedImageDataUrl(file) {
   return canvas.toDataURL('image/jpeg', 0.8);
 }
 
-async function appendUploadedImages(files, target, render) {
+async function appendUploadedImages(files, target, render, options = {}) {
   for (const file of Array.from(files || [])) {
     if (!file.type.startsWith('image/')) continue;
     if (file.size > 12 * 1024 * 1024) {
@@ -2183,8 +2233,20 @@ async function appendUploadedImages(files, target, render) {
       continue;
     }
     try {
-      const optimized = await toOptimizedImageDataUrl(file);
-      target.push(optimized);
+      let finalSrc = '';
+      if (window.emirateSupabaseApi?.isConfigured?.() && window.emirateSupabaseApi?.uploadAdminAsset) {
+        setAssetUploadState(true);
+        const uploadRes = await window.emirateSupabaseApi.uploadAdminAsset(file, options);
+        setAssetUploadState(false);
+        if (!uploadRes?.ok || !uploadRes.url) {
+          throw new Error(uploadRes?.error || 'storage upload failed');
+        }
+        finalSrc = uploadRes.url;
+      } else {
+        const optimized = await toOptimizedImageDataUrl(file);
+        finalSrc = optimized;
+      }
+      target.push(finalSrc);
       render();
     } catch (_) {
       alert(`Не удалось обработать файл "${file.name}".`);
@@ -2193,7 +2255,7 @@ async function appendUploadedImages(files, target, render) {
 }
 
 colorVariantPhotoInput?.addEventListener('change', function() {
-  appendUploadedImages(this.files, uploadedColorVariantPhotos, renderColorVariantPhotoPreview);
+  appendUploadedImages(this.files, uploadedColorVariantPhotos, renderColorVariantPhotoPreview, { folder: 'product-colors' });
   this.value = '';
 });
 
@@ -2246,7 +2308,7 @@ document.getElementById('productsBody').addEventListener('click', function(e) {
     return;
   }
   if (action === 'delete-product') {
-    deleteProduct(id);
+    deleteProductAndSync(id);
   }
 });
 
@@ -2281,7 +2343,7 @@ photoInput.addEventListener('change', function() {
 });
 
 function handleFiles(files) {
-  appendUploadedImages(files, uploadedPhotos, renderPhotoPreviews);
+  appendUploadedImages(files, uploadedPhotos, renderPhotoPreviews, { folder: 'products' });
 }
 
 function renderPhotoPreviews() {
@@ -2384,6 +2446,6 @@ if (headerSearch) {
 
 window.switchPage = switchPage;
 window.openEditorForProduct = openEditorForProduct;
-window.deleteProduct = deleteProduct;
+window.deleteProduct = deleteProductAndSync;
 window.removePhoto = removePhoto;
 window.removeColorVariantPhoto = removeColorVariantPhoto;

@@ -154,10 +154,16 @@ img { max-width: 100%; display: block; }
 /* Logo */
 .logo {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   line-height: 1;
   flex-shrink: 0;
   margin-right: 8px;
+}
+
+.logo-img {
+  height: 64px;
+  width: auto;
+  display: block;
 }
 
 .logo-main {
@@ -1331,9 +1337,17 @@ img { max-width: 100%; display: block; }
 
 .footer-logo {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   line-height: 1;
   margin-bottom: 14px;
+}
+
+.footer-logo .logo-img {
+  height: 40px;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 10px;
+  box-sizing: content-box;
 }
 
 .footer-logo-main {

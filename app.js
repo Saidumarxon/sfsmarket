@@ -1,4 +1,4 @@
-/* ========================================
+﻿/* ========================================
    EMIRATE CO — Home Page v4
    Categories + Carousel + Lazy Loading
    (shared logic is in common.js)
@@ -142,10 +142,10 @@ function saveSelectedProduct(product) {
 
 function mapAdminCategoryToHomeKey(category) {
   const value = String(category || "").toLowerCase();
-  if (value.includes("смартф")) return "smartphones";
-  if (value.includes("тв") || value.includes("аудио")) return "appliances";
-  if (value.includes("ноут")) return "accessories";
-  if (value.includes("техник") || value.includes("дом")) return "appliances";
+  if (value.includes("\u0441\u043c\u0430\u0440\u0442\u0444")) return "smartphones";
+  if (value.includes("\u0442\u0432") || value.includes("\u0430\u0443\u0434\u0438\u043e")) return "appliances";
+  if (value.includes("\u043d\u043e\u0443\u0442")) return "accessories";
+  if (value.includes("\u0442\u0435\u0445\u043d\u0438\u043a") || value.includes("\u0434\u043e\u043c")) return "appliances";
   return "accessories";
 }
 
@@ -174,7 +174,7 @@ function getAdminProductsForStorefront() {
         const installmentStatus = item.installmentStatus === "inactive" ? "inactive" : "active";
         const priority = Number(item.priority);
         return {
-          title: item.nameRu || item.nameUz || "Товар",
+          title: item.nameRu || item.nameUz || "\u0422\u043e\u0432\u0430\u0440",
           price: formatMoney(priceNum),
           oldPrice: formatMoney(safeOldPrice),
           discount: discount > 0 ? `-${discount}%` : "",
@@ -212,7 +212,7 @@ function getAdminProductsForStorefront() {
                 .filter((variant) => variant.name)
             : [],
           colorMeta: {
-            nameRu: String(item.colorMeta?.nameRu || "Цвет").trim() || "Цвет",
+            nameRu: String(item.colorMeta?.nameRu || "\u0426\u0432\u0435\u0442").trim() || "\u0426\u0432\u0435\u0442",
             nameUz: String(item.colorMeta?.nameUz || "rang").trim() || "rang",
             status: item.colorMeta?.status === "inactive" ? "inactive" : "active",
             type: item.colorMeta?.type === "text" ? "text" : "image"
@@ -253,7 +253,7 @@ function applyAdminProductsToHomeData() {
       }
     });
 
-    // New products from admin go to their category only (not "Рекомендуемые").
+    // New products from admin go to their category only (not "\u0420\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0443\u0435\u043c\u044b\u0435").
     const key = mapAdminCategoryToHomeKey(item.category);
     const list = productData[key] || productData.accessories;
     if (!replacedInAnyList && !list.some((x) => normalizeTitleKey(x.title) === itemKey)) {
@@ -272,12 +272,12 @@ function defaultHomeBanners() {
   return [
     {
       id: "home_default_1",
-      tag: "🔥 Акция недели",
-      title: "Скидки до 30% на электронику",
-      desc: "Рассрочка 0-0-12 месяцев без переплат. Бесплатная доставка по Ташкенту.",
-      primaryText: "Смотреть предложения",
+      tag: "\u0410\u043a\u0446\u0438\u044f \u043d\u0435\u0434\u0435\u043b\u0438",
+      title: "\u0421\u043a\u0438\u0434\u043a\u0438 \u0434\u043e 30% \u043d\u0430 \u044d\u043b\u0435\u043a\u0442\u0440\u043e\u043d\u0438\u043a\u0443",
+      desc: "\u0420\u0430\u0441\u0441\u0440\u043e\u0447\u043a\u0430 0-0-12 \u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0431\u0435\u0437 \u043f\u0435\u0440\u0435\u043f\u043b\u0430\u0442. \u0411\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u0430\u044f \u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0430 \u043f\u043e \u0422\u0430\u0448\u043a\u0435\u043d\u0442\u0443.",
+      primaryText: "\u0421\u043c\u043e\u0442\u0440\u0435\u0442\u044c \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u044f",
       primaryUrl: "#",
-      secondaryText: "Перейти в каталог",
+      secondaryText: "\u041f\u0435\u0440\u0435\u0439\u0442\u0438 \u0432 \u043a\u0430\u0442\u0430\u043b\u043e\u0433",
       secondaryUrl: "catalog.html",
       image: "",
       isActive: true,
@@ -291,8 +291,8 @@ function normalizeHomeBanner(record) {
   const priority = Number(banner.priority);
   return {
     id: banner.id || `home_banner_${Date.now()}`,
-    tag: String(banner.tag || "").trim() || "🔥 Акция",
-    title: String(banner.title || "").trim() || "Акционный баннер",
+    tag: String(banner.tag || "").trim() || "\u0410\u043a\u0446\u0438\u044f",
+    title: String(banner.title || "").trim() || "\u0410\u043a\u0446\u0438\u043e\u043d\u043d\u044b\u0439 \u0431\u0430\u043d\u043d\u0435\u0440",
     desc: String(banner.desc || "").trim() || "",
     primaryText: String(banner.primaryText || "").trim() || "",
     primaryUrl: String(banner.primaryUrl || "").trim() || "#",
@@ -678,3 +678,4 @@ document.addEventListener("click", (e) => {
 });
 
 // ===== HERO DOTS =====
+

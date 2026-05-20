@@ -6,6 +6,26 @@
 --    insert into public.admin_users (user_id)
 --    select id from auth.users where email = 'your@email.com' limit 1
 --    on conflict do nothing;
+-- 3) For scalable product photos, create a public Storage bucket:
+--    insert into storage.buckets (id, name, public)
+--    values ('product-media', 'product-media', true)
+--    on conflict (id) do nothing;
+-- 4) Add Storage policies for authenticated admins:
+--    create policy "product-media public read"
+--      on storage.objects for select
+--      to public
+--      using (bucket_id = 'product-media');
+--    create policy "product-media admin write"
+--      on storage.objects for all
+--      to authenticated
+--      using (
+--        bucket_id = 'product-media'
+--        and exists (select 1 from public.admin_users u where u.user_id = auth.uid())
+--      )
+--      with check (
+--        bucket_id = 'product-media'
+--        and exists (select 1 from public.admin_users u where u.user_id = auth.uid())
+--      );
 
 create table if not exists public.admin_users (
   user_id uuid primary key references auth.users (id) on delete cascade

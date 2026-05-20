@@ -46,8 +46,7 @@ export default function StoreShell({ children }: Props) {
       <header className={`header${isScrolled ? " scrolled" : ""}`}>
         <div className="container header-inner">
           <Link className="logo" href="/">
-            <span className="logo-main">Emirate</span>
-            <span className="logo-sub">Co</span>
+            <img className="logo-img" src="/emirate-logo.svg" alt="Emirate Co" width="160" height="56" />
           </Link>
 
           <div className="catalog-control">
@@ -136,8 +135,7 @@ export default function StoreShell({ children }: Props) {
         <div className="container footer-inner">
           <div className="footer-about">
             <div className="footer-logo">
-              <span className="footer-logo-main">Emirate</span>
-              <span className="footer-logo-sub">Co</span>
+              <img className="logo-img" src="/emirate-logo.svg" alt="Emirate Co" width="160" height="56" />
             </div>
             <p>Интернет-магазин электроники, бытовой техники и товаров для дома с доставкой по Узбекистану.</p>
             <div className="footer-socials">

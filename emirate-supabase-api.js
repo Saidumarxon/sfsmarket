@@ -11,6 +11,35 @@
     return !!client();
   }
 
+  function getStorageBucket() {
+    return String(window.emirateSupabaseStorageBucket || "product-media").trim() || "product-media";
+  }
+
+  function getProjectUrl() {
+    return String(window.emirateSupabaseUrl || "").replace(/\/+$/, "");
+  }
+
+  function safeFileName(name) {
+    return String(name || "file")
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "file";
+  }
+
+  function buildStoragePublicPrefix(bucket) {
+    var projectUrl = getProjectUrl();
+    if (!projectUrl) return "";
+    return projectUrl + "/storage/v1/object/public/" + bucket + "/";
+  }
+
+  function extractStoragePathFromUrl(url, bucket) {
+    var prefix = buildStoragePublicPrefix(bucket);
+    var value = String(url || "");
+    if (!prefix || !value || value.indexOf(prefix) !== 0) return null;
+    return decodeURIComponent(value.slice(prefix.length).split("?")[0]);
+  }
+
   function parseMoneyText(text) {
     return Number(String(text || "").replace(/\s+/g, "").replace(/[^\d]/g, "")) || 0;
   }
@@ -177,15 +206,74 @@
     if (res.error) console.warn("[Supabase] pushAdminProductsPayload", res.error);
   }
 
+  async function deleteAdminProduct(adminId) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var res = await sb.from("products").delete().eq("admin_id", String(adminId || "").trim());
+    if (res.error) {
+      console.warn("[Supabase] deleteAdminProduct", res.error);
+      return { ok: false, error: res.error.message || String(res.error) };
+    }
+    return { ok: true };
+  }
+
+  async function uploadAdminAsset(file, options) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var bucket = getStorageBucket();
+    var folder = String(options && options.folder || "products").replace(/^\/+|\/+$/g, "") || "products";
+    var fileName = safeFileName(file && file.name || "image");
+    var stamp = Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+    var path = folder + "/" + stamp + "_" + fileName;
+    var res = await sb.storage.from(bucket).upload(path, file, {
+      cacheControl: "31536000",
+      upsert: false,
+      contentType: file && file.type ? file.type : "application/octet-stream"
+    });
+    if (res.error) {
+      console.warn("[Supabase] uploadAdminAsset", res.error);
+      return { ok: false, error: res.error.message || String(res.error) };
+    }
+    var publicRes = sb.storage.from(bucket).getPublicUrl(path);
+    var publicUrl = publicRes && publicRes.data && publicRes.data.publicUrl || "";
+    return { ok: true, url: publicUrl, path: path, bucket: bucket };
+  }
+
+  async function removeAdminAssetsByUrls(urls) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var bucket = getStorageBucket();
+    var paths = Array.from(new Set((Array.isArray(urls) ? urls : [])
+      .map(function (url) { return extractStoragePathFromUrl(url, bucket); })
+      .filter(Boolean)));
+    if (!paths.length) return { ok: true, removed: 0 };
+    var res = await sb.storage.from(bucket).remove(paths);
+    if (res.error) {
+      console.warn("[Supabase] removeAdminAssetsByUrls", res.error);
+      return { ok: false, error: res.error.message || String(res.error) };
+    }
+    return { ok: true, removed: paths.length };
+  }
+
   window.emirateSupabaseApi = {
     isConfigured: isConfigured,
     client: client,
+    getStorageBucket: getStorageBucket,
     normalizeTitleKey: normalizeTitleKey,
     mapAdminPayloadToCatalogItem: mapAdminPayloadToCatalogItem,
     fetchPublicCatalogProducts: fetchPublicCatalogProducts,
     fetchProductForPageByTitle: fetchProductForPageByTitle,
     insertOrder: insertOrder,
     pullAdminProductsRaw: pullAdminProductsRaw,
-    pushAdminProductsPayload: pushAdminProductsPayload
+    pushAdminProductsPayload: pushAdminProductsPayload,
+    deleteAdminProduct: deleteAdminProduct,
+    uploadAdminAsset: uploadAdminAsset,
+    removeAdminAssetsByUrls: removeAdminAssetsByUrls
   };
 })();
