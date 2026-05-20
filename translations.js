@@ -145,11 +145,16 @@ window.TRANSLATIONS = {
   "card.installment":       { ru: "\u0440\u0430\u0441\u0441\u0440\u043e\u0447\u043a\u0430", uz: "bo'lib to'lash" },
 
   "cart.title":             { ru: "\u041a\u043e\u0440\u0437\u0438\u043d\u0430", uz: "Savat" },
+  "cart.orderTitle":        { ru: "\u0412\u0430\u0448 \u0437\u0430\u043a\u0430\u0437", uz: "Sizning buyurtmangiz" },
+  "cart.items":             { ru: "\u0422\u043e\u0432\u0430\u0440\u043e\u0432", uz: "Mahsulotlar" },
+  "cart.amount":            { ru: "\u0421\u0443\u043c\u043c\u0430", uz: "Summa" },
   "cart.empty":             { ru: "\u0412\u0430\u0448\u0430 \u043a\u043e\u0440\u0437\u0438\u043d\u0430 \u043f\u0443\u0441\u0442\u0430", uz: "Savatingiz bo'sh" },
   "cart.emptyDesc":         { ru: "\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u0442\u043e\u0432\u0430\u0440\u044b \u0438\u0437 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0430", uz: "Katalogdan mahsulot qo'shing" },
   "cart.goShopping":        { ru: "\u041f\u0435\u0440\u0435\u0439\u0442\u0438 \u0432 \u043a\u0430\u0442\u0430\u043b\u043e\u0433", uz: "Katalogga o'tish" },
   "cart.subtotal":          { ru: "\u041f\u043e\u0434\u044b\u0442\u043e\u0433", uz: "Oraliq summa" },
   "cart.discount":          { ru: "\u0421\u043a\u0438\u0434\u043a\u0430", uz: "Chegirma" },
   "cart.total":             { ru: "\u0418\u0442\u043e\u0433\u043e", uz: "Jami" },
-  "cart.checkout":          { ru: "\u041e\u0444\u043e\u0440\u043c\u0438\u0442\u044c \u0437\u0430\u043a\u0430\u0437", uz: "Buyurtma berish" }
+  "cart.checkout":          { ru: "\u041e\u0444\u043e\u0440\u043c\u0438\u0442\u044c \u0437\u0430\u043a\u0430\u0437", uz: "Buyurtma berish" },
+  "cart.checkoutShort":     { ru: "\u041e\u0444\u043e\u0440\u043c\u0438\u0442\u044c", uz: "Rasmiylashtirish" },
+  "cart.clearAll":          { ru: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0432\u0441\u0435", uz: "Hammasini o'chirish" }
 };

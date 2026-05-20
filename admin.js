@@ -1606,16 +1606,16 @@ document.getElementById('bannerImageInput')?.addEventListener('change', function
     this.value = '';
     return;
   }
-  if (file.size > 5 * 1024 * 1024) {
-    showBannerFeedback('Файл больше 5MB и не был добавлен.', 'error', 3200);
-    alert('Файл больше 5MB и не был добавлен.');
+  if (file.size > IMAGE_UPLOAD_MAX_BYTES) {
+    showBannerFeedback('Файл больше 15MB и не был добавлен.', 'error', 3200);
+    alert('Файл больше 15MB и не был добавлен.');
     this.value = '';
     return;
   }
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    const imageData = String(e.target?.result || '');
+  (async function processBannerImage() {
     try {
+      const optimized = await prepareImageForUpload(file, { maxSide: 2400, skipIfUnderBytes: 600 * 1024 });
+      const imageData = await readFileAsDataUrl(optimized);
       const meta = await getImageMeta(imageData);
       if (meta.ratio < BANNER_IMAGE_RATIO_MIN || meta.ratio > BANNER_IMAGE_RATIO_MAX) {
         showBannerFeedback('Неверная пропорция изображения для баннера.', 'error', 3800);
@@ -1624,15 +1624,17 @@ document.getElementById('bannerImageInput')?.addEventListener('change', function
         return;
       }
       bannerFormImage = imageData;
-      if (bannerImageMeta) bannerImageMeta.textContent = `Загружено: ${file.name} (${meta.width}x${meta.height})`;
+      const sizeNote = optimized.size < file.size
+        ? `, сжато ${Math.round(file.size / 1024)}→${Math.round(optimized.size / 1024)} КБ`
+        : '';
+      if (bannerImageMeta) bannerImageMeta.textContent = `Загружено: ${file.name} (${meta.width}×${meta.height}${sizeNote})`;
       renderBannerPreview(getBannerPreviewDataFromForm());
       showBannerFeedback(`Изображение загружено: ${file.name}.`, 'success');
     } catch (_) {
       showBannerFeedback('Не удалось обработать изображение.', 'error', 3200);
       alert('Не удалось обработать изображение.');
     }
-  };
-  reader.readAsDataURL(file);
+  })();
   this.value = '';
 });
 
@@ -2230,6 +2232,15 @@ colorAttrNameUzInput?.addEventListener('input', renderColorVariantsList);
 colorAttrStatusInput?.addEventListener('change', renderColorVariantsList);
 colorAttrTypeInput?.addEventListener('change', renderColorVariantsList);
 
+const IMAGE_UPLOAD_MAX_BYTES = 15 * 1024 * 1024;
+const IMAGE_OPTIMIZE_DEFAULTS = {
+  maxSide: 1920,
+  webpQuality: 0.86,
+  jpegQuality: 0.88,
+  skipIfUnderBytes: 450 * 1024,
+  skipIfMaxSide: 1920
+};
+
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -2248,12 +2259,37 @@ function loadImageFromDataUrl(dataUrl) {
   });
 }
 
-async function toOptimizedImageDataUrl(file) {
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Image decode failed'));
+    };
+    img.src = url;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), type, quality);
+  });
+}
+
+async function toOptimizedImageDataUrl(file, options = {}) {
+  const maxSide = Number(options.maxSide) || IMAGE_OPTIMIZE_DEFAULTS.maxSide;
+  const webpQuality = Number(options.webpQuality) || IMAGE_OPTIMIZE_DEFAULTS.webpQuality;
+  const jpegQuality = Number(options.jpegQuality) || IMAGE_OPTIMIZE_DEFAULTS.jpegQuality;
   const original = await readFileAsDataUrl(file);
   if (file.type === 'image/svg+xml') return original;
   const img = await loadImageFromDataUrl(original);
-  const maxSide = 1400;
-  const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+  const longest = Math.max(img.naturalWidth || 1, img.naturalHeight || 1);
+  const scale = Math.min(1, maxSide / longest);
   const width = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
   const height = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
   const canvas = document.createElement('canvas');
@@ -2261,36 +2297,77 @@ async function toOptimizedImageDataUrl(file) {
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) return original;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(img, 0, 0, width, height);
-  const webp = canvas.toDataURL('image/webp', 0.78);
-  if (webp && webp.startsWith('data:image/webp')) return webp;
-  return canvas.toDataURL('image/jpeg', 0.8);
+  const webpBlob = await canvasToBlob(canvas, 'image/webp', webpQuality);
+  if (webpBlob) {
+    return readFileAsDataUrl(new File([webpBlob], 'optimized.webp', { type: 'image/webp' }));
+  }
+  const jpegBlob = await canvasToBlob(canvas, 'image/jpeg', jpegQuality);
+  if (jpegBlob) {
+    return readFileAsDataUrl(new File([jpegBlob], 'optimized.jpg', { type: 'image/jpeg' }));
+  }
+  return canvas.toDataURL('image/jpeg', jpegQuality);
+}
+
+async function shouldSkipImageOptimize(file, options = {}) {
+  if (!file?.type?.startsWith('image/') || file.type === 'image/svg+xml') return true;
+  const skipBytes = Number(options.skipIfUnderBytes) || IMAGE_OPTIMIZE_DEFAULTS.skipIfUnderBytes;
+  const skipSide = Number(options.skipIfMaxSide) || IMAGE_OPTIMIZE_DEFAULTS.skipIfMaxSide;
+  if (file.size > skipBytes) return false;
+  try {
+    const img = await loadImageFromFile(file);
+    const longest = Math.max(img.naturalWidth || 1, img.naturalHeight || 1);
+    return longest <= skipSide && (file.type === 'image/jpeg' || file.type === 'image/webp');
+  } catch (_) {
+    return false;
+  }
+}
+
+async function toOptimizedImageFile(file, options = {}) {
+  if (await shouldSkipImageOptimize(file, options)) return file;
+  const dataUrl = await toOptimizedImageDataUrl(file, options);
+  const blob = await fetch(dataUrl).then((r) => r.blob());
+  const base = String(file.name || 'image').replace(/\.[^.]+$/, '') || 'image';
+  const isWebp = blob.type === 'image/webp';
+  const ext = isWebp ? 'webp' : 'jpg';
+  const mime = isWebp ? 'image/webp' : 'image/jpeg';
+  return new File([blob], `${base}.${ext}`, { type: mime, lastModified: Date.now() });
+}
+
+async function prepareImageForUpload(file, options = {}) {
+  if (!file?.type?.startsWith('image/')) return file;
+  return toOptimizedImageFile(file, options);
 }
 
 async function appendUploadedImages(files, target, render, options = {}) {
   for (const file of Array.from(files || [])) {
     if (!file.type.startsWith('image/')) continue;
-    if (file.size > 12 * 1024 * 1024) {
-      alert(`Файл "${file.name}" больше 12MB и не был добавлен.`);
+    if (file.size > IMAGE_UPLOAD_MAX_BYTES) {
+      alert(`Файл "${file.name}" больше 15MB и не был добавлен.`);
       continue;
     }
     try {
+      const uploadFile = await prepareImageForUpload(file, options);
       let finalSrc = '';
       if (window.emirateSupabaseApi?.isConfigured?.() && window.emirateSupabaseApi?.uploadAdminAsset) {
         setAssetUploadState(true);
-        const uploadRes = await window.emirateSupabaseApi.uploadAdminAsset(file, options);
+        const uploadRes = await window.emirateSupabaseApi.uploadAdminAsset(uploadFile, options);
         setAssetUploadState(false);
         if (!uploadRes?.ok || !uploadRes.url) {
           throw new Error(uploadRes?.error || 'storage upload failed');
         }
         finalSrc = uploadRes.url;
       } else {
-        const optimized = await toOptimizedImageDataUrl(file);
-        finalSrc = optimized;
+        finalSrc = uploadFile === file
+          ? await toOptimizedImageDataUrl(file, options)
+          : await readFileAsDataUrl(uploadFile);
       }
       target.push(finalSrc);
       render();
     } catch (_) {
+      setAssetUploadState(false);
       alert(`Не удалось обработать файл "${file.name}".`);
     }
   }
