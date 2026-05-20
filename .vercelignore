@@ -5,6 +5,7 @@
 !*.html
 !*.css
 !*.js
+!supabase-config.prod.js
 !images
 !images/**
 !supabase

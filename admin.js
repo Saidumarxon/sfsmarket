@@ -567,7 +567,10 @@ async function persistProductsData(focusProductId = null) {
   if (!syncRes?.ok) {
     console.warn('[Supabase] strict product sync failed', syncRes?.error);
     const reason = String(syncRes?.error || 'unknown_error');
-    alert(`Товар не сохранён в Supabase.\n\nПричина: ${reason}\n\nПроверьте вход через Supabase, таблицу products и RLS policies.`);
+    const hint = reason === 'no_client'
+      ? 'На сервере не загружается supabase-config.js. Откройте /supabase-config.js в браузере — должен быть JS, не 404. Задеплойте проект с файлом supabase-config.prod.js.'
+      : 'Проверьте вход через Supabase, таблицу products и RLS policies.';
+    alert(`Товар не сохранён в Supabase.\n\nПричина: ${reason}\n\n${hint}`);
     return false;
   }
   try {

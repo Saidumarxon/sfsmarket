@@ -13,18 +13,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const outPath = path.join(root, "supabase-config.js");
 
+const prodFallback = path.join(root, "supabase-config.prod.js");
+
 const url = (process.env.EMIRATE_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
 const anonKey = (process.env.EMIRATE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "").trim();
 const storageBucket = (process.env.EMIRATE_SUPABASE_STORAGE_BUCKET || "product-media").trim() || "product-media";
 
 if (!url || !anonKey) {
+  if (fs.existsSync(prodFallback)) {
+    fs.copyFileSync(prodFallback, outPath);
+    console.log("[supabase-config] Using supabase-config.prod.js → supabase-config.js");
+    process.exit(0);
+  }
   if (fs.existsSync(outPath)) {
     console.log("[supabase-config] Env not set; keeping existing supabase-config.js");
     process.exit(0);
   }
   console.warn(
-    "[supabase-config] EMIRATE_SUPABASE_URL and EMIRATE_SUPABASE_ANON_KEY are not set. " +
-      "Products will use browser localStorage only until you configure Supabase on the server."
+    "[supabase-config] No env vars and no supabase-config.prod.js — Supabase will not work on the server."
   );
   process.exit(0);
 }
