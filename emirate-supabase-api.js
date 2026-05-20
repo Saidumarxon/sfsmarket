@@ -210,6 +210,91 @@
     return { ok: true, rows: rows.length };
   }
 
+  function rowToHomeBanner(row) {
+    if (!row || !row.payload) return null;
+    var merged = Object.assign({}, row.payload, {
+      id: row.admin_id,
+      isActive: row.is_active != null ? row.is_active : row.payload.isActive,
+      priority: row.priority != null ? row.priority : row.payload.priority
+    });
+    return merged;
+  }
+
+  async function fetchPublicHomeBanners() {
+    var sb = client();
+    if (!sb) return [];
+    var res = await sb
+      .from("banners")
+      .select("admin_id,is_active,priority,payload")
+      .eq("is_active", true)
+      .order("priority", { ascending: true });
+    if (res.error) {
+      console.warn("[Supabase] fetchPublicHomeBanners", res.error);
+      return [];
+    }
+    return (res.data || []).map(rowToHomeBanner).filter(Boolean);
+  }
+
+  async function pullAdminBannersRaw() {
+    var sb = client();
+    if (!sb) return null;
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return null;
+    var res = await sb
+      .from("banners")
+      .select("admin_id,is_active,priority,payload")
+      .order("priority", { ascending: true });
+    if (res.error) {
+      console.warn("[Supabase] pullAdminBannersRaw", res.error);
+      return null;
+    }
+    return (res.data || []).map(function (row) {
+      var p = row.payload && typeof row.payload === "object" ? Object.assign({}, row.payload) : {};
+      p.id = row.admin_id;
+      p.isActive = row.is_active != null ? row.is_active : p.isActive !== false;
+      p.priority = row.priority != null ? row.priority : p.priority;
+      return p;
+    });
+  }
+
+  async function pushAdminBannersPayload(bannersArray) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var rows = (bannersArray || []).map(function (item) {
+      var payload = JSON.parse(JSON.stringify(item || {}));
+      var adminId = String(payload.id || "").trim();
+      if (!adminId) return null;
+      return {
+        admin_id: adminId,
+        is_active: payload.isActive !== false,
+        priority: Number(payload.priority) || 100,
+        payload: payload
+      };
+    }).filter(Boolean);
+    if (!rows.length) return { ok: true, rows: 0 };
+    var res = await sb.from("banners").upsert(rows, { onConflict: "admin_id" });
+    if (res.error) {
+      console.warn("[Supabase] pushAdminBannersPayload", res.error);
+      return { ok: false, error: res.error.message || String(res.error) };
+    }
+    return { ok: true, rows: rows.length };
+  }
+
+  async function deleteAdminBanner(adminId) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var res = await sb.from("banners").delete().eq("admin_id", String(adminId || "").trim());
+    if (res.error) {
+      console.warn("[Supabase] deleteAdminBanner", res.error);
+      return { ok: false, error: res.error.message || String(res.error) };
+    }
+    return { ok: true };
+  }
+
   async function deleteAdminProduct(adminId) {
     var sb = client();
     if (!sb) return { ok: false, error: "no_client" };
@@ -277,6 +362,10 @@
     pullAdminProductsRaw: pullAdminProductsRaw,
     pushAdminProductsPayload: pushAdminProductsPayload,
     deleteAdminProduct: deleteAdminProduct,
+    fetchPublicHomeBanners: fetchPublicHomeBanners,
+    pullAdminBannersRaw: pullAdminBannersRaw,
+    pushAdminBannersPayload: pushAdminBannersPayload,
+    deleteAdminBanner: deleteAdminBanner,
     uploadAdminAsset: uploadAdminAsset,
     removeAdminAssetsByUrls: removeAdminAssetsByUrls
   };

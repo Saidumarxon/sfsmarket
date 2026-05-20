@@ -42,6 +42,16 @@ create table if not exists public.products (
 
 create index if not exists products_status_priority_idx on public.products (status, priority);
 
+create table if not exists public.banners (
+  admin_id text primary key,
+  priority int not null default 100,
+  is_active boolean not null default true,
+  payload jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists banners_active_priority_idx on public.banners (is_active, priority);
+
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
   phone text not null,
@@ -58,6 +68,7 @@ create table if not exists public.orders (
 );
 
 alter table public.products enable row level security;
+alter table public.banners enable row level security;
 alter table public.orders enable row level security;
 alter table public.admin_users enable row level security;
 
@@ -76,6 +87,19 @@ create policy "products public read active"
 -- Admins: full access to products when listed in admin_users
 create policy "products admin all"
   on public.products for all
+  to authenticated
+  using (exists (select 1 from public.admin_users u where u.user_id = auth.uid()))
+  with check (exists (select 1 from public.admin_users u where u.user_id = auth.uid()));
+
+-- Homepage: guests see active banners only
+create policy "banners public read active"
+  on public.banners for select
+  to anon, authenticated
+  using (is_active = true);
+
+-- Admins: full access to banners when listed in admin_users
+create policy "banners admin all"
+  on public.banners for all
   to authenticated
   using (exists (select 1 from public.admin_users u where u.user_id = auth.uid()))
   with check (exists (select 1 from public.admin_users u where u.user_id = auth.uid()));

@@ -311,7 +311,18 @@ function normalizeHomeBanner(record) {
   };
 }
 
+let remoteHomeBannersCache = null;
+
 function loadHomeBanners() {
+  if (window.emirateSupabaseApi?.isConfigured?.()) {
+    if (Array.isArray(remoteHomeBannersCache) && remoteHomeBannersCache.length) {
+      return remoteHomeBannersCache
+        .map(normalizeHomeBanner)
+        .filter((banner) => banner.isActive)
+        .sort((a, b) => Number(a.priority) - Number(b.priority));
+    }
+    return [];
+  }
   try {
     const raw = localStorage.getItem(ADMIN_BANNERS_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
@@ -448,6 +459,19 @@ function renderHeroBanners() {
 }
 
 renderHeroBanners();
+
+void (async () => {
+  const api = window.emirateSupabaseApi;
+  if (!api || !api.isConfigured()) return;
+  try {
+    const remote = await api.fetchPublicHomeBanners();
+    if (!remote.length) return;
+    remoteHomeBannersCache = remote;
+    renderHeroBanners();
+  } catch (err) {
+    console.warn("[Supabase] home banners", err);
+  }
+})();
 
 function rebuildAllProductsIndex() {
   allProductsByTitle.clear();

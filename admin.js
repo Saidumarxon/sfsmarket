@@ -763,6 +763,9 @@ function normalizeBannerRecord(record) {
 }
 
 function loadBannersData() {
+  if (window.emirateSupabaseApi?.isConfigured?.()) {
+    return [];
+  }
   try {
     const raw = localStorage.getItem(ADMIN_BANNERS_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
@@ -777,8 +780,37 @@ function loadBannersData() {
 
 let bannersData = loadBannersData().map(normalizeBannerRecord);
 
-function persistBannersData() {
-  localStorage.setItem(ADMIN_BANNERS_KEY, JSON.stringify(bannersData));
+async function verifyBannersSupabaseSync(data) {
+  if (!window.emirateSupabaseApi?.isConfigured?.()) {
+    return { ok: false, error: 'no_client' };
+  }
+  try {
+    return await window.emirateSupabaseApi.pushAdminBannersPayload(data);
+  } catch (error) {
+    return { ok: false, error: error?.message || String(error) };
+  }
+}
+
+async function persistBannersData(focusBannerId = null) {
+  const payloadForSync = focusBannerId
+    ? bannersData.filter((item) => item.id === focusBannerId)
+    : bannersData;
+  const syncRes = await verifyBannersSupabaseSync(payloadForSync);
+  if (!syncRes?.ok) {
+    const reason = String(syncRes?.error || 'unknown_error');
+    const hint = reason === 'no_client'
+      ? 'На сервере не загружается supabase-config.js.'
+      : 'Проверьте вход через Supabase и таблицу banners в SQL Editor.';
+    alert(`Баннер не сохранён в Supabase.\n\nПричина: ${reason}\n\n${hint}`);
+    return false;
+  }
+  try {
+    localStorage.setItem(ADMIN_BANNERS_KEY, JSON.stringify(bannersData));
+    return true;
+  } catch (error) {
+    console.error('Failed to update local banner cache', error);
+    return true;
+  }
 }
 
 function sortBanners() {
@@ -944,11 +976,18 @@ function setBannerReadonlyMode() {
   listCard?.classList.add('is-readonly');
 }
 
-function restoreDefaultBanners() {
+async function restoreDefaultBanners() {
   if (!canManageBanners) return;
   if (!confirm('Вернуть дефолтный баннер и удалить текущие слайды?')) return;
+  const previous = (await window.emirateSupabaseApi?.pullAdminBannersRaw?.()) || bannersData.slice();
   bannersData = defaultBannersData().map(normalizeBannerRecord);
-  persistBannersData();
+  if (!await persistBannersData()) return;
+  const keepIds = new Set(bannersData.map((item) => item.id));
+  for (const item of previous) {
+    if (!item?.id || keepIds.has(item.id)) continue;
+    await window.emirateSupabaseApi?.deleteAdminBanner?.(item.id);
+    if (item.image) void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.([item.image]);
+  }
   renderBanners();
   fillBannerForm(bannersData[0].id);
   showBannerFeedback('Баннеры сброшены к дефолтному варианту.', 'success');
@@ -1018,7 +1057,7 @@ function fillBannerForm(bannerId) {
   renderBannerPreview(banner);
 }
 
-function saveBanner(event) {
+async function saveBanner(event) {
   event.preventDefault();
   if (!canManageBanners) {
     showBannerFeedback('Недостаточно прав для изменения баннера.', 'error');
@@ -1041,13 +1080,13 @@ function saveBanner(event) {
     bannersData[existingIndex] = draft;
   }
 
-  persistBannersData();
+  if (!await persistBannersData(draft.id)) return;
   renderBanners();
   fillBannerForm(draft.id);
   showBannerFeedback(isNew ? 'Новый слайд успешно добавлен.' : 'Слайд успешно сохранен.', 'success');
 }
 
-function deleteBanner(bannerId) {
+async function deleteBanner(bannerId) {
   if (!canManageBanners) return;
   const banner = bannersData.find((item) => item.id === bannerId);
   if (!banner) return;
@@ -1058,14 +1097,22 @@ function deleteBanner(bannerId) {
   }
   if (!confirm(`Удалить слайд "${banner.title}"?`)) return;
 
+  const imageUrl = banner.image || '';
   bannersData = bannersData.filter((item) => item.id !== bannerId);
-  persistBannersData();
+  if (!await persistBannersData()) return;
+  const deleteRes = await window.emirateSupabaseApi?.deleteAdminBanner?.(bannerId);
+  if (deleteRes && !deleteRes.ok) {
+    console.warn('[Supabase] delete banner', deleteRes.error);
+  }
+  if (imageUrl) {
+    void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.([imageUrl]);
+  }
   renderBanners();
   resetBannerForm();
   showBannerFeedback('Слайд удален.', 'success');
 }
 
-function toggleBannerStatus(bannerId) {
+async function toggleBannerStatus(bannerId) {
   if (!canManageBanners) return;
   const banner = bannersData.find((item) => item.id === bannerId);
   if (!banner) return;
@@ -1075,7 +1122,7 @@ function toggleBannerStatus(bannerId) {
     return;
   }
   banner.isActive = !banner.isActive;
-  persistBannersData();
+  if (!await persistBannersData(banner.id)) return;
   renderBanners();
   showBannerFeedback(`Слайд ${banner.isActive ? 'включен' : 'отключен'}.`, 'success');
 }
@@ -1435,6 +1482,46 @@ void (async () => {
   }
 })();
 
+function readLocalBannersCache() {
+  try {
+    const raw = localStorage.getItem(ADMIN_BANNERS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+void (async () => {
+  try {
+    const raw = await window.emirateSupabaseApi?.pullAdminBannersRaw?.();
+    if (raw && raw.length) {
+      bannersData = raw.map((item) => normalizeBannerRecord(item)).filter((item) => item && item.id);
+      sortBanners();
+      try {
+        localStorage.setItem(ADMIN_BANNERS_KEY, JSON.stringify(bannersData));
+      } catch (_) {}
+      renderBanners();
+      return;
+    }
+    if (!window.emirateSupabaseApi?.isConfigured?.()) return;
+    const local = readLocalBannersCache();
+    if (!local.length) return;
+    bannersData = local.map((item) => normalizeBannerRecord(item)).filter((item) => item && item.id);
+    sortBanners();
+    renderBanners();
+    const syncRes = await verifyBannersSupabaseSync(bannersData);
+    if (syncRes?.ok) {
+      try {
+        localStorage.setItem(ADMIN_BANNERS_KEY, JSON.stringify(bannersData));
+      } catch (_) {}
+      alert('Локальные баннеры перенесены в Supabase. Теперь они видны всем на главной странице.');
+    }
+  } catch (err) {
+    console.warn('[Supabase] admin banners pull', err);
+  }
+})();
+
 document.getElementById('addClientBtn')?.addEventListener('click', addClient);
 document.getElementById('supplierForm')?.addEventListener('submit', saveSupplier);
 
@@ -1615,15 +1702,26 @@ document.getElementById('bannerImageInput')?.addEventListener('change', function
   (async function processBannerImage() {
     try {
       const optimized = await prepareImageForUpload(file, { maxSide: 2400, skipIfUnderBytes: 600 * 1024 });
-      const imageData = await readFileAsDataUrl(optimized);
-      const meta = await getImageMeta(imageData);
+      let imageSrc = '';
+      if (window.emirateSupabaseApi?.isConfigured?.() && window.emirateSupabaseApi?.uploadAdminAsset) {
+        setAssetUploadState(true);
+        const uploadRes = await window.emirateSupabaseApi.uploadAdminAsset(optimized, { folder: 'banners' });
+        setAssetUploadState(false);
+        if (!uploadRes?.ok || !uploadRes.url) {
+          throw new Error(uploadRes?.error || 'storage upload failed');
+        }
+        imageSrc = uploadRes.url;
+      } else {
+        imageSrc = await readFileAsDataUrl(optimized);
+      }
+      const meta = await getImageMeta(imageSrc);
       if (meta.ratio < BANNER_IMAGE_RATIO_MIN || meta.ratio > BANNER_IMAGE_RATIO_MAX) {
         showBannerFeedback('Неверная пропорция изображения для баннера.', 'error', 3800);
         alert(`Неверная пропорция изображения (${meta.width}x${meta.height}). Используйте горизонтальный баннер примерно 16:6.`);
         if (bannerImageMeta) bannerImageMeta.textContent = 'Изображение не выбрано';
         return;
       }
-      bannerFormImage = imageData;
+      bannerFormImage = imageSrc;
       const sizeNote = optimized.size < file.size
         ? `, сжато ${Math.round(file.size / 1024)}→${Math.round(optimized.size / 1024)} КБ`
         : '';
