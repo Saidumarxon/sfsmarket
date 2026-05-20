@@ -121,8 +121,17 @@ function readAdminProducts() {
       .filter((item) => item && item.status !== "inactive")
       .map((item) => {
         const title = item.nameRu || item.nameUz || "Товар";
-        const price = parsePriceText(item.price);
-        const oldPrice = parsePriceText(item.oldPrice) || price;
+        const rawPrice = parsePriceText(item.price);
+        const rawOldPrice = parsePriceText(item.oldPrice) || rawPrice;
+        const marked = window.emirateSupabaseApi?.applyStorefrontMarkupToPrices
+          ? window.emirateSupabaseApi.applyStorefrontMarkupToPrices(rawPrice, rawOldPrice)
+          : (() => {
+              const price = Math.round(rawPrice * 1.2);
+              const oldPrice = rawOldPrice > 0 ? Math.round(rawOldPrice * 1.2) : price;
+              return { price, oldPrice: Math.max(oldPrice, price) };
+            })();
+        const price = marked.price;
+        const oldPrice = marked.oldPrice;
         const photos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
         return {
           title,

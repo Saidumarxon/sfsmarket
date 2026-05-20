@@ -40,8 +40,21 @@
     return decodeURIComponent(value.slice(prefix.length).split("?")[0]);
   }
 
+  var STOREFRONT_MARKUP_RATE = 1.2;
+
   function parseMoneyText(text) {
     return Number(String(text || "").replace(/\s+/g, "").replace(/[^\d]/g, "")) || 0;
+  }
+
+  /** Admin price → vitrina (+20%). Base prices stay in DB/admin. */
+  function applyStorefrontMarkupToPrices(basePrice, baseOldPrice) {
+    var base = Number(basePrice) || 0;
+    var oldBase = Number(baseOldPrice) || 0;
+    if (base <= 0) return { price: 0, oldPrice: 0 };
+    var price = Math.round(base * STOREFRONT_MARKUP_RATE);
+    var oldPrice = oldBase > 0 ? Math.round(oldBase * STOREFRONT_MARKUP_RATE) : price;
+    if (oldPrice < price) oldPrice = price;
+    return { price: price, oldPrice: oldPrice };
   }
 
   function normalizeTitleKey(value) {
@@ -56,13 +69,16 @@
   function mapAdminPayloadToCatalogItem(item) {
     if (!item || typeof item !== "object") return null;
     if (item.status === "inactive") return null;
+    var rawPrice = parseMoneyText(item.price);
+    var rawOldPrice = parseMoneyText(item.oldPrice) || rawPrice;
+    var marked = applyStorefrontMarkupToPrices(rawPrice, rawOldPrice);
     return {
       title: item.nameRu || item.nameUz || "Товар",
       sku: item.id || "",
       brand: item.brand || "",
       category: item.category || "Аксессуары",
-      price: parseMoneyText(item.price),
-      oldPrice: parseMoneyText(item.oldPrice) || parseMoneyText(item.price),
+      price: marked.price,
+      oldPrice: marked.oldPrice,
       rating: Number(item.rating || 4.6),
       reviews: Number(item.reviews || 0),
       badge: item.promo === "yes" ? "sale" : item.express === "yes" ? "hit" : "new",
@@ -355,6 +371,8 @@
     client: client,
     getStorageBucket: getStorageBucket,
     normalizeTitleKey: normalizeTitleKey,
+    applyStorefrontMarkupToPrices: applyStorefrontMarkupToPrices,
+    storefrontMarkupRate: STOREFRONT_MARKUP_RATE,
     mapAdminPayloadToCatalogItem: mapAdminPayloadToCatalogItem,
     fetchPublicCatalogProducts: fetchPublicCatalogProducts,
     fetchProductForPageByTitle: fetchProductForPageByTitle,

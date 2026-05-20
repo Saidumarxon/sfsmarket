@@ -63,13 +63,18 @@ function loadAdminProductsForCatalog() {
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((item) => item && item.status !== "inactive")
-      .map((item) => ({
+      .map((item) => {
+        const marked = applyStorefrontPrices(
+          parseMoneyText(item.price),
+          parseMoneyText(item.oldPrice) || parseMoneyText(item.price)
+        );
+        return {
         title: item.nameRu || item.nameUz || "Товар",
         sku: item.id || "",
         brand: item.brand || "",
         category: item.category || "Аксессуары",
-        price: parseMoneyText(item.price),
-        oldPrice: parseMoneyText(item.oldPrice) || parseMoneyText(item.price),
+        price: marked.price,
+        oldPrice: marked.oldPrice,
         rating: Number(item.rating || 4.6),
         reviews: Number(item.reviews || 0),
         badge: item.promo === "yes" ? "sale" : (item.express === "yes" ? "hit" : "new"),
@@ -111,7 +116,8 @@ function loadAdminProductsForCatalog() {
         installmentStatus: item.installmentStatus === "inactive" ? "inactive" : "active",
         express: item.express === "yes" ? "yes" : "no",
         priority: Number(item.priority) || 300
-      }));
+      };
+      });
   } catch (_) {
     return [];
   }
@@ -147,6 +153,18 @@ function money(value) {
 
 function parseMoneyText(text) {
   return Number(String(text || "").replace(/\s+/g, "").replace(/[^\d]/g, "")) || 0;
+}
+
+function applyStorefrontPrices(price, oldPrice) {
+  if (window.emirateSupabaseApi?.applyStorefrontMarkupToPrices) {
+    return window.emirateSupabaseApi.applyStorefrontMarkupToPrices(price, oldPrice);
+  }
+  const base = Number(price) || 0;
+  const oldBase = Number(oldPrice) || 0;
+  if (base <= 0) return { price: 0, oldPrice: 0 };
+  const markedPrice = Math.round(base * 1.2);
+  const markedOld = oldBase > 0 ? Math.round(oldBase * 1.2) : markedPrice;
+  return { price: markedPrice, oldPrice: Math.max(markedOld, markedPrice) };
 }
 
 function escapeHtmlAttr(value) {
