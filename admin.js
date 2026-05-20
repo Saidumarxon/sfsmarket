@@ -563,7 +563,8 @@ async function persistProductsData(focusProductId = null) {
   const syncRes = await verifyProductsSupabaseSync(optimizedData);
   if (!syncRes?.ok) {
     console.warn('[Supabase] strict product sync failed', syncRes?.error);
-    alert('Товар не сохранён. Сохранение разрешено только в Supabase. Проверьте вход в админку через Supabase, таблицу products и policies.');
+    const reason = String(syncRes?.error || 'unknown_error');
+    alert(`Товар не сохранён в Supabase.\n\nПричина: ${reason}\n\nПроверьте вход через Supabase, таблицу products и RLS policies.`);
     return false;
   }
   try {
