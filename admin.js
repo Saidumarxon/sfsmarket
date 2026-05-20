@@ -391,6 +391,9 @@ function defaultProductsData() {
 }
 
 function loadProductsData() {
+  if (window.emirateSupabaseApi?.isConfigured?.()) {
+    return [];
+  }
   try {
     const raw = localStorage.getItem(ADMIN_PRODUCTS_KEY);
     const parsed = raw ? JSON.parse(raw) : null;

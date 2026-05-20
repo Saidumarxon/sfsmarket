@@ -158,6 +158,9 @@ function normalizeTitleKey(value) {
 }
 
 function getAdminProductsForStorefront() {
+  if (window.emirateSupabaseApi?.isConfigured?.()) {
+    return [];
+  }
   try {
     const raw = localStorage.getItem(ADMIN_PRODUCTS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
@@ -232,9 +235,13 @@ function getAdminProductsForStorefront() {
 function applyAdminProductsToHomeData() {
   const adminItems = getAdminProductsForStorefront();
   if (!adminItems.length) return;
+  applyProductsToHomeData(adminItems);
+}
 
+function applyProductsToHomeData(items) {
+  if (!items.length) return;
   const allCategoryLists = Object.values(productData);
-  adminItems.forEach((item) => {
+  items.forEach((item) => {
     const itemKey = normalizeTitleKey(item.title);
 
     // Update existing product cards in any category if titles match.
@@ -442,14 +449,19 @@ function renderHeroBanners() {
 
 renderHeroBanners();
 
-Object.values(productData).forEach((items) => {
-  items.forEach((item) => {
+function rebuildAllProductsIndex() {
+  allProductsByTitle.clear();
+  Object.values(productData).forEach((items) => {
+    items.forEach((item) => {
+      allProductsByTitle.set(item.title, toCatalogProductShape(item));
+    });
+  });
+  feedProducts.forEach((item) => {
     allProductsByTitle.set(item.title, toCatalogProductShape(item));
   });
-});
-feedProducts.forEach((item) => {
-  allProductsByTitle.set(item.title, toCatalogProductShape(item));
-});
+}
+
+rebuildAllProductsIndex();
 
 // ===== RENDER PRODUCT CARD =====
 function renderProductCard(product) {
@@ -578,6 +590,46 @@ function renderInitialCarousels() {
 }
 
 renderInitialCarousels();
+
+void (async () => {
+  const api = window.emirateSupabaseApi;
+  if (!api || !api.isConfigured()) return;
+  try {
+    const remote = await api.fetchPublicCatalogProducts();
+    if (!remote.length) return;
+    const mapped = remote.map((item) => {
+      const priceNum = parseMoney(item.price);
+      const oldPriceNum = parseMoney(item.oldPrice) || priceNum;
+      return {
+        title: item.title || "Товар",
+        price: formatMoney(priceNum),
+        oldPrice: formatMoney(oldPriceNum),
+        discount: oldPriceNum > priceNum ? `-${Math.max(0, Math.round((1 - priceNum / Math.max(oldPriceNum, 1)) * 100))}%` : "",
+        rating: Number(item.rating || 4.6),
+        reviews: Number(item.reviews || 0),
+        installment: formatMoney(Math.round(priceNum / 12)),
+        badge: item.badge || "new",
+        image: item.image || "",
+        photos: Array.isArray(item.photos) ? item.photos.filter(Boolean) : [],
+        descUz: String(item.descUz || "").trim(),
+        descRu: String(item.descRu || "").trim(),
+        specs: Array.isArray(item.specs) ? item.specs : [],
+        colors: Array.isArray(item.colors) ? item.colors : [],
+        colorMeta: item.colorMeta || {},
+        brand: item.brand || "",
+        category: item.category || "",
+        installmentStatus: item.installmentStatus === "inactive" ? "inactive" : "active",
+        express: item.express === "yes" ? "yes" : "no",
+        priority: Number(item.priority) || 300
+      };
+    });
+    applyProductsToHomeData(mapped);
+    rebuildAllProductsIndex();
+    renderInitialCarousels();
+  } catch (err) {
+    console.warn("[Supabase] home", err);
+  }
+})();
 
 // ===== LAZY LOADING — product feed via IntersectionObserver =====
 const feedSection = document.getElementById("feedSection");
