@@ -153,12 +153,8 @@
                 <th>Дата</th>
               </tr>
             </thead>
-            <tbody>
-              <tr><td>#10048</td><td>Алишер Каримов</td><td>15 490 000 сум</td><td><span class="status-badge new"><span class="status-dot"></span>Новый</span></td><td>09.04.2026</td></tr>
-              <tr><td>#10047</td><td>Дилноза Рахимова</td><td>4 250 000 сум</td><td><span class="status-badge processing"><span class="status-dot"></span>В обработке</span></td><td>09.04.2026</td></tr>
-              <tr><td>#10046</td><td>Бехзод Усмонов</td><td>22 900 000 сум</td><td><span class="status-badge completed"><span class="status-dot"></span>Выполнен</span></td><td>08.04.2026</td></tr>
-              <tr><td>#10045</td><td>Малика Назарова</td><td>8 350 000 сум</td><td><span class="status-badge completed"><span class="status-dot"></span>Выполнен</span></td><td>08.04.2026</td></tr>
-              <tr><td>#10044</td><td>Шахзод Мирзаев</td><td>3 200 000 сум</td><td><span class="status-badge cancelled"><span class="status-dot"></span>Отменён</span></td><td>07.04.2026</td></tr>
+            <tbody id="dashboardOrdersBody">
+              <tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px;">Загрузка заказов…</td></tr>
             </tbody>
           </table>
         </div>
@@ -168,16 +164,16 @@
       <div class="admin-page" id="page-orders">
         <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
           <div class="stat-card">
-            <div class="stat-card-header"><span>Новые</span><div class="stat-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div></div>
-            <div class="stat-value">12</div>
+            <div class="stat-card-header"><span>В обработке</span><div class="stat-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div></div>
+            <div class="stat-value" id="ordersStatProcessing">0</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-header"><span>В обработке</span><div class="stat-icon purple"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div>
-            <div class="stat-value">8</div>
+            <div class="stat-card-header"><span>Готов к отправке</span><div class="stat-icon purple"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div>
+            <div class="stat-value" id="ordersStatReady">0</div>
           </div>
           <div class="stat-card">
             <div class="stat-card-header"><span>Выполнены</span><div class="stat-icon green"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div></div>
-            <div class="stat-value">156</div>
+            <div class="stat-value" id="ordersStatDone">0</div>
           </div>
         </div>
 
@@ -185,6 +181,7 @@
           <div class="table-card-header">
             <h3>Все заказы</h3>
             <div class="table-toolbar">
+              <button type="button" class="btn-filter-reset" id="refreshOrdersBtn">Обновить</button>
               <label class="orders-status-filter">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
                 <select id="ordersStatusFilter">

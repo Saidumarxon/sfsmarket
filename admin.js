@@ -57,6 +57,10 @@ function switchPage(pageName) {
 
   if (pageTitle) pageTitle.textContent = pageTitles[pageName] || pageName;
 
+  if (pageName === 'orders') {
+    void loadOrdersFromSupabase();
+  }
+
   // Scroll to top
   window.scrollTo(0, 0);
 }
@@ -83,19 +87,10 @@ document.getElementById('logoutBtn').addEventListener('click', async function() 
 
 // ===== DEMO DATA =====
 
-// --- Orders ---
-let ordersData = [
-  { id: '#10048', client: 'Алишер Каримов', phone: '+998 90 123 45 67', items: 'iPhone 15 Pro Max', amount: '15 490 000 сум', status: 'processing', date: '09.04.2026' },
-  { id: '#10047', client: 'Дилноза Рахимова', phone: '+998 91 234 56 78', items: 'Samsung Galaxy S24', amount: '4 250 000 сум', status: 'processing', date: '09.04.2026' },
-  { id: '#10046', client: 'Бехзод Усмонов', phone: '+998 93 345 67 89', items: 'MacBook Air M3, AirPods Pro', amount: '22 900 000 сум', status: 'successful', date: '08.04.2026' },
-  { id: '#10045', client: 'Малика Назарова', phone: '+998 94 456 78 90', items: 'Xiaomi 14 Ultra', amount: '8 350 000 сум', status: 'ready_to_ship', date: '08.04.2026' },
-  { id: '#10044', client: 'Шахзод Мирзаев', phone: '+998 97 567 89 01', items: 'AirPods Max', amount: '3 200 000 сум', status: 'out_of_stock', date: '07.04.2026' },
-  { id: '#10043', client: 'Азиза Турсунова', phone: '+998 90 678 90 12', items: 'Samsung TV 55"', amount: '12 100 000 сум', status: 'ready_to_ship', date: '07.04.2026' },
-  { id: '#10042', client: 'Жавохир Холматов', phone: '+998 99 789 01 23', items: 'PlayStation 5', amount: '7 500 000 сум', status: 'successful', date: '06.04.2026' },
-  { id: '#10041', client: 'Нодира Эргашева', phone: '+998 95 890 12 34', items: 'Dyson V15', amount: '6 800 000 сум', status: 'processing', date: '06.04.2026' },
-  { id: '#10040', client: 'Фаррух Исмаилов', phone: '+998 93 901 23 45', items: 'iPad Pro 12.9', amount: '18 200 000 сум', status: 'ready_to_ship', date: '05.04.2026' },
-  { id: '#10039', client: 'Зарина Мухаммедова', phone: '+998 91 012 34 56', items: 'LG OLED 65"', amount: '28 400 000 сум', status: 'processing', date: '05.04.2026' },
-];
+// --- Orders (Supabase) ---
+let ordersData = [];
+
+const ORDER_STATUS_VARIANTS = ['processing', 'ready_to_ship', 'out_of_stock', 'successful'];
 
 const statusMap = {
   processing: 'В обработке',
@@ -104,27 +99,168 @@ const statusMap = {
   successful: 'Успешный',
 };
 
+const deliveryLabels = {
+  door: 'Доставка до двери',
+  pickup: 'Самовывоз',
+};
+
+const paymentLabels = {
+  app: 'Через приложение или карту',
+  cash: 'Наличными при получении',
+  account: 'С лицевого счёта',
+};
+
+function normalizeOrderStatus(value) {
+  const status = String(value || 'processing').trim().toLowerCase();
+  return ORDER_STATUS_VARIANTS.includes(status) ? status : 'processing';
+}
+
+function formatOrderMoney(value) {
+  const amount = Number(value) || 0;
+  return amount.toLocaleString('ru-RU') + ' сум';
+}
+
+function formatOrderDate(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}.${mm}.${yyyy}`;
+}
+
+function formatOrderPublicId(uuid) {
+  const raw = String(uuid || '').replace(/-/g, '');
+  if (!raw) return '#—';
+  return '#' + raw.slice(0, 8).toUpperCase();
+}
+
+function formatOrderItems(items) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return '—';
+  return list
+    .map((item) => {
+      const title = String(item?.title || 'Товар').trim();
+      const qty = Number(item?.qty) || 1;
+      return qty > 1 ? `${title} ×${qty}` : title;
+    })
+    .join(', ');
+}
+
+function mapSupabaseOrderToAdminRow(row) {
+  return {
+    uuid: row.id,
+    id: formatOrderPublicId(row.id),
+    client: String(row.full_name || '—').trim() || '—',
+    phone: String(row.phone || '—').trim() || '—',
+    items: formatOrderItems(row.items),
+    amount: formatOrderMoney(row.total_amount),
+    status: normalizeOrderStatus(row.status),
+    date: formatOrderDate(row.created_at),
+    region: String(row.region || '').trim(),
+    city: String(row.city || '').trim(),
+    address: String(row.address || '').trim(),
+    comment: String(row.comment_text || '').trim(),
+    delivery: String(row.delivery_method || '').trim(),
+    payment: String(row.payment_method || '').trim(),
+    itemsList: Array.isArray(row.items) ? row.items : [],
+    totalAmount: Number(row.total_amount) || 0,
+    createdAt: row.created_at || null,
+  };
+}
+
+function findOrderByKey(orderKey) {
+  const key = String(orderKey || '');
+  return ordersData.find((item) => item.uuid === key || item.id === key) || null;
+}
+
+function renderOrderStats() {
+  const processing = ordersData.filter((o) => o.status === 'processing').length;
+  const ready = ordersData.filter((o) => o.status === 'ready_to_ship').length;
+  const done = ordersData.filter((o) => o.status === 'successful').length;
+  const elProcessing = document.getElementById('ordersStatProcessing');
+  const elReady = document.getElementById('ordersStatReady');
+  const elDone = document.getElementById('ordersStatDone');
+  if (elProcessing) elProcessing.textContent = String(processing);
+  if (elReady) elReady.textContent = String(ready);
+  if (elDone) elDone.textContent = String(done);
+}
+
+function renderDashboardRecentOrders() {
+  const tbody = document.getElementById('dashboardOrdersBody');
+  if (!tbody) return;
+  const recent = ordersData.slice(0, 5);
+  if (!recent.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px;">Заказов пока нет</td></tr>';
+    return;
+  }
+  tbody.innerHTML = recent.map((o) => `
+    <tr>
+      <td>${escapeHtml(o.id)}</td>
+      <td>${escapeHtml(o.client)}</td>
+      <td>${escapeHtml(o.amount)}</td>
+      <td><span class="status-badge ${escapeHtml(o.status)}"><span class="status-dot"></span>${escapeHtml(statusMap[o.status] || o.status)}</span></td>
+      <td>${escapeHtml(o.date)}</td>
+    </tr>
+  `).join('');
+}
+
 function renderOrders(data = ordersData) {
   const tbody = document.getElementById('ordersBody');
   const count = document.getElementById('ordersCount');
-  tbody.innerHTML = data.map(o => `
+  if (!tbody) return;
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:24px;">Заказов пока нет. Они появятся после оформления на сайте.</td></tr>';
+    if (count) count.textContent = 'Показано 0 из 0';
+    return;
+  }
+  tbody.innerHTML = data.map((o) => `
     <tr>
-      <td>${o.id}</td>
-      <td>${o.client}</td>
-      <td>${o.phone}</td>
-      <td style="max-width:160px">${o.items}</td>
-      <td>${o.amount}</td>
-      <td><span class="status-badge ${o.status}"><span class="status-dot"></span>${statusMap[o.status]}</span></td>
-      <td>${o.date}</td>
+      <td>${escapeHtml(o.id)}</td>
+      <td>${escapeHtml(o.client)}</td>
+      <td>${escapeHtml(o.phone)}</td>
+      <td style="max-width:160px">${escapeHtml(o.items)}</td>
+      <td>${escapeHtml(o.amount)}</td>
+      <td><span class="status-badge ${escapeHtml(o.status)}"><span class="status-dot"></span>${escapeHtml(statusMap[o.status] || o.status)}</span></td>
+      <td>${escapeHtml(o.date)}</td>
       <td>
         <div class="action-btns">
-          <button class="action-btn" title="Просмотр" data-action="view-order" data-order-id="${o.id}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-          <button class="action-btn" title="Редактировать" data-action="edit-order" data-order-id="${o.id}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="action-btn" title="Просмотр" data-action="view-order" data-order-id="${escapeHtml(o.uuid)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          <button class="action-btn" title="Статус" data-action="edit-order" data-order-id="${escapeHtml(o.uuid)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         </div>
       </td>
     </tr>
   `).join('');
   if (count) count.textContent = `Показано ${data.length} из ${ordersData.length}`;
+}
+
+async function loadOrdersFromSupabase() {
+  const tbody = document.getElementById('ordersBody');
+  if (tbody && !ordersData.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:24px;">Загрузка заказов…</td></tr>';
+  }
+  if (!window.emirateSupabaseApi?.pullAdminOrdersRaw) {
+    ordersData = [];
+    renderOrderStats();
+    renderDashboardRecentOrders();
+    applyOrdersStatusFilter();
+    return;
+  }
+  try {
+    const raw = await window.emirateSupabaseApi.pullAdminOrdersRaw();
+    if (raw === null) {
+      ordersData = [];
+    } else {
+      ordersData = raw.map(mapSupabaseOrderToAdminRow);
+    }
+  } catch (err) {
+    console.warn('[Supabase] admin orders pull', err);
+    ordersData = [];
+  }
+  renderOrderStats();
+  renderDashboardRecentOrders();
+  applyOrdersStatusFilter();
 }
 
 function getFilteredOrdersByStatus() {
@@ -1421,32 +1557,63 @@ function viewClient(clientId) {
 }
 
 function viewOrder(orderId) {
-  const order = ordersData.find(item => item.id === orderId);
+  const order = findOrderByKey(orderId);
   if (!order) return;
-  alert(`Заказ: ${order.id}\nКлиент: ${order.client}\nТовары: ${order.items}\nСумма: ${order.amount}\nСтатус: ${statusMap[order.status]}`);
+  const itemsDetail = (order.itemsList || [])
+    .map((item) => {
+      const title = String(item?.title || 'Товар').trim();
+      const qty = Number(item?.qty) || 1;
+      const price = formatOrderMoney((Number(item?.price) || 0) * qty);
+      return `• ${title} — ${qty} шт., ${price}`;
+    })
+    .join('\n');
+  const lines = [
+    `Заказ: ${order.id}`,
+    `Клиент: ${order.client}`,
+    `Телефон: ${order.phone}`,
+    `Область: ${order.region || '—'}`,
+    `Город: ${order.city || '—'}`,
+    `Адрес: ${order.address || '—'}`,
+    `Доставка: ${deliveryLabels[order.delivery] || order.delivery || '—'}`,
+    `Оплата: ${paymentLabels[order.payment] || order.payment || '—'}`,
+    `Товары: ${order.items}`,
+    itemsDetail ? itemsDetail : '',
+    `Сумма: ${order.amount}`,
+    `Статус: ${statusMap[order.status] || order.status}`,
+    `Дата: ${order.date}`,
+    order.comment ? `Комментарий: ${order.comment}` : '',
+  ].filter(Boolean);
+  alert(lines.join('\n'));
 }
 
-function setOrderStatus(orderId) {
-  const order = ordersData.find(item => item.id === orderId);
+async function setOrderStatus(orderId) {
+  const order = findOrderByKey(orderId);
   if (!order) return;
-  const variants = ['processing', 'ready_to_ship', 'out_of_stock', 'successful'];
   const current = order.status || 'processing';
   const raw = prompt(
     'Укажите статус заказа:\nprocessing — В обработке\nready_to_ship — Готов к перевозке\nout_of_stock — Нет товара\nsuccessful — Успешный',
     current
   );
   if (raw === null) return;
-  const normalized = String(raw).trim().toLowerCase();
-  if (!variants.includes(normalized)) {
+  const normalized = normalizeOrderStatus(raw);
+  if (!ORDER_STATUS_VARIANTS.includes(normalized)) {
     alert('Неверный статус. Допустимо: processing, ready_to_ship, out_of_stock, successful.');
     return;
   }
+  if (window.emirateSupabaseApi?.updateAdminOrderStatus && order.uuid) {
+    const res = await window.emirateSupabaseApi.updateAdminOrderStatus(order.uuid, normalized);
+    if (!res?.ok) {
+      alert('Не удалось сохранить статус в Supabase.\n' + (res?.error || ''));
+      return;
+    }
+  }
   order.status = normalized;
+  renderOrderStats();
+  renderDashboardRecentOrders();
   applyOrdersStatusFilter();
 }
 
 // ===== RENDER ALL =====
-renderOrders();
 renderClients();
 renderSuppliers();
 renderProducts();
@@ -1481,6 +1648,12 @@ function showSupabaseStorageBanner() {
 }
 
 showSupabaseStorageBanner();
+
+void loadOrdersFromSupabase();
+
+document.getElementById('refreshOrdersBtn')?.addEventListener('click', () => {
+  void loadOrdersFromSupabase();
+});
 
 void (async () => {
   try {

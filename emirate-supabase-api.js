@@ -177,12 +177,45 @@
   async function insertOrder(payload) {
     var sb = client();
     if (!sb) return { ok: false, error: "no_client" };
-    var res = await sb.from("orders").insert(payload).select("id").single();
+    var row = Object.assign({ status: "processing" }, payload || {});
+    var res = await sb.from("orders").insert(row).select("id").single();
     if (res.error) {
       console.warn("[Supabase] insertOrder", res.error);
       return { ok: false, error: res.error.message || String(res.error) };
     }
     return { ok: true, id: res.data && res.data.id };
+  }
+
+  async function pullAdminOrdersRaw() {
+    var sb = client();
+    if (!sb) return null;
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return null;
+    var res = await sb
+      .from("orders")
+      .select(
+        "id,phone,full_name,region,city,address,comment_text,delivery_method,payment_method,items,total_amount,status,created_at"
+      )
+      .order("created_at", { ascending: false });
+    if (res.error) {
+      console.warn("[Supabase] pullAdminOrdersRaw", res.error);
+      return null;
+    }
+    return res.data || [];
+  }
+
+  async function updateAdminOrderStatus(orderId, status) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var normalized = String(status || "").trim().toLowerCase();
+    var res = await sb.from("orders").update({ status: normalized }).eq("id", String(orderId || "").trim());
+    if (res.error) {
+      console.warn("[Supabase] updateAdminOrderStatus", res.error);
+      return { ok: false, error: res.error.message || String(res.error) };
+    }
+    return { ok: true };
   }
 
   async function pullAdminProductsRaw() {
@@ -381,6 +414,8 @@
     fetchPublicCatalogProducts: fetchPublicCatalogProducts,
     fetchProductForPageByTitle: fetchProductForPageByTitle,
     insertOrder: insertOrder,
+    pullAdminOrdersRaw: pullAdminOrdersRaw,
+    updateAdminOrderStatus: updateAdminOrderStatus,
     pullAdminProductsRaw: pullAdminProductsRaw,
     pushAdminProductsPayload: pushAdminProductsPayload,
     deleteAdminProduct: deleteAdminProduct,

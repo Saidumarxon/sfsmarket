@@ -64,6 +64,7 @@ create table if not exists public.orders (
   payment_method text,
   items jsonb not null default '[]'::jsonb,
   total_amount numeric not null default 0,
+  status text not null default 'processing',
   created_at timestamptz not null default now()
 );
 
@@ -110,8 +111,14 @@ create policy "orders insert anyone"
   to anon, authenticated
   with check (true);
 
--- Optional: allow authenticated admins to read orders later (none for anon read)
+-- Admins: read and update orders
 create policy "orders admin read"
   on public.orders for select
   to authenticated
   using (exists (select 1 from public.admin_users u where u.user_id = auth.uid()));
+
+create policy "orders admin update"
+  on public.orders for update
+  to authenticated
+  using (exists (select 1 from public.admin_users u where u.user_id = auth.uid()))
+  with check (exists (select 1 from public.admin_users u where u.user_id = auth.uid()));
