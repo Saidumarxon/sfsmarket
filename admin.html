@@ -972,6 +972,17 @@
     </div><!-- /admin-content -->
   </div><!-- /admin-main -->
 
+  <div id="orderDetailModal" class="admin-modal" hidden>
+    <div class="admin-modal-backdrop" data-close-order-modal></div>
+    <div class="admin-modal-panel" role="dialog" aria-labelledby="orderModalTitle">
+      <div class="admin-modal-header">
+        <h3 id="orderModalTitle">Заказ</h3>
+        <button type="button" class="admin-modal-close" data-close-order-modal aria-label="Закрыть">×</button>
+      </div>
+      <div id="orderModalBody" class="admin-modal-body"></div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase-config.js"></script>
   <script src="supabase-config.prod.js"></script>

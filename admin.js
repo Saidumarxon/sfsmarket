@@ -175,6 +175,20 @@ function findOrderByKey(orderKey) {
   return ordersData.find((item) => item.uuid === key || item.id === key) || null;
 }
 
+function renderOrderStatusSelect(order) {
+  const options = ORDER_STATUS_VARIANTS.map((value) => {
+    const selected = order.status === value ? ' selected' : '';
+    return `<option value="${value}"${selected}>${escapeHtml(statusMap[value])}</option>`;
+  }).join('');
+  return `<select class="order-status-select order-status-select--${escapeHtml(order.status)}" data-order-id="${escapeHtml(order.uuid)}" aria-label="Статус заказа ${escapeHtml(order.id)}">${options}</select>`;
+}
+
+function syncOrderStatusSelectClass(selectEl, status) {
+  if (!selectEl) return;
+  ORDER_STATUS_VARIANTS.forEach((value) => selectEl.classList.remove(`order-status-select--${value}`));
+  selectEl.classList.add(`order-status-select--${normalizeOrderStatus(status)}`);
+}
+
 function renderOrderStats() {
   const processing = ordersData.filter((o) => o.status === 'processing').length;
   const ready = ordersData.filter((o) => o.status === 'ready_to_ship').length;
@@ -222,12 +236,11 @@ function renderOrders(data = ordersData) {
       <td>${escapeHtml(o.phone)}</td>
       <td style="max-width:160px">${escapeHtml(o.items)}</td>
       <td>${escapeHtml(o.amount)}</td>
-      <td><span class="status-badge ${escapeHtml(o.status)}"><span class="status-dot"></span>${escapeHtml(statusMap[o.status] || o.status)}</span></td>
+      <td>${renderOrderStatusSelect(o)}</td>
       <td>${escapeHtml(o.date)}</td>
       <td>
         <div class="action-btns">
-          <button class="action-btn" title="Просмотр" data-action="view-order" data-order-id="${escapeHtml(o.uuid)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-          <button class="action-btn" title="Статус" data-action="edit-order" data-order-id="${escapeHtml(o.uuid)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="action-btn" title="Подробнее" data-action="view-order" data-order-id="${escapeHtml(o.uuid)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </td>
     </tr>
@@ -1556,61 +1569,82 @@ function viewClient(clientId) {
   alert(`Клиент: ${client.name}\nТелефон: ${client.phone}\nEmail: ${client.email}\nЗаказов: ${client.orders}\nСумма: ${client.total}`);
 }
 
-function viewOrder(orderId) {
-  const order = findOrderByKey(orderId);
-  if (!order) return;
-  const itemsDetail = (order.itemsList || [])
-    .map((item) => {
-      const title = String(item?.title || 'Товар').trim();
-      const qty = Number(item?.qty) || 1;
-      const price = formatOrderMoney((Number(item?.price) || 0) * qty);
-      return `• ${title} — ${qty} шт., ${price}`;
-    })
-    .join('\n');
-  const lines = [
-    `Заказ: ${order.id}`,
-    `Клиент: ${order.client}`,
-    `Телефон: ${order.phone}`,
-    `Область: ${order.region || '—'}`,
-    `Город: ${order.city || '—'}`,
-    `Адрес: ${order.address || '—'}`,
-    `Доставка: ${deliveryLabels[order.delivery] || order.delivery || '—'}`,
-    `Оплата: ${paymentLabels[order.payment] || order.payment || '—'}`,
-    `Товары: ${order.items}`,
-    itemsDetail ? itemsDetail : '',
-    `Сумма: ${order.amount}`,
-    `Статус: ${statusMap[order.status] || order.status}`,
-    `Дата: ${order.date}`,
-    order.comment ? `Комментарий: ${order.comment}` : '',
-  ].filter(Boolean);
-  alert(lines.join('\n'));
+function orderDetailRow(label, value) {
+  const text = String(value ?? '').trim() || '—';
+  return `<div class="order-detail-row"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(text)}</dd></div>`;
 }
 
-async function setOrderStatus(orderId) {
+function openOrderDetailModal(orderId) {
+  const order = findOrderByKey(orderId);
+  const modal = document.getElementById('orderDetailModal');
+  const titleEl = document.getElementById('orderModalTitle');
+  const bodyEl = document.getElementById('orderModalBody');
+  if (!order || !modal || !titleEl || !bodyEl) return;
+
+  const itemsHtml = (order.itemsList || []).length
+    ? `<ul class="order-detail-items">${(order.itemsList || []).map((item) => {
+        const itemTitle = String(item?.title || 'Товар').trim();
+        const qty = Number(item?.qty) || 1;
+        const price = formatOrderMoney((Number(item?.price) || 0) * qty);
+        return `<li>${escapeHtml(itemTitle)} — ${qty} шт., ${escapeHtml(price)}</li>`;
+      }).join('')}</ul>`
+    : escapeHtml(order.items);
+
+  titleEl.textContent = `Заказ ${order.id}`;
+  bodyEl.innerHTML = `
+    <div class="order-detail-grid">
+      ${orderDetailRow('Клиент', order.client)}
+      ${orderDetailRow('Телефон', order.phone)}
+      ${orderDetailRow('Область', order.region)}
+      ${orderDetailRow('Город', order.city)}
+      ${orderDetailRow('Адрес', order.address)}
+      ${orderDetailRow('Доставка', deliveryLabels[order.delivery] || order.delivery)}
+      ${orderDetailRow('Оплата', paymentLabels[order.payment] || order.payment)}
+      <div class="order-detail-row"><dt>Товары</dt><dd>${itemsHtml}</dd></div>
+      ${orderDetailRow('Сумма', order.amount)}
+      ${orderDetailRow('Статус', statusMap[order.status] || order.status)}
+      ${orderDetailRow('Дата', order.date)}
+      ${order.comment ? orderDetailRow('Комментарий', order.comment) : ''}
+    </div>
+  `;
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeOrderDetailModal() {
+  const modal = document.getElementById('orderDetailModal');
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.style.overflow = '';
+}
+
+async function applyOrderStatusChange(orderId, newStatus, selectEl) {
   const order = findOrderByKey(orderId);
   if (!order) return;
-  const current = order.status || 'processing';
-  const raw = prompt(
-    'Укажите статус заказа:\nprocessing — В обработке\nready_to_ship — Готов к перевозке\nout_of_stock — Нет товара\nsuccessful — Успешный',
-    current
-  );
-  if (raw === null) return;
-  const normalized = normalizeOrderStatus(raw);
-  if (!ORDER_STATUS_VARIANTS.includes(normalized)) {
-    alert('Неверный статус. Допустимо: processing, ready_to_ship, out_of_stock, successful.');
-    return;
-  }
+  const previous = order.status;
+  const normalized = normalizeOrderStatus(newStatus);
+  if (normalized === previous) return;
+
+  if (selectEl) selectEl.disabled = true;
   if (window.emirateSupabaseApi?.updateAdminOrderStatus && order.uuid) {
     const res = await window.emirateSupabaseApi.updateAdminOrderStatus(order.uuid, normalized);
     if (!res?.ok) {
-      alert('Не удалось сохранить статус в Supabase.\n' + (res?.error || ''));
+      if (selectEl) {
+        selectEl.value = previous;
+        syncOrderStatusSelectClass(selectEl, previous);
+        selectEl.disabled = false;
+      }
+      alert('Не удалось сохранить статус.\n' + (res?.error || ''));
       return;
     }
   }
   order.status = normalized;
+  if (selectEl) {
+    syncOrderStatusSelectClass(selectEl, normalized);
+    selectEl.disabled = false;
+  }
   renderOrderStats();
   renderDashboardRecentOrders();
-  applyOrdersStatusFilter();
 }
 
 // ===== RENDER ALL =====
@@ -1760,9 +1794,22 @@ document.getElementById('ordersBody')?.addEventListener('click', function(e) {
   const action = button.getAttribute('data-action');
   const orderId = button.getAttribute('data-order-id');
   if (!orderId) return;
+  if (action === 'view-order') openOrderDetailModal(orderId);
+});
 
-  if (action === 'view-order') viewOrder(orderId);
-  if (action === 'edit-order') setOrderStatus(orderId);
+document.getElementById('ordersBody')?.addEventListener('change', function(e) {
+  const select = e.target.closest('.order-status-select');
+  if (!select) return;
+  const orderId = select.getAttribute('data-order-id');
+  void applyOrderStatusChange(orderId, select.value, select);
+});
+
+document.querySelectorAll('[data-close-order-modal]').forEach((el) => {
+  el.addEventListener('click', closeOrderDetailModal);
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeOrderDetailModal();
 });
 
 document.getElementById('suppliersBody')?.addEventListener('click', function(e) {
