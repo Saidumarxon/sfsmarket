@@ -177,8 +177,8 @@
   async function insertOrder(payload) {
     var sb = client();
     if (!sb) return { ok: false, error: "no_client" };
-    var row = Object.assign({ status: "processing" }, payload || {});
-    var res = await sb.from("orders").insert(row).select("id").single();
+    // status не передаём: в старых БД колонки может не быть; после миграции сработает default 'processing'
+    var res = await sb.from("orders").insert(payload || {}).select("id").single();
     if (res.error) {
       console.warn("[Supabase] insertOrder", res.error);
       return { ok: false, error: res.error.message || String(res.error) };
