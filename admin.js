@@ -175,18 +175,70 @@ function findOrderByKey(orderKey) {
   return ordersData.find((item) => item.uuid === key || item.id === key) || null;
 }
 
-function renderOrderStatusSelect(order) {
-  const options = ORDER_STATUS_VARIANTS.map((value) => {
-    const selected = order.status === value ? ' selected' : '';
-    return `<option value="${value}"${selected}>${escapeHtml(statusMap[value])}</option>`;
-  }).join('');
-  return `<select class="order-status-select order-status-select--${escapeHtml(order.status)}" data-order-id="${escapeHtml(order.uuid)}" aria-label="Статус заказа ${escapeHtml(order.id)}">${options}</select>`;
+const ORDER_STATUS_CHEVRON = '<svg class="order-status-picker__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
+
+function renderOrderStatusPicker(order) {
+  const status = normalizeOrderStatus(order.status);
+  const options = ORDER_STATUS_VARIANTS.map((value) => `
+    <button type="button" class="order-status-picker__option status-badge ${escapeHtml(value)}${value === status ? ' is-active' : ''}" data-value="${value}">
+      <span class="status-dot"></span>${escapeHtml(statusMap[value])}
+    </button>
+  `).join('');
+  return `
+    <div class="order-status-picker" data-order-id="${escapeHtml(order.uuid)}">
+      <button type="button" class="order-status-picker__trigger status-badge ${escapeHtml(status)}" aria-haspopup="listbox" aria-expanded="false" aria-label="Статус заказа ${escapeHtml(order.id)}">
+        <span class="status-dot"></span>
+        <span class="order-status-picker__label">${escapeHtml(statusMap[status])}</span>
+        ${ORDER_STATUS_CHEVRON}
+      </button>
+      <div class="order-status-picker__menu" role="listbox" hidden>${options}</div>
+    </div>
+  `;
 }
 
-function syncOrderStatusSelectClass(selectEl, status) {
-  if (!selectEl) return;
-  ORDER_STATUS_VARIANTS.forEach((value) => selectEl.classList.remove(`order-status-select--${value}`));
-  selectEl.classList.add(`order-status-select--${normalizeOrderStatus(status)}`);
+function closeAllOrderStatusPickers(exceptPicker) {
+  document.querySelectorAll('.order-status-picker.is-open').forEach((picker) => {
+    if (exceptPicker && picker === exceptPicker) return;
+    picker.classList.remove('is-open');
+    const menu = picker.querySelector('.order-status-picker__menu');
+    const trigger = picker.querySelector('.order-status-picker__trigger');
+    if (menu) menu.hidden = true;
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  });
+}
+
+function toggleOrderStatusPicker(pickerEl) {
+  if (!pickerEl) return;
+  const willOpen = !pickerEl.classList.contains('is-open');
+  closeAllOrderStatusPickers();
+  if (!willOpen) return;
+  pickerEl.classList.add('is-open');
+  const menu = pickerEl.querySelector('.order-status-picker__menu');
+  const trigger = pickerEl.querySelector('.order-status-picker__trigger');
+  if (menu) menu.hidden = false;
+  if (trigger) trigger.setAttribute('aria-expanded', 'true');
+}
+
+function setOrderStatusPickerLoading(pickerEl, loading) {
+  if (!pickerEl) return;
+  pickerEl.classList.toggle('is-loading', !!loading);
+  const trigger = pickerEl.querySelector('.order-status-picker__trigger');
+  if (trigger) trigger.disabled = !!loading;
+}
+
+function updateOrderStatusPickerUI(pickerEl, status) {
+  if (!pickerEl) return;
+  const normalized = normalizeOrderStatus(status);
+  const trigger = pickerEl.querySelector('.order-status-picker__trigger');
+  const label = pickerEl.querySelector('.order-status-picker__label');
+  if (trigger) {
+    ORDER_STATUS_VARIANTS.forEach((value) => trigger.classList.remove(value));
+    trigger.classList.add(normalized);
+  }
+  if (label) label.textContent = statusMap[normalized] || normalized;
+  pickerEl.querySelectorAll('.order-status-picker__option').forEach((btn) => {
+    btn.classList.toggle('is-active', btn.getAttribute('data-value') === normalized);
+  });
 }
 
 function renderOrderStats() {
@@ -236,7 +288,7 @@ function renderOrders(data = ordersData) {
       <td>${escapeHtml(o.phone)}</td>
       <td style="max-width:160px">${escapeHtml(o.items)}</td>
       <td>${escapeHtml(o.amount)}</td>
-      <td>${renderOrderStatusSelect(o)}</td>
+      <td>${renderOrderStatusPicker(o)}</td>
       <td>${escapeHtml(o.date)}</td>
       <td>
         <div class="action-btns">
@@ -1618,31 +1670,26 @@ function closeOrderDetailModal() {
   document.body.style.overflow = '';
 }
 
-async function applyOrderStatusChange(orderId, newStatus, selectEl) {
+async function applyOrderStatusChange(orderId, newStatus, pickerEl) {
   const order = findOrderByKey(orderId);
   if (!order) return;
   const previous = order.status;
   const normalized = normalizeOrderStatus(newStatus);
   if (normalized === previous) return;
 
-  if (selectEl) selectEl.disabled = true;
+  setOrderStatusPickerLoading(pickerEl, true);
   if (window.emirateSupabaseApi?.updateAdminOrderStatus && order.uuid) {
     const res = await window.emirateSupabaseApi.updateAdminOrderStatus(order.uuid, normalized);
     if (!res?.ok) {
-      if (selectEl) {
-        selectEl.value = previous;
-        syncOrderStatusSelectClass(selectEl, previous);
-        selectEl.disabled = false;
-      }
+      updateOrderStatusPickerUI(pickerEl, previous);
+      setOrderStatusPickerLoading(pickerEl, false);
       alert('Не удалось сохранить статус.\n' + (res?.error || ''));
       return;
     }
   }
   order.status = normalized;
-  if (selectEl) {
-    syncOrderStatusSelectClass(selectEl, normalized);
-    selectEl.disabled = false;
-  }
+  updateOrderStatusPickerUI(pickerEl, normalized);
+  setOrderStatusPickerLoading(pickerEl, false);
   renderOrderStats();
   renderDashboardRecentOrders();
 }
@@ -1789,6 +1836,22 @@ document.getElementById('clientsBody')?.addEventListener('click', function(e) {
 });
 
 document.getElementById('ordersBody')?.addEventListener('click', function(e) {
+  const optionBtn = e.target.closest('.order-status-picker__option');
+  if (optionBtn) {
+    const picker = optionBtn.closest('.order-status-picker');
+    const orderId = picker?.getAttribute('data-order-id');
+    closeAllOrderStatusPickers();
+    void applyOrderStatusChange(orderId, optionBtn.getAttribute('data-value'), picker);
+    return;
+  }
+
+  const statusTrigger = e.target.closest('.order-status-picker__trigger');
+  if (statusTrigger) {
+    e.stopPropagation();
+    toggleOrderStatusPicker(statusTrigger.closest('.order-status-picker'));
+    return;
+  }
+
   const button = e.target.closest('button[data-action]');
   if (!button) return;
   const action = button.getAttribute('data-action');
@@ -1797,11 +1860,10 @@ document.getElementById('ordersBody')?.addEventListener('click', function(e) {
   if (action === 'view-order') openOrderDetailModal(orderId);
 });
 
-document.getElementById('ordersBody')?.addEventListener('change', function(e) {
-  const select = e.target.closest('.order-status-select');
-  if (!select) return;
-  const orderId = select.getAttribute('data-order-id');
-  void applyOrderStatusChange(orderId, select.value, select);
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.order-status-picker')) {
+    closeAllOrderStatusPickers();
+  }
 });
 
 document.querySelectorAll('[data-close-order-modal]').forEach((el) => {
@@ -1809,7 +1871,9 @@ document.querySelectorAll('[data-close-order-modal]').forEach((el) => {
 });
 
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeOrderDetailModal();
+  if (e.key !== 'Escape') return;
+  closeOrderDetailModal();
+  closeAllOrderStatusPickers();
 });
 
 document.getElementById('suppliersBody')?.addEventListener('click', function(e) {
