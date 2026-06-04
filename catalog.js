@@ -2,20 +2,7 @@
    EMIRATE CO — Catalog Page v2
    ======================================== */
 
-const catalogProducts = [
-  { title: "iPhone 15 Pro Max 256GB", brand: "Apple", category: "Смартфоны", price: 15490000, rating: 4.9, reviews: 342, oldPrice: 16900000, badge: "hit" },
-  { title: "Samsung Galaxy S24 Ultra 12/256", brand: "Samsung", category: "Смартфоны", price: 14200000, rating: 4.8, reviews: 218, oldPrice: 15500000, badge: "hit" },
-  { title: "Xiaomi 14 Ultra 16/512", brand: "Xiaomi", category: "Смартфоны", price: 11800000, rating: 4.7, reviews: 94, oldPrice: 12900000, badge: "sale" },
-  { title: 'MacBook Air M3 15" 16/512', brand: "Apple", category: "Ноутбуки", price: 17900000, rating: 4.9, reviews: 156, oldPrice: 19200000, badge: "hit" },
-  { title: "ASUS Zenbook 14 OLED UX3405", brand: "ASUS", category: "Ноутбуки", price: 12900000, rating: 4.7, reviews: 67, oldPrice: 13700000, badge: "sale" },
-  { title: "Lenovo ThinkPad X1 Carbon Gen 12", brand: "Lenovo", category: "Ноутбуки", price: 18500000, rating: 4.8, reviews: 43, oldPrice: 19800000, badge: "new" },
-  { title: 'LG OLED55C4 55" 4K Smart TV', brand: "LG", category: "ТВ", price: 12400000, rating: 4.8, reviews: 73, oldPrice: 13900000, badge: "hit" },
-  { title: 'Samsung QLED QE55Q80D 55"', brand: "Samsung", category: "ТВ", price: 9950000, rating: 4.6, reviews: 112, oldPrice: 10850000, badge: "sale" },
-  { title: "Sony WH-1000XM5 Wireless", brand: "Sony", category: "Аудио", price: 4250000, rating: 4.8, reviews: 421, oldPrice: 4990000, badge: "hit" },
-  { title: "Xiaomi Buds 5 Pro", brand: "Xiaomi", category: "Аудио", price: 1990000, rating: 4.5, reviews: 189, oldPrice: 2350000, badge: "new" },
-  { title: "JBL Tour Pro 3", brand: "JBL", category: "Аудио", price: 3200000, rating: 4.7, reviews: 56, oldPrice: 3700000, badge: "new" },
-  { title: "Dyson V15 Detect Absolute", brand: "Dyson", category: "Техника", price: 8350000, rating: 4.8, reviews: 195, oldPrice: 9500000, badge: "sale" }
-];
+const catalogProducts = [];
 const ADMIN_PRODUCTS_KEY = "emirate_admin_products";
 const SELECTED_PRODUCT_KEY = "emirate_selected_product";
 
@@ -144,10 +131,15 @@ function mergeProductIntoList(merged, byKey, item) {
 }
 
 function buildSourceProducts(remoteList) {
-  const merged = [...catalogProducts];
-  const byKey = new Map(merged.map((item, index) => [normalizeTitleKey(item.title), index]));
-  loadAdminProductsForCatalog().forEach((item) => mergeProductIntoList(merged, byKey, item));
-  (remoteList || []).forEach((item) => mergeProductIntoList(merged, byKey, item));
+  const merged = [];
+  const byKey = new Map();
+  const remote = Array.isArray(remoteList) ? remoteList : [];
+  if (remote.length) {
+    remote.forEach((item) => mergeProductIntoList(merged, byKey, item));
+  } else {
+    loadAdminProductsForCatalog().forEach((item) => mergeProductIntoList(merged, byKey, item));
+    catalogProducts.forEach((item) => mergeProductIntoList(merged, byKey, item));
+  }
   return merged.sort((a, b) => (Number(a.priority) || 300) - (Number(b.priority) || 300));
 }
 
@@ -453,7 +445,6 @@ void (async () => {
   if (!api || !api.isConfigured()) return;
   try {
     const remote = await api.fetchPublicCatalogProducts();
-    if (!remote.length) return;
     sourceProducts = buildSourceProducts(remote);
     applyFiltersAndSort();
   } catch (err) {

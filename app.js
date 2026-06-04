@@ -4,67 +4,14 @@
    (shared logic is in common.js)
    ======================================== */
 
-// ===== PRODUCT DATA BY CATEGORY =====
+// ===== PRODUCT DATA BY CATEGORY (filled from Supabase or admin localStorage) =====
 const productData = {
-  smartphones: [
-    { title: "iPhone 15 Pro Max 256GB", price: "15 490 000", oldPrice: "16 900 000", discount: "-8%", rating: 4.9, reviews: 342, installment: "1 290 833", badge: "hit" },
-    { title: "Samsung Galaxy S24 Ultra 12/256GB", price: "14 200 000", oldPrice: "15 500 000", discount: "-8%", rating: 4.8, reviews: 218, installment: "1 183 333", badge: "hit" },
-    { title: "Xiaomi 14 Ultra 16/512GB", price: "12 800 000", oldPrice: "13 900 000", discount: "-8%", rating: 4.7, reviews: 95, installment: "1 066 667", badge: "sale" },
-    { title: "Google Pixel 9 Pro 128GB", price: "11 800 000", oldPrice: "12 900 000", discount: "-9%", rating: 4.8, reviews: 19, installment: "983 333", badge: "new" },
-    { title: "Samsung Galaxy Z Fold6 12/512GB", price: "22 900 000", oldPrice: "24 500 000", discount: "-7%", rating: 4.8, reviews: 45, installment: "1 908 333", badge: "new" },
-    { title: "iPhone 15 128GB", price: "11 990 000", oldPrice: "12 500 000", discount: "-4%", rating: 4.8, reviews: 512, installment: "999 167", badge: "hit" },
-    { title: "OnePlus 12 16/512GB", price: "9 500 000", oldPrice: "10 200 000", discount: "-7%", rating: 4.6, reviews: 78, installment: "791 667", badge: "sale" },
-    { title: "Samsung Galaxy A55 5G 8/256GB", price: "4 200 000", oldPrice: "4 600 000", discount: "-9%", rating: 4.5, reviews: 230, installment: "350 000", badge: "hit" }
-  ],
-  appliances: [
-    { title: "Xiaomi Robot Vacuum X20 Pro+", price: "5 790 000", oldPrice: "6 900 000", discount: "-16%", rating: 4.7, reviews: 89, installment: "482 500", badge: "sale" },
-    { title: "Dyson V15 Detect Absolute", price: "8 350 000", oldPrice: "9 500 000", discount: "-12%", rating: 4.8, reviews: 195, installment: "695 833", badge: "sale" },
-    { title: 'LG OLED55C4 55" 4K Smart TV', price: "12 400 000", oldPrice: "13 900 000", discount: "-11%", rating: 4.9, reviews: 73, installment: "1 033 333", badge: "hit" },
-    { title: "Samsung Bespoke AI Washer 12kg", price: "7 200 000", oldPrice: "8 100 000", discount: "-11%", rating: 4.6, reviews: 156, installment: "600 000", badge: "hit" },
-    { title: "Dyson Purifier Hot+Cool HP07", price: "6 900 000", oldPrice: "7 800 000", discount: "-12%", rating: 4.7, reviews: 64, installment: "575 000", badge: "sale" },
-    { title: "Xiaomi Mi Air Purifier 4 Pro", price: "2 850 000", oldPrice: "3 200 000", discount: "-11%", rating: 4.5, reviews: 187, installment: "237 500", badge: "hit" },
-    { title: 'Samsung 75" QLED 4K QN85B', price: "18 500 000", oldPrice: "20 900 000", discount: "-11%", rating: 4.8, reviews: 42, installment: "1 541 667", badge: "new" },
-    { title: "iRobot Roomba j9+ Combo", price: "9 900 000", oldPrice: "11 200 000", discount: "-12%", rating: 4.7, reviews: 38, installment: "825 000", badge: "new" }
-  ],
-  accessories: [
-    { title: "Sony WH-1000XM5 Wireless", price: "4 250 000", oldPrice: "4 990 000", discount: "-15%", rating: 4.8, reviews: 421, installment: "354 167", badge: "sale" },
-    { title: "Apple Watch Ultra 2 GPS+Cellular", price: "11 100 000", oldPrice: "12 500 000", discount: "-11%", rating: 4.9, reviews: 267, installment: "925 000", badge: "hit" },
-    { title: "JBL Tour Pro 3 TWS", price: "3 200 000", oldPrice: "3 700 000", discount: "-14%", rating: 4.7, reviews: 28, installment: "266 667", badge: "new" },
-    { title: "iPad Pro M4 11\" 256GB Wi-Fi", price: "13 500 000", oldPrice: "14 200 000", discount: "-5%", rating: 4.9, reviews: 32, installment: "1 125 000", badge: "new" },
-    { title: 'MacBook Air M3 15" 16/512GB', price: "17 900 000", oldPrice: "19 200 000", discount: "-7%", rating: 4.9, reviews: 156, installment: "1 491 667", badge: "hit" },
-    { title: "Samsung Galaxy Buds3 Pro", price: "2 800 000", oldPrice: "3 100 000", discount: "-10%", rating: 4.6, reviews: 93, installment: "233 333", badge: "sale" },
-    { title: "Apple AirPods Pro 2 USB-C", price: "3 400 000", oldPrice: "3 800 000", discount: "-11%", rating: 4.8, reviews: 614, installment: "283 333", badge: "hit" },
-    { title: "Xiaomi Watch S3 Active", price: "1 450 000", oldPrice: "1 700 000", discount: "-15%", rating: 4.4, reviews: 112, installment: "120 833", badge: "sale" }
-  ]
+  smartphones: [],
+  appliances: [],
+  accessories: []
 };
 
-// Extra products pool for lazy-loaded feed (mixed products)
-const feedProducts = [
-  { title: 'MacBook Pro M3 Pro 14" 18/512GB', price: "25 900 000", oldPrice: "27 500 000", discount: "-6%", rating: 4.9, reviews: 204, installment: "2 158 333", badge: "hit" },
-  { title: "ASUS ROG Strix G16 RTX 4070", price: "18 400 000", oldPrice: "20 000 000", discount: "-8%", rating: 4.7, reviews: 67, installment: "1 533 333", badge: "sale" },
-  { title: "Lenovo ThinkPad X1 Carbon Gen 12", price: "21 500 000", oldPrice: "23 000 000", discount: "-7%", rating: 4.8, reviews: 89, installment: "1 791 667", badge: "hit" },
-  { title: "HP Pavilion Plus 14 OLED", price: "11 200 000", oldPrice: "12 800 000", discount: "-13%", rating: 4.6, reviews: 45, installment: "933 333", badge: "sale" },
-  { title: 'Samsung 65" Neo QLED QN90C', price: "15 800 000", oldPrice: "17 500 000", discount: "-10%", rating: 4.8, reviews: 85, installment: "1 316 667", badge: "hit" },
-  { title: "JBL PartyBox 710", price: "8 500 000", oldPrice: "9 200 000", discount: "-8%", rating: 4.7, reviews: 134, installment: "708 333", badge: "hit" },
-  { title: "Sony Bravia XR A95L OLED 55\"", price: "22 000 000", oldPrice: "24 500 000", discount: "-10%", rating: 4.9, reviews: 47, installment: "1 833 333", badge: "new" },
-  { title: "Sonos Arc Soundbar", price: "9 200 000", oldPrice: "10 400 000", discount: "-12%", rating: 4.8, reviews: 178, installment: "766 667", badge: "sale" },
-  { title: 'Dell XPS 15 OLED 15.6"', price: "19 800 000", oldPrice: "21 500 000", discount: "-8%", rating: 4.8, reviews: 112, installment: "1 650 000", badge: "hit" },
-  { title: "Marshall Stanmore III BT", price: "5 400 000", oldPrice: "5 900 000", discount: "-8%", rating: 4.7, reviews: 256, installment: "450 000", badge: "hit" },
-  { title: "Acer Swift Go 14 AI", price: "8 900 000", oldPrice: "9 800 000", discount: "-9%", rating: 4.5, reviews: 34, installment: "741 667", badge: "new" },
-  { title: 'Samsung Galaxy Book4 Ultra 16"', price: "24 500 000", oldPrice: "26 000 000", discount: "-6%", rating: 4.7, reviews: 28, installment: "2 041 667", badge: "new" },
-  { title: 'MacBook Air M2 13" 8/256GB', price: "10 900 000", oldPrice: "12 200 000", discount: "-11%", rating: 4.8, reviews: 389, installment: "908 333", badge: "sale" },
-  { title: 'LG 50" UHD 4K Smart TV 50UR78', price: "5 200 000", oldPrice: "6 100 000", discount: "-15%", rating: 4.5, reviews: 312, installment: "433 333", badge: "sale" },
-  { title: "Harman Kardon Onyx Studio 8", price: "3 100 000", oldPrice: "3 600 000", discount: "-14%", rating: 4.6, reviews: 97, installment: "258 333", badge: "sale" },
-  { title: "Apple HomePod 2nd Gen", price: "4 200 000", oldPrice: "4 800 000", discount: "-13%", rating: 4.6, reviews: 63, installment: "350 000", badge: "new" },
-  { title: "Nothing Phone (2a) 12/256GB", price: "3 800 000", oldPrice: "4 300 000", discount: "-12%", rating: 4.5, reviews: 76, installment: "316 667", badge: "sale" },
-  { title: "Realme GT 6 16/512GB", price: "5 400 000", oldPrice: "5 900 000", discount: "-8%", rating: 4.6, reviews: 54, installment: "450 000", badge: "new" },
-  { title: "Samsung Galaxy Tab S9 FE 128GB", price: "4 900 000", oldPrice: "5 500 000", discount: "-11%", rating: 4.7, reviews: 143, installment: "408 333", badge: "hit" },
-  { title: "Baseus GaN5 Pro 100W Charger", price: "450 000", oldPrice: "550 000", discount: "-18%", rating: 4.8, reviews: 892, installment: "37 500", badge: "sale" },
-  { title: "Anker Soundcore Space A40 TWS", price: "890 000", oldPrice: "1 050 000", discount: "-15%", rating: 4.6, reviews: 321, installment: "74 167", badge: "hit" },
-  { title: "Xiaomi Redmi Pad Pro 8/256GB", price: "3 200 000", oldPrice: "3 600 000", discount: "-11%", rating: 4.5, reviews: 87, installment: "266 667", badge: "new" },
-  { title: "Roborock S8 MaxV Ultra", price: "12 500 000", oldPrice: "14 200 000", discount: "-12%", rating: 4.9, reviews: 56, installment: "1 041 667", badge: "hit" },
-  { title: "Philips Hue Starter Kit E27", price: "1 200 000", oldPrice: "1 400 000", discount: "-14%", rating: 4.7, reviews: 245, installment: "100 000", badge: "sale" }
-];
+const feedProducts = [];
 
 const ADMIN_PRODUCTS_KEY = "emirate_admin_products";
 const ADMIN_BANNERS_KEY = "emirate_home_banners";
@@ -286,7 +233,10 @@ function getAdminProductsForStorefront() {
   }
 }
 
-function applyAdminProductsToHomeData() {
+function applyLocalAdminProductsToHome() {
+  productData.smartphones = [];
+  productData.appliances = [];
+  productData.accessories = [];
   const adminItems = getAdminProductsForStorefront();
   if (!adminItems.length) return;
   applyProductsToHomeData(adminItems);
@@ -697,7 +647,7 @@ function renderInitialCarousels() {
 
 async function initHomeStorefront() {
   if (!isLiveStorefront()) {
-    applyAdminProductsToHomeData();
+    applyLocalAdminProductsToHome();
     rebuildAllProductsIndex();
     homeStorefrontReady = true;
     renderHeroBanners();
@@ -771,7 +721,7 @@ function loadFeedBatch() {
   return feedIndex < feedProducts.length; // true if more products remain
 }
 
-if (feedGrid && feedTrigger) {
+if (feedGrid && feedTrigger && feedProducts.length > 0) {
   const feedObserver = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       if (entry.isIntersecting) {

@@ -576,35 +576,8 @@ const BANNER_BLOCKED_PHRASES = [
   'дурак'
 ];
 
-function defaultProductsData() {
-  return [
-  { id: 'T97106', nameRu: 'iPhone 15 Pro Max 256GB', nameUz: 'iPhone 15 Pro Max 256GB', category: 'Смартфоны', price: '15 490 000', oldPrice: '16 900 000', status: 'active', brand: 'Apple', model: 'A3108', date: '08.04.2026' },
-  { id: 'T97105', nameRu: 'Samsung Galaxy S24 Ultra', nameUz: 'Samsung Galaxy S24 Ultra', category: 'Смартфоны', price: '14 200 000', oldPrice: '15 500 000', status: 'active', brand: 'Samsung', model: 'SM-S928B', date: '08.04.2026' },
-  { id: 'T97104', nameRu: 'MacBook Air M3 15"', nameUz: 'MacBook Air M3 15"', category: 'Ноутбуки', price: '18 900 000', oldPrice: '20 500 000', status: 'active', brand: 'Apple', model: 'MXDU3', date: '07.04.2026' },
-  { id: 'T97103', nameRu: 'Sony WH-1000XM5', nameUz: 'Sony WH-1000XM5', category: 'Аксессуары', price: '3 890 000', oldPrice: '4 200 000', status: 'active', brand: 'Sony', model: 'WH1000XM5', date: '07.04.2026' },
-  { id: 'T97102', nameRu: 'LG OLED C4 65"', nameUz: 'LG OLED C4 65"', category: 'ТВ и аудио', price: '28 400 000', oldPrice: '31 000 000', status: 'active', brand: 'LG', model: 'OLED65C4', date: '06.04.2026' },
-  { id: 'T97101', nameRu: 'Dyson V15 Detect', nameUz: 'Dyson V15 Detect', category: 'Бытовая техника', price: '6 800 000', oldPrice: '7 500 000', status: 'inactive', brand: 'Dyson', model: 'V15', date: '06.04.2026' },
-  { id: 'T97100', nameRu: 'Xiaomi 14 Ultra', nameUz: 'Xiaomi 14 Ultra', category: 'Смартфоны', price: '8 350 000', oldPrice: '9 100 000', status: 'active', brand: 'Xiaomi', model: '24030PN60G', date: '05.04.2026' },
-  { id: 'T97099', nameRu: 'iPad Pro 12.9" M4', nameUz: 'iPad Pro 12.9" M4', category: 'Ноутбуки', price: '18 200 000', oldPrice: '', status: 'active', brand: 'Apple', model: 'MWR13', date: '05.04.2026' },
-  { id: 'T97098', nameRu: 'Samsung TV 55" QLED', nameUz: 'Samsung TV 55" QLED', category: 'ТВ и аудио', price: '12 100 000', oldPrice: '13 500 000', status: 'active', brand: 'Samsung', model: 'QN55Q80C', date: '04.04.2026' },
-  { id: 'T97097', nameRu: 'AirPods Pro 2', nameUz: 'AirPods Pro 2', category: 'Аксессуары', price: '2 890 000', oldPrice: '3 200 000', status: 'active', brand: 'Apple', model: 'MTJV3', date: '04.04.2026' },
-  ];
-}
-
 function loadProductsData() {
-  if (window.emirateSupabaseApi?.isConfigured?.()) {
-    return [];
-  }
-  try {
-    const raw = localStorage.getItem(ADMIN_PRODUCTS_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (!Array.isArray(parsed) || !parsed.length) {
-      return defaultProductsData();
-    }
-    return parsed;
-  } catch (_) {
-    return defaultProductsData();
-  }
+  return readLocalProductsCache();
 }
 
 const PRODUCTS_STORAGE_SOFT_LIMIT = 4_300_000;
@@ -885,12 +858,113 @@ function updateStorefrontPricePreview() {
     (preview.oldPrice > preview.price ? ` · старая: ${window.emirateExchange.formatUzs(preview.oldPrice)}` : '');
 }
 
-let productsData = loadProductsData().map(normalizeProductRecord);
+let productsData = loadProductsData().map(normalizeProductRecord).filter((item) => item && item.id);
+let productsLoading = !!window.emirateSupabaseApi?.isConfigured?.();
 
 function renderProducts() {
   const tbody = document.getElementById('productsBody');
+  const countEl = document.getElementById('productsCount');
+  if (!tbody) return;
+  if (productsLoading) {
+    tbody.innerHTML =
+      '<tr><td colspan="7" style="text-align:center;padding:28px;color:#64748b">Загрузка товаров…</td></tr>';
+    if (countEl) countEl.textContent = 'Загрузка…';
+    return;
+  }
+  if (!productsData.length) {
+    tbody.innerHTML =
+      '<tr><td colspan="7" style="text-align:center;padding:28px;color:#64748b">Нет товаров. Нажмите «+ Добавить», чтобы создать первый.</td></tr>';
+    if (countEl) countEl.textContent = 'Показано 0 товаров';
+    return;
+  }
   tbody.innerHTML = productsData.map(renderProductRow).join('');
-  document.getElementById('productsCount').textContent = `Показано ${productsData.length} товаров`;
+  if (countEl) countEl.textContent = `Показано ${productsData.length} товаров`;
+}
+
+function showAdminProductsBanner(message, tone) {
+  const host = document.querySelector('#page-products .table-card-header') || document.querySelector('.admin-content');
+  if (!host) return;
+  let el = document.getElementById('adminProductsBanner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'adminProductsBanner';
+    el.setAttribute('role', 'alert');
+    host.insertAdjacentElement('afterend', el);
+  }
+  const bg = tone === 'error' ? '#fef2f2' : '#eff6ff';
+  const border = tone === 'error' ? '#fecaca' : '#bfdbfe';
+  const color = tone === 'error' ? '#991b1b' : '#1e40af';
+  el.style.cssText =
+    `margin:0 0 12px;padding:12px 14px;border-radius:10px;background:${bg};color:${color};border:1px solid ${border};font-size:14px;line-height:1.45;`;
+  el.textContent = message;
+}
+
+async function loadAdminProductsFromSupabase() {
+  const api = window.emirateSupabaseApi;
+  if (!api?.isConfigured?.()) {
+    productsLoading = false;
+    productsData = loadProductsData().map(normalizeProductRecord).filter((item) => item && item.id);
+    renderProducts();
+    return;
+  }
+
+  productsLoading = true;
+  renderProducts();
+  document.getElementById('adminProductsBanner')?.remove();
+
+  const sb = window.emirateSupabase;
+  try {
+    const sess = await sb.auth.getSession();
+    if (!sess.data?.session) {
+      localStorage.removeItem('emirate_admin');
+      window.location.href = 'login.html';
+      return;
+    }
+
+    const raw = await api.pullAdminProductsRaw();
+    if (raw === null) {
+      showAdminProductsBanner(
+        'Не удалось загрузить товары из Supabase. Войдите с email из Authentication и добавьте его в таблицу admin_users (SQL в supabase/schema.sql).',
+        'error'
+      );
+      const local = readLocalProductsCache();
+      if (local.length) {
+        productsData = local.map(normalizeProductRecord).filter((item) => item && item.id);
+      }
+      renderProducts();
+      return;
+    }
+
+    productsData = (raw || []).map(normalizeProductRecord).filter((item) => item && item.id);
+    try {
+      localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(productsData));
+    } catch (_) {
+      // quota
+    }
+    renderProducts();
+
+    if (!productsData.length) {
+      const local = readLocalProductsCache();
+      if (!local.length) return;
+      productsData = local.map(normalizeProductRecord).filter((item) => item && item.id);
+      renderProducts();
+      const syncRes = await verifyProductsSupabaseSync(productsData);
+      if (syncRes?.ok) {
+        try {
+          localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(productsData));
+        } catch (_) {}
+        await loadAdminProductsFromSupabase();
+        alert('Локальные товары из этого браузера перенесены в Supabase. Теперь они видны на сайте и в админке.');
+      }
+    }
+  } catch (err) {
+    console.warn('[Supabase] admin products pull', err);
+    showAdminProductsBanner('Ошибка загрузки товаров. Проверьте интернет и обновите страницу.', 'error');
+    renderProducts();
+  } finally {
+    productsLoading = false;
+    renderProducts();
+  }
 }
 
 function renderProductRow(p) {
@@ -1736,37 +1810,11 @@ document.getElementById('refreshOrdersBtn')?.addEventListener('click', () => {
   void loadOrdersFromSupabase();
 });
 
-void (async () => {
-  try {
-    const raw = await window.emirateSupabaseApi?.pullAdminProductsRaw?.();
-    if (raw && raw.length) {
-      productsData = raw
-        .map((item) => normalizeProductRecord(item))
-        .filter((item) => item && item.id);
-      try {
-        localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(productsData));
-      } catch (error) {
-        // quota: keep in-memory only
-      }
-      renderProducts();
-      return;
-    }
-    if (!window.emirateSupabaseApi?.isConfigured?.()) return;
-    const local = readLocalProductsCache();
-    if (!local.length) return;
-    productsData = local.map((item) => normalizeProductRecord(item)).filter((item) => item && item.id);
-    renderProducts();
-    const syncRes = await verifyProductsSupabaseSync(productsData);
-    if (syncRes?.ok) {
-      try {
-        localStorage.setItem(ADMIN_PRODUCTS_KEY, JSON.stringify(productsData));
-      } catch (_) {}
-      alert('Локальные товары из этого браузера перенесены в общую базу Supabase. Теперь они видны всем посетителям сайта.');
-    }
-  } catch (err) {
-    console.warn('[Supabase] admin products pull', err);
-  }
-})();
+void loadAdminProductsFromSupabase();
+
+document.getElementById('refreshProductsBtn')?.addEventListener('click', () => {
+  void loadAdminProductsFromSupabase();
+});
 
 function readLocalBannersCache() {
   try {
