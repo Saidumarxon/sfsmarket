@@ -175,8 +175,10 @@ function toCatalogProductShape(product) {
 
 function saveSelectedProduct(product) {
   if (!product || typeof product !== "object") return;
+  const media = window.emirateResolveProductMedia?.(product);
+  const payload = media ? { ...product, image: media.image, photos: media.photos } : product;
   try {
-    sessionStorage.setItem(SELECTED_PRODUCT_KEY, JSON.stringify(product));
+    sessionStorage.setItem(SELECTED_PRODUCT_KEY, JSON.stringify(payload));
   } catch (_) {
     // Ignore quota/session errors for demo data.
   }
@@ -293,6 +295,15 @@ function applyAdminProductsToHomeData() {
 function mapRemoteCatalogToHomeCard(item) {
   const priceNum = parseMoney(item.price);
   const oldPriceNum = parseMoney(item.oldPrice) || priceNum;
+  const uploadedPhotos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
+  const media = window.emirateResolveProductMedia?.({
+    title: item.title || "Товар",
+    sku: item.sku || "",
+    brand: item.brand || "",
+    category: item.category || "",
+    photos: uploadedPhotos,
+    image: item.image || uploadedPhotos[0] || ""
+  }) || { image: item.image || uploadedPhotos[0] || "", photos: uploadedPhotos };
   return {
     title: item.title || "Товар",
     price: formatMoney(priceNum),
@@ -304,8 +315,8 @@ function mapRemoteCatalogToHomeCard(item) {
     reviews: Number(item.reviews || 0),
     installment: formatMoney(Math.round(priceNum / 12)),
     badge: item.badge || "new",
-    image: item.image || "",
-    photos: Array.isArray(item.photos) ? item.photos.filter(Boolean) : [],
+    image: media.image,
+    photos: media.photos,
     descUz: String(item.descUz || "").trim(),
     descRu: String(item.descRu || "").trim(),
     specs: Array.isArray(item.specs) ? item.specs : [],
@@ -583,8 +594,12 @@ function renderProductCard(product) {
   const discountText = String(product.discount || "").trim();
   const badgeHTML = discountText ? `<span class="badge-sale">${discountText}</span>` : "";
 
-  const imageHtml = product.image
-    ? `<img class="product-image-real" src="${escapeHtmlAttr(product.image)}" alt="${escapeHtmlAttr(product.title)}">`
+  const media = window.emirateResolveProductMedia?.(product) || {
+    image: product.image,
+    photos: product.photos || []
+  };
+  const imageHtml = media.image
+    ? `<img class="product-image-real" src="${escapeHtmlAttr(media.image)}" alt="${escapeHtmlAttr(product.title)}" loading="lazy" decoding="async">`
     : `<div class="product-image-placeholder">
             <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
               <rect x="3" y="3" width="18" height="18" rx="2"/>

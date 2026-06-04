@@ -65,6 +65,15 @@ function loadAdminProductsForCatalog() {
       .filter((item) => item && item.status !== "inactive")
       .map((item) => {
         const marked = applyStorefrontPrices(item);
+        const uploadedPhotos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
+        const media = window.emirateResolveProductMedia?.({
+          title: item.nameRu || item.nameUz || "Товар",
+          sku: item.id || "",
+          brand: item.brand || "",
+          category: item.category || "Аксессуары",
+          photos: uploadedPhotos,
+          image: uploadedPhotos[0] || ""
+        }) || { image: uploadedPhotos[0] || "", photos: uploadedPhotos };
         return {
         title: item.nameRu || item.nameUz || "Товар",
         sku: item.id || "",
@@ -75,8 +84,8 @@ function loadAdminProductsForCatalog() {
         rating: Number(item.rating || 4.6),
         reviews: Number(item.reviews || 0),
         badge: item.promo === "yes" ? "sale" : (item.express === "yes" ? "hit" : "new"),
-        image: Array.isArray(item.photos) ? (item.photos[0] || "") : "",
-        photos: Array.isArray(item.photos) ? item.photos.filter(Boolean) : [],
+        image: media.image,
+        photos: media.photos,
         descUz: String(item.descUz || "").trim(),
         descRu: String(item.descRu || "").trim(),
         specs: Array.isArray(item.specs)
@@ -195,8 +204,12 @@ function renderProduct(product, options = {}) {
   const discountText = Number.isFinite(discount) && discount > 0 ? `-${discount}%` : "";
   const badgeHTML = discountText ? `<span class="badge-sale">${discountText}</span>` : "";
 
-  const imageHtml = product.image
-    ? `<img class="product-image-real" src="${escapeHtmlAttr(product.image)}" alt="${escapeHtmlAttr(product.title)}">`
+  const media = window.emirateResolveProductMedia?.(product) || {
+    image: product.image,
+    photos: product.photos || []
+  };
+  const imageHtml = media.image
+    ? `<img class="product-image-real" src="${escapeHtmlAttr(media.image)}" alt="${escapeHtmlAttr(product.title)}" loading="lazy" decoding="async">`
     : `<div class="product-image-placeholder">
             <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
               <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -469,8 +482,10 @@ resetFiltersBtn?.addEventListener("click", resetFilters);
 function onProductGridClick(e) {
   const saveSelectedProduct = (product) => {
     if (!product || typeof product !== "object") return;
+    const media = window.emirateResolveProductMedia?.(product);
+    const payload = media ? { ...product, image: media.image, photos: media.photos } : product;
     try {
-      sessionStorage.setItem(SELECTED_PRODUCT_KEY, JSON.stringify(product));
+      sessionStorage.setItem(SELECTED_PRODUCT_KEY, JSON.stringify(payload));
     } catch (_) {
       // Ignore storage errors.
     }

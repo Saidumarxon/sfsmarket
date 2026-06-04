@@ -324,9 +324,49 @@ function addViewedProduct(product) {
   localStorage.setItem(VIEWED_KEY, JSON.stringify(list.slice(0, VIEWED_LIMIT)));
 }
 
+function emirateProductMediaSeed(product) {
+  const parts = [product?.sku, product?.title, product?.brand, product?.category].filter(Boolean);
+  const raw = parts
+    .join("-")
+    .toLowerCase()
+    .replace(/[^a-z0-9\u0400-\u04ff]+/gi, "-")
+    .replace(/^-+|-+$/g, "");
+  return raw.slice(0, 48) || "emirate-product";
+}
+
+/** Stock photos when admin has not uploaded images yet (stable per product). */
+function emirateFallbackProductPhotos(product, count = 4) {
+  const seed = emirateProductMediaSeed(product);
+  const total = Math.max(1, Math.min(Number(count) || 4, 6));
+  return Array.from({ length: total }, (_, index) =>
+    `https://picsum.photos/seed/${encodeURIComponent(`${seed}-${index}`)}/800/800`
+  );
+}
+
+function emirateResolveProductMedia(product) {
+  const item = product || {};
+  let photos = Array.isArray(item.photos)
+    ? item.photos.map((url) => String(url || "").trim()).filter(Boolean)
+    : [];
+  if (!photos.length && item.image) {
+    photos = [String(item.image).trim()];
+  }
+  const fromUpload = photos.length > 0;
+  if (!fromUpload) {
+    photos = emirateFallbackProductPhotos(item, 4);
+  }
+  return {
+    image: photos[0] || "",
+    photos,
+    fromUpload
+  };
+}
+
 syncCartCount();
 syncFavoritesUI();
 syncMobileNavActive();
+window.emirateResolveProductMedia = emirateResolveProductMedia;
+window.emirateFallbackProductPhotos = emirateFallbackProductPhotos;
 window.emirateIncrementCart = incrementCart;
 window.emirateAddToCart = addToCart;
 window.emirateSetCartQty = setCartQty;

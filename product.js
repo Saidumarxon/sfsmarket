@@ -134,7 +134,15 @@ function readAdminProducts() {
               })();
         const price = marked.price;
         const oldPrice = marked.oldPrice;
-        const photos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
+        const uploadedPhotos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
+        const media = window.emirateResolveProductMedia?.({
+          title,
+          sku: item.id || "",
+          brand: item.brand || "",
+          category: item.category || "Смартфоны",
+          photos: uploadedPhotos,
+          image: uploadedPhotos[0] || ""
+        }) || { image: uploadedPhotos[0] || "", photos: uploadedPhotos };
         return {
           title,
           brand: item.brand || title.split(" ")[0] || "",
@@ -144,8 +152,8 @@ function readAdminProducts() {
           rating: Number(item.rating || 4.6),
           reviews: Number(item.reviews || 0),
           badge: item.promo === "yes" ? "sale" : (item.express === "yes" ? "hit" : "new"),
-          image: photos[0] || "",
-          photos,
+          image: media.image,
+          photos: media.photos,
           sku: item.id || "",
           descUz: String(item.descUz || "").trim(),
           descRu: String(item.descRu || "").trim(),
@@ -218,7 +226,10 @@ function resolvePageProduct() {
     }
   }
 
-  return resolvedAdmin || selected || fallbackCurrentProduct();
+  const resolved = resolvedAdmin || selected || fallbackCurrentProduct();
+  const media = window.emirateResolveProductMedia?.(resolved);
+  if (!media) return resolved;
+  return { ...resolved, image: media.image, photos: media.photos };
 }
 
 let currentProduct = resolvePageProduct();
@@ -338,7 +349,11 @@ function hydratePageProduct(product) {
   const rating = Number(product.rating) || 4.6;
   const reviews = Number(product.reviews) || 0;
   const sku = product.sku || `${(product.brand || "PRD").slice(0, 3).toUpperCase()}-${normalizeTitleKey(title).slice(0, 8).toUpperCase()}`;
-  const photos = Array.isArray(product.photos) ? product.photos.filter(Boolean) : (product.image ? [product.image] : []);
+  const media = window.emirateResolveProductMedia?.(product) || {
+    image: product.image || "",
+    photos: Array.isArray(product.photos) ? product.photos.filter(Boolean) : (product.image ? [product.image] : [])
+  };
+  const photos = media.photos;
   const descRu = String(product.descRu || "").trim();
   const descUz = String(product.descUz || "").trim();
   const specs = Array.isArray(product.specs)
@@ -420,7 +435,9 @@ void (async () => {
   try {
     const remote = await api.fetchProductForPageByTitle(q);
     if (!remote) return;
-    currentProduct = { ...currentProduct, ...remote };
+    const merged = { ...currentProduct, ...remote };
+    const media = window.emirateResolveProductMedia?.(merged);
+    currentProduct = media ? { ...merged, image: media.image, photos: media.photos } : merged;
     hydratePageProduct(currentProduct);
     document.querySelectorAll(".wishlist-btn").forEach((btn) => {
       btn.setAttribute("data-product-id", currentProduct.title || "product");

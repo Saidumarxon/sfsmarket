@@ -76,6 +76,17 @@
             parseMoneyText(item.price),
             parseMoneyText(item.oldPrice) || parseMoneyText(item.price)
           );
+    var uploadedPhotos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
+    var media = window.emirateResolveProductMedia
+      ? window.emirateResolveProductMedia({
+          title: item.nameRu || item.nameUz || "Товар",
+          sku: item.id || "",
+          brand: item.brand || "",
+          category: item.category || "Аксессуары",
+          photos: uploadedPhotos,
+          image: uploadedPhotos[0] || ""
+        })
+      : { image: uploadedPhotos[0] || "", photos: uploadedPhotos };
     return {
       title: item.nameRu || item.nameUz || "Товар",
       sku: item.id || "",
@@ -86,8 +97,8 @@
       rating: Number(item.rating || 4.6),
       reviews: Number(item.reviews || 0),
       badge: item.promo === "yes" ? "sale" : item.express === "yes" ? "hit" : "new",
-      image: Array.isArray(item.photos) ? item.photos[0] || "" : "",
-      photos: Array.isArray(item.photos) ? item.photos.filter(Boolean) : [],
+      image: media.image,
+      photos: media.photos,
       descUz: String(item.descUz || "").trim(),
       descRu: String(item.descRu || "").trim(),
       specs: Array.isArray(item.specs)
