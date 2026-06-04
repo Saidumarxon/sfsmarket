@@ -343,6 +343,64 @@ function emirateFallbackProductPhotos(product, count = 4) {
   );
 }
 
+function emirateParsePriceValue(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  return Number(String(value || "").replace(/\s+/g, "").replace(/[^\d]/g, "")) || 0;
+}
+
+function emirateFormatPriceParts(value) {
+  const amount = emirateParsePriceValue(value);
+  return {
+    amount: amount.toLocaleString("ru-RU"),
+    currency: "сум"
+  };
+}
+
+function emirateProductPriceHtml(price, oldPrice) {
+  const priceNum = emirateParsePriceValue(price);
+  const oldNum = emirateParsePriceValue(oldPrice);
+  const current = emirateFormatPriceParts(priceNum);
+  const old = emirateFormatPriceParts(oldNum);
+  const showOld = oldNum > priceNum && priceNum > 0;
+  return `
+    <div class="product-price-block">
+      <div class="product-price-row">
+        <div class="product-price">
+          <span class="product-price-value">${current.amount}</span>
+          <span class="product-price-currency">${current.currency}</span>
+        </div>
+        ${
+          showOld
+            ? `<span class="product-old-price"><span class="product-old-price-value">${old.amount}</span><span class="product-old-price-currency">${old.currency}</span></span>`
+            : ""
+        }
+      </div>
+    </div>
+  `;
+}
+
+function emirateProductInstallmentHtml(product, installmentValue) {
+  if (product && product.installmentStatus === "inactive") {
+    return `<div class="product-installment product-installment--muted">Без рассрочки</div>`;
+  }
+  const part = emirateFormatPriceParts(installmentValue);
+  return `<div class="product-installment"><span class="product-installment-value">${part.amount} ${part.currency}</span><span class="product-installment-term">× 12 мес</span></div>`;
+}
+
+function emirateProductActionsHtml(productHref, safeProductId) {
+  return `
+    <div class="product-actions">
+      <a class="product-buy-btn product-link" href="${productHref}">Купить</a>
+      <button class="product-cart-icon-btn add-to-cart-btn" type="button" title="В корзину" aria-label="В корзину">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
+        </svg>
+      </button>
+    </div>
+  `;
+}
+
 function emirateResolveProductMedia(product) {
   const item = product || {};
   let photos = Array.isArray(item.photos)
@@ -367,6 +425,10 @@ syncFavoritesUI();
 syncMobileNavActive();
 window.emirateResolveProductMedia = emirateResolveProductMedia;
 window.emirateFallbackProductPhotos = emirateFallbackProductPhotos;
+window.emirateProductPriceHtml = emirateProductPriceHtml;
+window.emirateProductInstallmentHtml = emirateProductInstallmentHtml;
+window.emirateProductActionsHtml = emirateProductActionsHtml;
+window.emirateParsePriceValue = emirateParsePriceValue;
 window.emirateIncrementCart = incrementCart;
 window.emirateAddToCart = addToCart;
 window.emirateSetCartQty = setCartQty;

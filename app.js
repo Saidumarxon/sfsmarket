@@ -630,26 +630,9 @@ function renderProductCard(product) {
         <span class="product-rating-num">${product.rating}</span>
         <span class="product-reviews">(${product.reviews})</span>
       </div>
-      <div class="product-price-row">
-        <span class="product-price">${product.price} сум</span>
-        <span class="product-old-price">${product.oldPrice}</span>
-      </div>
-      <div class="product-installment">${product.installmentStatus === "inactive" ? "Без рассрочки" : `от ${product.installment} сум/мес`}</div>
-      <div class="product-actions">
-        <button class="add-to-cart-btn" type="button">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-            <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
-          </svg>
-          В корзину
-        </button>
-          <a class="quick-buy-btn product-link" href="${productHref}" title="Подробнее">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-        </a>
-      </div>
+      ${window.emirateProductPriceHtml?.(product.price, product.oldPrice) || ""}
+      ${window.emirateProductInstallmentHtml?.(product, window.emirateParsePriceValue?.(product.price) / 12 || product.installment) || ""}
+      ${window.emirateProductActionsHtml?.(productHref, safeProductId) || ""}
     </article>
   `;
 }

@@ -238,35 +238,22 @@ function renderProduct(product, options = {}) {
         <span class="product-rating-num">${product.rating}</span>
         <span class="product-reviews">(${product.reviews})</span>
       </div>
-      <div class="product-price-row">
-        <span class="product-price">${money(product.price)}</span>
-        <span class="product-old-price">${money(product.oldPrice)}</span>
-      </div>
-      <div class="product-installment">${product.installmentStatus === "inactive" ? "Без рассрочки" : `от ${money(installment)}/мес`}</div>
-      <div class="product-actions">
-        ${cartControls ? `
-          <div class="cart-item-controls" data-product-id="${safeProductId}">
-            <button class="cart-qty-btn" type="button" data-action="decrease" aria-label="Уменьшить">-</button>
-            <span class="cart-qty-value">${cartQty}</span>
-            <button class="cart-qty-btn" type="button" data-action="increase" aria-label="Увеличить">+</button>
-            <button class="cart-remove-btn" type="button">Удалить</button>
+      ${window.emirateProductPriceHtml?.(product.price, product.oldPrice) || ""}
+      ${window.emirateProductInstallmentHtml?.(product, installment) || ""}
+      ${
+        cartControls
+          ? `
+          <div class="product-actions">
+            <div class="cart-item-controls" data-product-id="${safeProductId}">
+              <button class="cart-qty-btn" type="button" data-action="decrease" aria-label="Уменьшить">-</button>
+              <span class="cart-qty-value">${cartQty}</span>
+              <button class="cart-qty-btn" type="button" data-action="increase" aria-label="Увеличить">+</button>
+              <button class="cart-remove-btn" type="button">Удалить</button>
+            </div>
           </div>
-        ` : `
-          <button class="add-to-cart-btn" type="button">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-              <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
-            </svg>
-            В корзину
-          </button>
-          <a class="quick-buy-btn product-link" href="${productHref}" title="Подробнее">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-          </a>
-        `}
-      </div>
+        `
+          : window.emirateProductActionsHtml?.(productHref, safeProductId) || ""
+      }
     </article>
   `;
 }
