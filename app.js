@@ -73,6 +73,48 @@ const SELECTED_PRODUCT_KEY = "emirate_selected_product";
 const FEED_BATCH = 8; // products per batch
 let feedIndex = 0;
 const allProductsByTitle = new Map();
+let homeStorefrontReady = false;
+
+function isLiveStorefront() {
+  return !!(window.emirateSupabaseApi?.isConfigured?.());
+}
+
+function setHomeStorefrontLoading(loading) {
+  document.body.classList.toggle("home-storefront-loading", !!loading);
+  const heroSlider = document.querySelector(".hero-slider");
+  if (heroSlider) heroSlider.setAttribute("aria-busy", loading ? "true" : "false");
+}
+
+function renderCarouselSkeletonCard() {
+  return `
+    <article class="product-card product-card--skeleton" aria-hidden="true">
+      <div class="product-card-top">
+        <div class="product-image"></div>
+      </div>
+      <h3 class="product-title">—</h3>
+      <div class="product-rating">—</div>
+      <div class="product-price-row"><span class="product-price">—</span></div>
+      <div class="product-installment">—</div>
+      <div class="product-actions"><span class="add-to-cart-btn">—</span></div>
+    </article>
+  `;
+}
+
+function renderHomeCarouselSkeletons() {
+  const skeleton = renderCarouselSkeletonCard().repeat(4);
+  ["carouselSmartphones", "carouselAppliances", "carouselAccessories"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = skeleton;
+  });
+}
+
+function updateCategorySectionsVisibility() {
+  document.querySelectorAll(".category-section").forEach((section) => {
+    const track = section.querySelector(".carousel-track");
+    const count = track ? track.querySelectorAll(".product-card:not(.product-card--skeleton)").length : 0;
+    section.hidden = count === 0;
+  });
+}
 
 function escapeHtmlAttr(value) {
   return String(value)
@@ -248,6 +290,50 @@ function applyAdminProductsToHomeData() {
   applyProductsToHomeData(adminItems);
 }
 
+function mapRemoteCatalogToHomeCard(item) {
+  const priceNum = parseMoney(item.price);
+  const oldPriceNum = parseMoney(item.oldPrice) || priceNum;
+  return {
+    title: item.title || "Товар",
+    price: formatMoney(priceNum),
+    oldPrice: formatMoney(oldPriceNum),
+    discount: oldPriceNum > priceNum
+      ? `-${Math.max(0, Math.round((1 - priceNum / Math.max(oldPriceNum, 1)) * 100))}%`
+      : "",
+    rating: Number(item.rating || 4.6),
+    reviews: Number(item.reviews || 0),
+    installment: formatMoney(Math.round(priceNum / 12)),
+    badge: item.badge || "new",
+    image: item.image || "",
+    photos: Array.isArray(item.photos) ? item.photos.filter(Boolean) : [],
+    descUz: String(item.descUz || "").trim(),
+    descRu: String(item.descRu || "").trim(),
+    specs: Array.isArray(item.specs) ? item.specs : [],
+    colors: Array.isArray(item.colors) ? item.colors : [],
+    colorMeta: item.colorMeta || {},
+    brand: item.brand || "",
+    category: item.category || "",
+    installmentStatus: item.installmentStatus === "inactive" ? "inactive" : "active",
+    express: item.express === "yes" ? "yes" : "no",
+    priority: Number(item.priority) || 300
+  };
+}
+
+function replaceHomeProductsFromRemote(items) {
+  productData.smartphones = [];
+  productData.appliances = [];
+  productData.accessories = [];
+  (items || []).forEach((item) => {
+    const card = mapRemoteCatalogToHomeCard(item);
+    const key = mapAdminCategoryToHomeKey(card.category);
+    const list = productData[key] || productData.accessories;
+    list.push(card);
+  });
+  Object.values(productData).forEach((list) => {
+    list.sort((a, b) => (Number(a.priority) || 300) - (Number(b.priority) || 300));
+  });
+}
+
 function applyProductsToHomeData(items) {
   if (!items.length) return;
   const allCategoryLists = Object.values(productData);
@@ -282,8 +368,6 @@ function applyProductsToHomeData(items) {
     list.sort((a, b) => (Number(a.priority) || 300) - (Number(b.priority) || 300));
   });
 }
-
-applyAdminProductsToHomeData();
 
 function defaultHomeBanners() {
   return [
@@ -395,7 +479,12 @@ function renderHeroBanners() {
   if (!heroSlider) return;
 
   const banners = loadHomeBanners();
-  const safeBanners = banners.length ? banners : defaultHomeBanners();
+  const safeBanners = banners.length
+    ? banners
+    : isLiveStorefront() && !homeStorefrontReady
+      ? []
+      : defaultHomeBanners();
+  if (!safeBanners.length) return;
 
   const slidesHtml = safeBanners.map((banner, index) => {
     const hasImage = Boolean(banner.image);
@@ -467,21 +556,6 @@ function renderHeroBanners() {
 
   startHeroAutoplay();
 }
-
-renderHeroBanners();
-
-void (async () => {
-  const api = window.emirateSupabaseApi;
-  if (!api || !api.isConfigured()) return;
-  try {
-    const remote = await api.fetchPublicHomeBanners();
-    if (!remote.length) return;
-    remoteHomeBannersCache = remote;
-    renderHeroBanners();
-  } catch (err) {
-    console.warn("[Supabase] home banners", err);
-  }
-})();
 
 function rebuildAllProductsIndex() {
   allProductsByTitle.clear();
@@ -623,47 +697,53 @@ function renderInitialCarousels() {
   }
 }
 
-renderInitialCarousels();
-
-void (async () => {
-  const api = window.emirateSupabaseApi;
-  if (!api || !api.isConfigured()) return;
-  try {
-    const remote = await api.fetchPublicCatalogProducts();
-    if (!remote.length) return;
-    const mapped = remote.map((item) => {
-      const priceNum = parseMoney(item.price);
-      const oldPriceNum = parseMoney(item.oldPrice) || priceNum;
-      return {
-        title: item.title || "Товар",
-        price: formatMoney(priceNum),
-        oldPrice: formatMoney(oldPriceNum),
-        discount: oldPriceNum > priceNum ? `-${Math.max(0, Math.round((1 - priceNum / Math.max(oldPriceNum, 1)) * 100))}%` : "",
-        rating: Number(item.rating || 4.6),
-        reviews: Number(item.reviews || 0),
-        installment: formatMoney(Math.round(priceNum / 12)),
-        badge: item.badge || "new",
-        image: item.image || "",
-        photos: Array.isArray(item.photos) ? item.photos.filter(Boolean) : [],
-        descUz: String(item.descUz || "").trim(),
-        descRu: String(item.descRu || "").trim(),
-        specs: Array.isArray(item.specs) ? item.specs : [],
-        colors: Array.isArray(item.colors) ? item.colors : [],
-        colorMeta: item.colorMeta || {},
-        brand: item.brand || "",
-        category: item.category || "",
-        installmentStatus: item.installmentStatus === "inactive" ? "inactive" : "active",
-        express: item.express === "yes" ? "yes" : "no",
-        priority: Number(item.priority) || 300
-      };
-    });
-    applyProductsToHomeData(mapped);
+async function initHomeStorefront() {
+  if (!isLiveStorefront()) {
+    applyAdminProductsToHomeData();
     rebuildAllProductsIndex();
+    homeStorefrontReady = true;
+    renderHeroBanners();
     renderInitialCarousels();
-  } catch (err) {
-    console.warn("[Supabase] home", err);
+    updateCategorySectionsVisibility();
+    return;
   }
-})();
+
+  setHomeStorefrontLoading(true);
+  productData.smartphones = [];
+  productData.appliances = [];
+  productData.accessories = [];
+  renderHomeCarouselSkeletons();
+
+  const api = window.emirateSupabaseApi;
+  try {
+    const [remoteBanners, remoteProducts] = await Promise.all([
+      api.fetchPublicHomeBanners(),
+      api.fetchPublicCatalogProducts()
+    ]);
+
+    if (Array.isArray(remoteBanners) && remoteBanners.length) {
+      remoteHomeBannersCache = remoteBanners;
+    }
+
+    if (Array.isArray(remoteProducts) && remoteProducts.length) {
+      replaceHomeProductsFromRemote(remoteProducts);
+      rebuildAllProductsIndex();
+    }
+  } catch (err) {
+    console.warn("[Supabase] home storefront", err);
+  } finally {
+    homeStorefrontReady = true;
+    setHomeStorefrontLoading(false);
+    renderHeroBanners();
+    renderInitialCarousels();
+    updateCategorySectionsVisibility();
+    if (typeof translatePage === "function") {
+      translatePage();
+    }
+  }
+}
+
+void initHomeStorefront();
 
 // ===== LAZY LOADING — product feed via IntersectionObserver =====
 const feedSection = document.getElementById("feedSection");
