@@ -7,9 +7,17 @@
 // ===== PRODUCT DATA BY CATEGORY (filled from Supabase or admin localStorage) =====
 const productData = {
   smartphones: [],
+  laptops: [],
   appliances: [],
   accessories: []
 };
+
+const HOME_CAROUSEL_IDS = [
+  "carouselSmartphones",
+  "carouselLaptops",
+  "carouselAppliances",
+  "carouselAccessories"
+];
 
 const feedProducts = [];
 
@@ -49,7 +57,7 @@ function renderCarouselSkeletonCard() {
 
 function renderHomeCarouselSkeletons() {
   const skeleton = renderCarouselSkeletonCard().repeat(4);
-  ["carouselSmartphones", "carouselAppliances", "carouselAccessories"].forEach((id) => {
+  HOME_CAROUSEL_IDS.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = skeleton;
   });
@@ -134,8 +142,9 @@ function saveSelectedProduct(product) {
 function mapAdminCategoryToHomeKey(category) {
   const value = String(category || "").toLowerCase();
   if (value.includes("\u0441\u043c\u0430\u0440\u0442\u0444")) return "smartphones";
+  if (value.includes("\u043d\u043e\u0443\u0442\u0431") || value.includes("\u043d\u043e\u0443\u0442")) return "laptops";
+  if (value.includes("\u0430\u043a\u0441\u0435\u0441\u0441") || value.includes("\u043a\u0440\u0430\u0441\u043e\u0442")) return "accessories";
   if (value.includes("\u0442\u0432") || value.includes("\u0430\u0443\u0434\u0438\u043e")) return "appliances";
-  if (value.includes("\u043d\u043e\u0443\u0442")) return "accessories";
   if (value.includes("\u0442\u0435\u0445\u043d\u0438\u043a") || value.includes("\u0434\u043e\u043c")) return "appliances";
   return "accessories";
 }
@@ -235,6 +244,7 @@ function getAdminProductsForStorefront() {
 
 function applyLocalAdminProductsToHome() {
   productData.smartphones = [];
+  productData.laptops = [];
   productData.appliances = [];
   productData.accessories = [];
   const adminItems = getAdminProductsForStorefront();
@@ -282,6 +292,7 @@ function mapRemoteCatalogToHomeCard(item) {
 
 function replaceHomeProductsFromRemote(items) {
   productData.smartphones = [];
+  productData.laptops = [];
   productData.appliances = [];
   productData.accessories = [];
   (items || []).forEach((item) => {
@@ -632,6 +643,7 @@ function initCarousel(trackEl) {
 function renderInitialCarousels() {
   const map = {
     smartphones: document.getElementById("carouselSmartphones"),
+    laptops: document.getElementById("carouselLaptops"),
     appliances: document.getElementById("carouselAppliances"),
     accessories: document.getElementById("carouselAccessories")
   };
@@ -658,6 +670,7 @@ async function initHomeStorefront() {
 
   setHomeStorefrontLoading(true);
   productData.smartphones = [];
+  productData.laptops = [];
   productData.appliances = [];
   productData.accessories = [];
   renderHomeCarouselSkeletons();
