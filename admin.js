@@ -608,7 +608,7 @@ function collectProductMediaUrls(product) {
 }
 
 async function deleteProductAndSync(id) {
-  if (!confirm('РЈРґР°Р»РёС‚СЊ СЌС‚РѕС‚ С‚РѕРІР°СЂ?')) return;
+  if (!confirm('Удалить этот товар?')) return;
   const removedProduct = productsData.find((p) => p.id === id) || null;
   productsData = productsData.filter((p) => p.id !== id);
   if (!await persistProductsData()) return;
