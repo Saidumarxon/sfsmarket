@@ -543,6 +543,8 @@ function rebuildAllProductsIndex() {
 
 rebuildAllProductsIndex();
 
+window.emirateLookupProduct = (title) => allProductsByTitle.get(title);
+
 // ===== RENDER PRODUCT CARD =====
 function renderProductCard(product) {
   const productId = product.title;

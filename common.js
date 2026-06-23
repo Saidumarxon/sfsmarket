@@ -390,7 +390,7 @@ function emirateProductInstallmentHtml(product, installmentValue) {
 function emirateProductActionsHtml(productHref, safeProductId) {
   return `
     <div class="product-actions">
-      <a class="product-buy-btn product-link" href="${productHref}">Купить</a>
+      <button class="product-buy-btn quick-buy-open" type="button" data-product-title="${safeProductId}">Купить</button>
       <button class="product-cart-icon-btn add-to-cart-btn" type="button" title="В корзину" aria-label="В корзину">
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
@@ -429,6 +429,247 @@ window.emirateProductPriceHtml = emirateProductPriceHtml;
 window.emirateProductInstallmentHtml = emirateProductInstallmentHtml;
 window.emirateProductActionsHtml = emirateProductActionsHtml;
 window.emirateParsePriceValue = emirateParsePriceValue;
+
+function escapeQuickBuyHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildQuickBuyProductFromCard(card) {
+  if (!card) return null;
+  const title =
+    card.getAttribute("data-product-title") ||
+    card.getAttribute("data-product-id") ||
+    card.querySelector(".product-title")?.textContent?.trim() ||
+    "";
+  if (!title) return null;
+  const price = emirateParsePriceValue(
+    card.querySelector(".product-price-value")?.textContent ||
+      card.querySelector(".product-price")?.textContent
+  );
+  const imageEl = card.querySelector(".product-image-real");
+  const media = window.emirateResolveProductMedia?.({ title, image: imageEl?.getAttribute("src") || "" });
+  return normalizeViewedProduct({
+    title,
+    price,
+    image: media?.image || imageEl?.getAttribute("src") || "",
+    brand: "",
+    category: "",
+    rating: Number(card.querySelector(".product-rating-num")?.textContent) || 0,
+    reviews: Number((card.querySelector(".product-reviews")?.textContent || "").replace(/[^\d]/g, "")) || 0
+  });
+}
+
+function resolveQuickBuyProduct(card, triggerBtn) {
+  const title =
+    triggerBtn?.getAttribute("data-product-title") ||
+    card?.getAttribute("data-product-title") ||
+    card?.getAttribute("data-product-id") ||
+    "";
+  if (title && typeof window.emirateLookupProduct === "function") {
+    const found = window.emirateLookupProduct(title);
+    if (found) return normalizeViewedProduct(found);
+  }
+  return buildQuickBuyProductFromCard(card);
+}
+
+let quickBuyState = { product: null, qty: 1 };
+
+function formatQuickBuyMoney(value) {
+  return `${emirateParsePriceValue(value).toLocaleString("ru-RU")} сум`;
+}
+
+function normalizeQuickBuyPhone(raw) {
+  const digits = String(raw || "").replace(/\D/g, "");
+  if (!digits) return "";
+  const local = digits.startsWith("998") ? digits.slice(3) : digits;
+  if (local.length !== 9) return "";
+  return `+998${local}`;
+}
+
+function renderQuickBuySummary() {
+  const product = quickBuyState.product;
+  if (!product) return;
+  const imageEl = document.getElementById("quickBuyImage");
+  const titleEl = document.getElementById("quickBuyTitle");
+  const priceEl = document.getElementById("quickBuyPrice");
+  const qtyEl = document.getElementById("quickBuyQty");
+  const media = window.emirateResolveProductMedia?.(product);
+  if (imageEl) {
+    imageEl.src = media?.image || product.image || "";
+    imageEl.alt = product.title;
+  }
+  if (titleEl) titleEl.textContent = product.title;
+  if (priceEl) priceEl.textContent = formatQuickBuyMoney(product.price * quickBuyState.qty);
+  if (qtyEl) qtyEl.textContent = String(quickBuyState.qty);
+}
+
+function ensureQuickBuyModal() {
+  if (document.getElementById("quickBuyModal")) return;
+
+  const overlay = document.createElement("div");
+  overlay.id = "quickBuyModal";
+  overlay.className = "quick-buy-modal";
+  overlay.hidden = true;
+  overlay.innerHTML = `
+    <div class="quick-buy-dialog" role="dialog" aria-modal="true" aria-labelledby="quickBuyTitle">
+      <div class="quick-buy-header">
+        <h2 class="quick-buy-heading">Купить в один клик</h2>
+        <button type="button" class="quick-buy-close" id="quickBuyClose" aria-label="Закрыть">×</button>
+      </div>
+      <div class="quick-buy-product">
+        <img id="quickBuyImage" class="quick-buy-image" src="" alt="">
+        <div class="quick-buy-product-main">
+          <div id="quickBuyTitle" class="quick-buy-product-title"></div>
+          <div class="quick-buy-price-row">
+            <div id="quickBuyPrice" class="quick-buy-price"></div>
+            <div class="quick-buy-qty" aria-label="Количество">
+              <button type="button" class="quick-buy-qty-btn" id="quickBuyQtyMinus" aria-label="Меньше">−</button>
+              <span id="quickBuyQty" class="quick-buy-qty-value">1</span>
+              <button type="button" class="quick-buy-qty-btn" id="quickBuyQtyPlus" aria-label="Больше">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <form id="quickBuyForm" class="quick-buy-form">
+        <label class="quick-buy-field">
+          <span class="quick-buy-label">Номер телефона</span>
+          <div class="quick-buy-phone-row">
+            <span class="quick-buy-phone-prefix">+998</span>
+            <input type="tel" id="quickBuyPhone" name="phone" inputmode="numeric" autocomplete="tel" placeholder="90 123 45 67" maxlength="12" required>
+          </div>
+        </label>
+        <label class="quick-buy-field">
+          <span class="quick-buy-label">Имя и фамилия</span>
+          <input type="text" id="quickBuyName" name="full_name" autocomplete="name" placeholder="Введите имя и фамилию" required>
+        </label>
+        <div class="quick-buy-actions">
+          <button type="submit" class="quick-buy-submit" id="quickBuySubmit">Купить</button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) closeQuickBuyModal();
+  });
+  document.getElementById("quickBuyClose")?.addEventListener("click", closeQuickBuyModal);
+  document.getElementById("quickBuyQtyMinus")?.addEventListener("click", () => {
+    quickBuyState.qty = Math.max(1, quickBuyState.qty - 1);
+    renderQuickBuySummary();
+  });
+  document.getElementById("quickBuyQtyPlus")?.addEventListener("click", () => {
+    quickBuyState.qty = Math.min(99, quickBuyState.qty + 1);
+    renderQuickBuySummary();
+  });
+  document.getElementById("quickBuyForm")?.addEventListener("submit", submitQuickBuyOrder);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !overlay.hidden) closeQuickBuyModal();
+  });
+}
+
+function openQuickBuyModal(product, qty = 1) {
+  const normalized = normalizeViewedProduct({
+    ...product,
+    price: emirateParsePriceValue(product?.price),
+    oldPrice: emirateParsePriceValue(product?.oldPrice)
+  });
+  if (!normalized) return;
+  ensureQuickBuyModal();
+  quickBuyState = { product: normalized, qty: Math.max(1, Math.min(99, Number(qty) || 1)) };
+  const overlay = document.getElementById("quickBuyModal");
+  const phoneEl = document.getElementById("quickBuyPhone");
+  const nameEl = document.getElementById("quickBuyName");
+  if (phoneEl) phoneEl.value = "";
+  if (nameEl) nameEl.value = "";
+  renderQuickBuySummary();
+  if (overlay) {
+    overlay.hidden = false;
+    document.body.classList.add("quick-buy-open");
+    phoneEl?.focus();
+  }
+}
+
+function closeQuickBuyModal() {
+  const overlay = document.getElementById("quickBuyModal");
+  if (!overlay) return;
+  overlay.hidden = true;
+  document.body.classList.remove("quick-buy-open");
+  quickBuyState = { product: null, qty: 1 };
+}
+
+async function submitQuickBuyOrder(event) {
+  event.preventDefault();
+  const product = quickBuyState.product;
+  if (!product) return;
+
+  const phoneRaw = document.getElementById("quickBuyPhone")?.value || "";
+  const fullName = String(document.getElementById("quickBuyName")?.value || "").trim();
+  const phone = normalizeQuickBuyPhone(phoneRaw);
+  if (!phone) {
+    alert("Введите номер телефона в формате 90 123 45 67");
+    return;
+  }
+  if (!fullName) {
+    alert("Введите имя и фамилию");
+    return;
+  }
+
+  const submitBtn = document.getElementById("quickBuySubmit");
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Отправка...";
+  }
+
+  const qty = quickBuyState.qty;
+  const lineTotal = emirateParsePriceValue(product.price) * qty;
+  const orderRow = {
+    phone,
+    full_name: fullName,
+    region: "",
+    city: "",
+    address: "",
+    comment_text: "Быстрый заказ с сайта",
+    delivery_method: "quick_buy",
+    payment_method: "callback",
+    items: [{ ...product, qty }],
+    total_amount: lineTotal
+  };
+
+  try {
+    if (window.emirateSupabaseApi?.isConfigured?.()) {
+      const res = await window.emirateSupabaseApi.insertOrder(orderRow);
+      if (!res?.ok) {
+        alert("Не удалось отправить заказ. Попробуйте позже или позвоните нам.\n" + (res?.error || ""));
+        return;
+      }
+    }
+    alert("Заказ принят! Мы свяжемся с вами в ближайшее время.");
+    closeQuickBuyModal();
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Купить";
+    }
+  }
+}
+
+document.addEventListener("click", (event) => {
+  const btn = event.target.closest(".quick-buy-open");
+  if (!btn) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const card = btn.closest(".product-card");
+  const product = resolveQuickBuyProduct(card, btn);
+  if (product) openQuickBuyModal(product, 1);
+});
+
+window.emirateOpenQuickBuy = openQuickBuyModal;
+window.emirateCloseQuickBuy = closeQuickBuyModal;
 window.emirateIncrementCart = incrementCart;
 window.emirateAddToCart = addToCart;
 window.emirateSetCartQty = setCartQty;

@@ -145,6 +145,8 @@ function buildSourceProducts(remoteList) {
 
 let sourceProducts = buildSourceProducts([]);
 
+window.emirateLookupProduct = (title) => sourceProducts.find((item) => item.title === title);
+
 function money(value) {
   return value.toLocaleString("ru-RU") + " сум";
 }

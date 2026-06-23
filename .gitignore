@@ -20,6 +20,11 @@
 # production
 /build
 
+# capacitor mobile app
+/www
+/android
+/ios
+
 # misc
 .DS_Store
 *.pem

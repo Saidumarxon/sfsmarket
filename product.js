@@ -503,21 +503,7 @@ addToCartBtn?.addEventListener("click", () => {
 });
 
 buyNowBtn?.addEventListener("click", () => {
-  window.emirateAddToCart?.(currentProduct, qty);
-  buyNowBtn.innerHTML = `
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path d="M20 6L9 17l-5-5"/>
-    </svg>
-    Оформляем...
-  `;
-  setTimeout(() => {
-    buyNowBtn.innerHTML = `
-      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-      </svg>
-      Купить сейчас
-    `;
-  }, 1500);
+  window.emirateOpenQuickBuy?.(currentProduct, qty);
 });
 
 productThumbsEl?.addEventListener("click", (event) => {

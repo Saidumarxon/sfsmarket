@@ -63,7 +63,9 @@
     }
 
     try {
-      var res = await fetch("/api/nbu-usd-sell");
+      var apiBase = String(window.emirateApiBase || "").replace(/\/+$/, "");
+      var apiPath = "/api/nbu-usd-sell";
+      var res = await fetch(apiBase ? apiBase + apiPath : apiPath);
       var data = await res.json();
       if (data && data.ok && data.rate > 0) {
         state.rate = Number(data.rate);

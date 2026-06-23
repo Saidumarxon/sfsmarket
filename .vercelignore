@@ -12,5 +12,7 @@
 !api/**
 !images
 !images/**
-!supabase
-!supabase/**
+!icons
+!icons/**
+!mobile
+!mobile/**
