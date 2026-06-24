@@ -6,12 +6,40 @@ const SUPABASE_URL = String(process.env.SUPABASE_URL || "https://efoujwgalbnfrod
 const DEFAULT_SUPABASE_ANON =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmb3Vqd2dhbGJuZnJvZGdrcXlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NjM0MDcsImV4cCI6MjA5NDIzOTQwN30.NbE5q-vi1YTlp7hGvGZmRGZgjnv2SW1S6kYfQMT5KBU";
 const SUPABASE_ANON = String(process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON).trim();
+const SUPABASE_SERVICE = String(
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || ""
+).trim();
 const BOT_TOKEN = String(process.env.TELEGRAM_BOT_TOKEN || "").trim();
 const WEBHOOK_SECRET = String(process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+const ADMIN_CHAT_IDS = parseIdList(process.env.TELEGRAM_ADMIN_CHAT_ID);
+const ADMIN_USER_IDS = parseIdList(process.env.TELEGRAM_ADMIN_USER_IDS);
 const PHONE = String(process.env.EMIRATE_CONTACT_PHONE || "+998508868844").trim();
 const MARKUP = 1.2;
 const CACHE_MS = 5 * 60 * 1000;
 const OG_IMAGE = SITE + "/images/og-emirate.png?v=3";
+
+const ORDER_STATUS_LABELS = {
+  processing: "⏳ В обработке",
+  ready_to_ship: "📦 Готов к перевозке",
+  out_of_stock: "❌ Нет в наличии",
+  successful: "✅ Выполнен",
+};
+
+function parseIdList(value) {
+  return String(value || "")
+    .split(/[,;\s]+/)
+    .map(function (part) {
+      return part.trim();
+    })
+    .filter(Boolean);
+}
+
+function shortOrderId(id) {
+  return String(id || "")
+    .replace(/-/g, "")
+    .slice(0, 8)
+    .toUpperCase();
+}
 
 /** Русские/узбекские запросы → латиница в каталоге */
 const SEARCH_SYNONYMS = {
@@ -230,6 +258,295 @@ function escapeHtml(text) {
     .replace(/>/g, "&gt;");
 }
 
+function hasAdminTargets() {
+  return ADMIN_CHAT_IDS.length > 0 || ADMIN_USER_IDS.length > 0;
+}
+
+function isAdmin(chatId, userId) {
+  if (!hasAdminTargets()) return false;
+  if (ADMIN_CHAT_IDS.indexOf(String(chatId)) !== -1) return true;
+  if (userId != null && ADMIN_USER_IDS.indexOf(String(userId)) !== -1) return true;
+  return false;
+}
+
+function normalizeOrderStatus(value) {
+  const status = String(value || "processing").trim().toLowerCase();
+  return ORDER_STATUS_LABELS[status] ? status : "processing";
+}
+
+function normalizeOrder(row) {
+  if (!row || typeof row !== "object") return null;
+  const items = Array.isArray(row.items) ? row.items : [];
+  return {
+    id: String(row.id || "").trim(),
+    phone: String(row.phone || "").trim(),
+    full_name: String(row.full_name || row.fullName || "").trim(),
+    region: String(row.region || "").trim(),
+    city: String(row.city || "").trim(),
+    address: String(row.address || "").trim(),
+    comment_text: String(row.comment_text || row.comment || "").trim(),
+    delivery_method: String(row.delivery_method || row.delivery || "").trim(),
+    payment_method: String(row.payment_method || row.payment || "").trim(),
+    items: items,
+    total_amount: Number(row.total_amount != null ? row.total_amount : row.total) || 0,
+    status: normalizeOrderStatus(row.status),
+    created_at: row.created_at || "",
+  };
+}
+
+async function supabaseServiceFetch(path, options) {
+  if (!SUPABASE_SERVICE) return null;
+  const res = await fetch(SUPABASE_URL + path, Object.assign(
+    {
+      headers: {
+        apikey: SUPABASE_SERVICE,
+        Authorization: "Bearer " + SUPABASE_SERVICE,
+        Accept: "application/json",
+      },
+    },
+    options || {}
+  ));
+  if (!res.ok) {
+    console.error("[telegram-lib] supabaseServiceFetch", res.status, path);
+    return null;
+  }
+  return res.json();
+}
+
+async function fetchOrderById(orderId) {
+  const id = String(orderId || "").trim();
+  if (!id || !SUPABASE_SERVICE) return null;
+  const rows = await supabaseServiceFetch(
+    "/rest/v1/orders?id=eq." + encodeURIComponent(id) + "&select=*&limit=1"
+  );
+  if (!Array.isArray(rows) || !rows.length) return null;
+  return normalizeOrder(rows[0]);
+}
+
+async function fetchRecentOrders(limit) {
+  const max = limit || 10;
+  if (!SUPABASE_SERVICE) return [];
+  const rows = await supabaseServiceFetch(
+    "/rest/v1/orders?select=*&order=created_at.desc&limit=" + max
+  );
+  if (!Array.isArray(rows)) return [];
+  return rows.map(normalizeOrder).filter(function (row) {
+    return row && row.id;
+  });
+}
+
+async function updateOrderStatus(orderId, status) {
+  const id = String(orderId || "").trim();
+  const next = normalizeOrderStatus(status);
+  if (!id || !SUPABASE_SERVICE) return false;
+  const res = await fetch(SUPABASE_URL + "/rest/v1/orders?id=eq." + encodeURIComponent(id), {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_SERVICE,
+      Authorization: "Bearer " + SUPABASE_SERVICE,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ status: next }),
+  });
+  return res.ok;
+}
+
+function formatOrderItems(order) {
+  const items = order.items || [];
+  if (!items.length) return "• (пусто)";
+  return items
+    .slice(0, 10)
+    .map(function (item) {
+      const title = escapeHtml(String(item.title || item.name || "Товар"));
+      const qty = Number(item.qty) || 1;
+      return "• " + title + " × " + qty;
+    })
+    .join("\n");
+}
+
+function formatOrderMessage(order, options) {
+  const opts = options || {};
+  const title = opts.title || "🛒 Заказ";
+  const idLabel = order.id ? "#" + shortOrderId(order.id) : "";
+  const statusLabel = ORDER_STATUS_LABELS[order.status] || ORDER_STATUS_LABELS.processing;
+  const lines = [
+    "<b>" + title + " " + idLabel + "</b>",
+    "",
+    "👤 " + escapeHtml(order.full_name || "—") + " · " + escapeHtml(order.phone || "—"),
+  ];
+  const location = [order.region, order.city, order.address].filter(Boolean).join(", ");
+  if (location) lines.push("📍 " + escapeHtml(location));
+  lines.push("💰 <b>" + formatSum(order.total_amount) + "</b>");
+  lines.push("📦 " + (order.items || []).length + " поз.");
+  lines.push("");
+  lines.push(formatOrderItems(order));
+  if (order.delivery_method) lines.push("\n🚚 " + escapeHtml(order.delivery_method));
+  if (order.payment_method) lines.push("💳 " + escapeHtml(order.payment_method));
+  if (order.comment_text) lines.push("💬 " + escapeHtml(order.comment_text));
+  lines.push("\nСтатус: " + statusLabel);
+  if (order.id) {
+    lines.push("\n<code>" + escapeHtml(order.id) + "</code>");
+  }
+  return lines.join("\n");
+}
+
+function orderActionKeyboard(orderId) {
+  const id = String(orderId || "").trim();
+  if (!id) return undefined;
+  return {
+    inline_keyboard: [
+      [
+        { text: "⏳ В обработке", callback_data: "ost:" + id + ":processing" },
+        { text: "📦 Готов", callback_data: "ost:" + id + ":ready_to_ship" },
+      ],
+      [
+        { text: "✅ Выполнен", callback_data: "ost:" + id + ":successful" },
+        { text: "📋 Заказы", callback_data: "cmd:orders" },
+      ],
+    ],
+  };
+}
+
+async function notifyAdminNewOrder(order) {
+  if (!hasAdminTargets()) return { ok: false, reason: "no_admin" };
+  const normalized = normalizeOrder(order);
+  if (!normalized) return { ok: false, reason: "invalid_order" };
+  const text = formatOrderMessage(normalized, { title: "🛒 Новый заказ" });
+  const targets = ADMIN_CHAT_IDS.length ? ADMIN_CHAT_IDS : ADMIN_USER_IDS;
+  for (let i = 0; i < targets.length; i++) {
+    await sendMessage(targets[i], text, {
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: orderActionKeyboard(normalized.id),
+    });
+  }
+  return { ok: true };
+}
+
+async function sendOrdersList(chatId) {
+  if (!SUPABASE_SERVICE) {
+    await sendMessage(
+      chatId,
+      "Список заказов недоступен: добавьте <code>SUPABASE_SERVICE_ROLE_KEY</code> в Vercel.",
+      { parse_mode: "HTML" }
+    );
+    return;
+  }
+  const orders = await fetchRecentOrders(10);
+  if (!orders.length) {
+    await sendMessage(chatId, "Заказов пока нет.");
+    return;
+  }
+  let text = "<b>📋 Последние заказы</b>\n\n";
+  orders.forEach(function (order, index) {
+    text +=
+      "<b>" +
+      (index + 1) +
+      ".</b> #" +
+      shortOrderId(order.id) +
+      " · " +
+      formatSum(order.total_amount) +
+      "\n" +
+      escapeHtml(order.full_name || "—") +
+      " · " +
+      escapeHtml(order.phone || "—") +
+      "\n" +
+      (ORDER_STATUS_LABELS[order.status] || order.status) +
+      "\n\n";
+  });
+  text += "Подробнее: /order &lt;id&gt;";
+  await sendMessage(chatId, text, { parse_mode: "HTML", disable_web_page_preview: true });
+}
+
+async function sendOrderDetail(chatId, orderRef) {
+  const ref = String(orderRef || "").trim();
+  if (!ref) {
+    await sendMessage(chatId, "Укажите ID: /order UUID");
+    return;
+  }
+  if (!SUPABASE_SERVICE) {
+    await sendMessage(chatId, "Нужен SUPABASE_SERVICE_ROLE_KEY в Vercel.");
+    return;
+  }
+  let order = await fetchOrderById(ref);
+  if (!order && ref.length <= 8) {
+    const orders = await fetchRecentOrders(50);
+    order =
+      orders.find(function (item) {
+        return shortOrderId(item.id) === ref.toUpperCase();
+      }) || null;
+  }
+  if (!order) {
+    await sendMessage(chatId, "Заказ не найден.");
+    return;
+  }
+  await sendMessage(chatId, formatOrderMessage(order, { title: "🛒 Заказ" }), {
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: orderActionKeyboard(order.id),
+  });
+}
+
+function adminHelpText() {
+  return (
+    "<b>🔐 Панель администратора</b>\n\n" +
+    "/orders — последние 10 заказов\n" +
+    "/order &lt;id&gt; — детали заказа\n" +
+    "/myid — ваш chat_id для настройки\n\n" +
+    "Новые заказы с сайта приходят автоматически.\n" +
+    "Кнопки под заказом меняют статус."
+  );
+}
+
+async function handleCallbackQuery(query) {
+  const chatId = query.message && query.message.chat && query.message.chat.id;
+  const userId = query.from && query.from.id;
+  if (!isAdmin(chatId, userId)) {
+    await tgApi("answerCallbackQuery", {
+      callback_query_id: query.id,
+      text: "Нет доступа",
+      show_alert: true,
+    });
+    return;
+  }
+  const data = String(query.data || "");
+  await tgApi("answerCallbackQuery", { callback_query_id: query.id }).catch(function () {});
+
+  if (data === "cmd:orders") {
+    await sendOrdersList(chatId);
+    return;
+  }
+  if (data.indexOf("ost:") === 0) {
+    const parts = data.split(":");
+    const orderId = parts[1];
+    const status = parts[2];
+    const ok = await updateOrderStatus(orderId, status);
+    if (!ok) {
+      await sendMessage(chatId, "Не удалось обновить статус. Проверьте SUPABASE_SERVICE_ROLE_KEY.");
+      return;
+    }
+    const order = await fetchOrderById(orderId);
+    if (order && query.message) {
+      await tgApi("editMessageText", {
+        chat_id: chatId,
+        message_id: query.message.message_id,
+        text: formatOrderMessage(order, { title: "🛒 Заказ обновлён" }),
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: orderActionKeyboard(orderId),
+      }).catch(function () {
+        return sendMessage(chatId, formatOrderMessage(order, { title: "🛒 Заказ обновлён" }), {
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          reply_markup: orderActionKeyboard(orderId),
+        });
+      });
+    }
+  }
+}
+
 function welcomeText() {
   return (
     "Добро пожаловать в <b>Emirate Co</b>!\n\n" +
@@ -302,10 +619,39 @@ function truncate(text, max) {
   return s.slice(0, max - 1) + "…";
 }
 
-async function handleCommand(chatId, command, args) {
+async function handleCommand(chatId, command, args, userId) {
   const cmd = String(command || "").toLowerCase();
+  if (cmd === "myid") {
+    await sendMessage(
+      chatId,
+      "Ваш chat_id: <code>" + chatId + "</code>\nuser_id: <code>" + (userId != null ? userId : "—") + "</code>",
+      { parse_mode: "HTML" }
+    );
+    return;
+  }
+  if (isAdmin(chatId, userId)) {
+    if (cmd === "admin") {
+      await sendMessage(chatId, adminHelpText(), { parse_mode: "HTML", disable_web_page_preview: true });
+      return;
+    }
+    if (cmd === "orders") {
+      await sendOrdersList(chatId);
+      return;
+    }
+    if (cmd === "order") {
+      await sendOrderDetail(chatId, args);
+      return;
+    }
+  } else if (cmd === "admin" || cmd === "orders" || cmd === "order") {
+    await sendMessage(chatId, "Нет доступа. Для настройки: /myid");
+    return;
+  }
   if (cmd === "start" || cmd === "help") {
-    await sendMessage(chatId, welcomeText(), {
+    let text = welcomeText();
+    if (isAdmin(chatId, userId)) {
+      text += "\n\n🔐 Админ: /admin";
+    }
+    await sendMessage(chatId, text, {
       parse_mode: "HTML",
       reply_markup: mainKeyboard(),
     });
@@ -344,7 +690,7 @@ async function runSearch(chatId, query) {
   await sendMessage(chatId, reply.text, reply.extra || { parse_mode: "HTML", disable_web_page_preview: true });
 }
 
-async function handleText(chatId, text) {
+async function handleText(chatId, text, userId) {
   const raw = String(text || "").trim();
   if (!raw) return;
   if (raw === "🔍 Поиск товара") {
@@ -367,26 +713,31 @@ async function handleText(chatId, text) {
     const parts = raw.split(/\s+/);
     const command = parts[0].slice(1);
     const args = parts.slice(1).join(" ");
-    await handleCommand(chatId, command, args);
+    await handleCommand(chatId, command, args, userId);
     return;
   }
   await runSearch(chatId, raw);
 }
 
 async function handleUpdate(update) {
+  if (update && update.callback_query) {
+    await handleCallbackQuery(update.callback_query);
+    return;
+  }
   const message = update && update.message;
   if (!message || !message.chat) return;
   const chatId = message.chat.id;
+  const userId = message.from && message.from.id;
   const text = message.text || message.caption || "";
   if (!text && !message.contact) return;
-  await handleText(chatId, text);
+  await handleText(chatId, text, userId);
 }
 
 async function registerWebhook(publicUrl) {
   const url = String(publicUrl || SITE + "/api/telegram-webhook").trim();
   const body = {
     url: url,
-    allowed_updates: ["message"],
+    allowed_updates: ["message", "callback_query"],
     drop_pending_updates: true,
   };
   if (WEBHOOK_SECRET) body.secret_token = WEBHOOK_SECRET;
@@ -420,6 +771,7 @@ module.exports = {
   WEBHOOK_SECRET,
   SITE,
   SUPABASE_ANON,
+  hasAdminTargets,
   handleUpdate,
   registerWebhook,
   registerCommands,
@@ -427,4 +779,6 @@ module.exports = {
   verifyWebhookSecret,
   fetchProducts,
   searchProducts,
+  fetchOrderById,
+  notifyAdminNewOrder,
 };

@@ -13,6 +13,7 @@ module.exports = async function handler(req, res) {
       configured: Boolean(bot.BOT_TOKEN),
       webhookSecret: Boolean(bot.WEBHOOK_SECRET),
       supabaseConfigured: Boolean(bot.SUPABASE_ANON),
+      adminConfigured: bot.hasAdminTargets(),
       productsCached: Array.isArray(products) ? products.length : 0,
     });
   }

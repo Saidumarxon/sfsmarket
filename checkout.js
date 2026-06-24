@@ -82,6 +82,11 @@ checkoutFormPageEl?.addEventListener("submit", async (event) => {
       );
       return;
     }
+    fetch("/api/telegram-notify-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId: res.id, order: orderRow }),
+    }).catch(function () {});
   }
 
   alert("Заказ принят! Мы свяжемся с вами в ближайшее время.");
