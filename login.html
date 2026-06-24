@@ -20,17 +20,123 @@
 </head>
 <body class="profile-page">
 
-  <header class="profile-topbar">
+  <header class="header profile-web-only">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">
+        <img class="logo-img" src="images/emirate-logo.svg" alt="Emirate Co" width="160" height="56">
+      </a>
+      <div class="catalog-control">
+        <a class="catalog-btn" href="catalog.html">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <span data-i18n="header.catalog">Каталог</span>
+        </a>
+        <button class="catalog-toggle" id="catalogToggle" type="button" aria-label="Открыть категории" aria-expanded="false">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+      <form class="search-bar" role="search" action="catalog.html" method="get">
+        <svg class="search-icon" width="18" height="18" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="search" name="q" data-i18n-placeholder="header.search" placeholder="Поиск товаров..." autocomplete="off">
+        <button type="submit" data-i18n="header.searchBtn">Найти</button>
+      </form>
+      <div class="header-actions">
+        <a href="catalog.html?favorites=1" class="header-action-btn" title="Избранное">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          <span data-i18n="header.favorites">Избранное</span>
+        </a>
+        <button class="header-action-btn theme-switch" id="themeSwitch" type="button" title="Тема" aria-pressed="false">
+          <svg class="theme-icon theme-icon-moon" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          <svg class="theme-icon theme-icon-sun" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <span data-i18n="header.theme">Тема</span>
+        </button>
+        <button class="header-action-btn lang-switch" id="langSwitch" title="Сменить язык">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          <span data-i18n="topbar.lang">Рус</span>
+        </button>
+        <a href="login.html" class="header-action-btn" title="Профиль">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span data-i18n="header.login">Войти</span>
+        </a>
+        <a href="catalog.html?cart=1" class="header-action-btn cart-action" title="Корзина">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+          <span data-i18n="header.cart">Корзина</span>
+          <i class="cart-badge" id="cartCount">0</i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="catalog-dropdown-backdrop profile-web-only" id="catalogDropdownBackdrop" hidden></div>
+  <div class="catalog-dropdown profile-web-only" id="catalogDropdown">
+    <div class="container catalog-dropdown-inner">
+      <div class="catalog-col">
+        <h4 data-i18n="dropdown.phones">📱 Смартфоны и гаджеты</h4>
+        <a href="catalog.html?category=Смартфоны" data-i18n="dropdown.smartphones">Смартфоны</a>
+        <a href="catalog.html?category=Смартфоны" data-i18n="dropdown.smartwatches">Умные часы</a>
+        <a href="catalog.html?category=Смартфоны" data-i18n="dropdown.accessories">Аксессуары</a>
+      </div>
+      <div class="catalog-col">
+        <h4 data-i18n="dropdown.laptops">💻 Ноутбуки и ПК</h4>
+        <a href="catalog.html?category=Ноутбуки" data-i18n="dropdown.laptop">Ноутбуки</a>
+        <a href="catalog.html?category=Ноутбуки" data-i18n="dropdown.monitors">Мониторы</a>
+      </div>
+      <div class="catalog-col">
+        <h4 data-i18n="dropdown.tv">📺 ТВ и аудио</h4>
+        <a href="catalog.html?category=ТВ" data-i18n="dropdown.tvs">Телевизоры</a>
+        <a href="catalog.html?category=Аудио" data-i18n="dropdown.headphones">Наушники</a>
+      </div>
+      <div class="catalog-col">
+        <h4 data-i18n="dropdown.home">🏠 Для дома</h4>
+        <a href="catalog.html?category=Техника" data-i18n="dropdown.vacuum">Пылесосы</a>
+        <a href="catalog.html?category=Техника" data-i18n="dropdown.kitchen">Кухонная техника</a>
+      </div>
+    </div>
+  </div>
+
+  <header class="profile-topbar profile-app-only">
     <a href="index.html" class="profile-topbar-home">
       <img src="images/emirate-logo.svg" alt="Emirate Co" width="120" height="42">
     </a>
   </header>
 
   <main class="profile-screen">
+    <nav class="profile-breadcrumb profile-web-only" aria-label="Breadcrumb">
+      <a href="index.html" data-i18n="mobnav.home">Главная</a>
+      <span class="profile-breadcrumb-sep">›</span>
+      <span data-i18n="profile.breadcrumbProfile">Профиль</span>
+    </nav>
+
+    <div class="profile-layout">
+      <aside class="profile-sidebar profile-web-only" id="profileSidebar" hidden>
+        <nav class="profile-sidebar-nav">
+          <a href="login.html" class="profile-sidebar-link is-active" data-profile-nav="home">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+            <span data-i18n="profile.sidebarHome">Главная</span>
+          </a>
+          <a href="login.html#orders" class="profile-sidebar-link" data-profile-nav="orders">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+            <span data-i18n="profile.orders">Заказы</span>
+          </a>
+          <a href="login.html#payments" class="profile-sidebar-link" data-profile-nav="payments">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+            <span data-i18n="profile.payments">Платежи</span>
+          </a>
+          <a href="catalog.html?installment=1" class="profile-sidebar-link" data-profile-nav="installments">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <span data-i18n="profile.installments">Рассрочка</span>
+          </a>
+        </nav>
+        <button type="button" class="profile-sidebar-logout" id="profileSidebarLogout">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          <span data-i18n="profile.logout">Выйти</span>
+        </button>
+      </aside>
+
+      <div class="profile-layout-main">
     <div id="profileGuestView">
       <h1 class="profile-guest-title" data-i18n="profile.guestTitle">Войдите, чтобы оформить заказ и смотреть список заказов</h1>
 
-      <div class="profile-menu-group">
+      <div class="profile-menu-group profile-app-only">
       <a href="#" class="profile-menu-item">
         <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
         <span class="profile-menu-label" data-i18n="profile.blog">Блог</span>
@@ -53,7 +159,7 @@
       </a>
     </div>
 
-    <div class="profile-menu-group">
+    <div class="profile-menu-group profile-app-only">
       <a href="tel:+998508868844" class="profile-menu-item">
         <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg>
         <span class="profile-menu-label" data-i18n="profile.contact">Связаться с нами</span>
@@ -154,7 +260,7 @@
         </article>
       </div>
 
-      <div class="profile-menu-group">
+      <div class="profile-menu-group profile-app-only">
         <a href="tel:+998508868844" class="profile-menu-item">
           <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg>
           <span class="profile-menu-label" data-i18n="profile.contact">Связаться с нами</span>
@@ -233,14 +339,40 @@
         </div>
       </form>
     </div>
+    </div>
+    </div>
   </main>
 
-  <div class="profile-bottom-actions" id="profileGuestActions">
+  <footer class="footer profile-web-only">
+    <div class="container footer-inner">
+      <div class="footer-about">
+        <div class="footer-logo"><img class="logo-img" src="images/emirate-logo.svg" alt="Emirate Co" width="160" height="56"></div>
+        <p data-i18n="footer.desc">Интернет-магазин электроники, бытовой техники и товаров для дома с доставкой по Узбекистану.</p>
+      </div>
+      <div class="footer-col">
+        <h4 data-i18n="footer.buyers">Покупателям</h4>
+        <a href="catalog.html?installment=1" data-i18n="footer.installmentLink">Рассрочка</a>
+        <a href="#" data-i18n="footer.faq">FAQ</a>
+      </div>
+      <div class="footer-col">
+        <h4 data-i18n="footer.contactsTitle">Контакты</h4>
+        <a href="tel:+998508868844">+998 50 886-88-44</a>
+        <a href="mailto:info@emirateco.uz">info@emirateco.uz</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container footer-bottom-inner">
+        <p data-i18n="footer.copyright">© 2026 Emirate Co. Все права защищены.</p>
+      </div>
+    </div>
+  </footer>
+
+  <div class="profile-bottom-actions profile-app-only" id="profileGuestActions">
     <button type="button" class="profile-login-btn" id="openLoginBtn" data-i18n="header.login">Войти</button>
     <a href="#" class="profile-register-link" id="openRegisterLink" data-i18n="profile.register">Регистрация</a>
   </div>
 
-  <div class="profile-bottom-actions profile-bottom-actions--logged" id="profileLoggedActions" hidden>
+  <div class="profile-bottom-actions profile-bottom-actions--logged profile-app-only" id="profileLoggedActions" hidden>
     <button type="button" class="profile-login-btn profile-logout-btn" id="profileLogoutBtn" data-i18n="profile.logout">Выйти</button>
   </div>
 
@@ -294,7 +426,6 @@
   </div>
 
   <div class="profile-toast" id="profileToast" role="status"></div>
-  <button type="button" id="langSwitch" hidden aria-hidden="true"></button>
 
   <script src="mobile-config.js"></script>
   <script src="mobile-bridge.js"></script>
@@ -472,6 +603,10 @@
         var phone = phoneRaw ? formatUzPhone(phoneRaw) : "—";
         var avatar = String(profile ? profile.avatar : (meta.avatar_url || meta.picture || "")).trim();
 
+        document.body.classList.add("profile-logged-in");
+        var sidebar = document.getElementById("profileSidebar");
+        if (sidebar) sidebar.hidden = false;
+
         document.getElementById("profileGuestView").hidden = true;
         document.getElementById("profileAccountView").hidden = false;
         document.getElementById("profileEditView").hidden = true;
@@ -578,6 +713,17 @@
         if (!isLoggedIn) return;
         if (window.emirateAuth) await window.emirateAuth.signOutCustomer();
         window.location.href = isApp ? "login.html" : "index.html";
+      });
+
+      document.getElementById("profileSidebarLogout")?.addEventListener("click", async function () {
+        document.getElementById("profileLogoutBtn").click();
+      });
+
+      document.querySelectorAll(".profile-sidebar-link[href^='login.html#']").forEach(function (link) {
+        link.addEventListener("click", function (e) {
+          e.preventDefault();
+          showToast((window.emirateT && window.emirateT("profile.registerSoon")) || "Скоро будет доступно");
+        });
       });
 
       document.getElementById("profileEditBtn").addEventListener("click", openProfileEdit);

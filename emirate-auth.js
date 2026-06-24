@@ -224,8 +224,13 @@
       if (!label) return;
       if (customer && customer.name) {
         label.textContent = customer.name.split(" ")[0] || customer.email || label.textContent;
+      } else if (customer && customer.email) {
+        label.textContent = customer.email.split("@")[0] || label.textContent;
       }
     });
+    if (typeof window.emirateUpdateProfileDropdown === "function") {
+      window.emirateUpdateProfileDropdown();
+    }
   }
 
   window.emirateAuth = {

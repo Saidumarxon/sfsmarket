@@ -990,6 +990,9 @@ if (langSwitch) {
     localStorage.setItem("emirate_lang", currentLang);
     applyTranslations();
     syncThemeUi(getStoredTheme());
+    if (typeof window.emirateUpdateProfileDropdown === "function") {
+      window.emirateUpdateProfileDropdown();
+    }
   });
 }
 
@@ -1266,10 +1269,248 @@ function closeAuthModal() {
   }
 }
 
+function formatProfileId(userId) {
+  if (!userId) return "—";
+  var n = 0;
+  for (var i = 0; i < userId.length; i++) {
+    n = (n * 31 + userId.charCodeAt(i)) >>> 0;
+  }
+  return "E" + String(n % 1000000).padStart(6, "0");
+}
+
+function formatProfileMoney(value) {
+  var amount = Math.round(Number(value) || 0).toLocaleString("ru-RU");
+  return currentLang === "uz" ? amount + " so'm" : amount + " сум";
+}
+
+function profileDropdownInitial(name, email) {
+  var source = String(name || email || "?").trim();
+  if (!source) return "?";
+  var parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+  }
+  return source.charAt(0).toUpperCase();
+}
+
+function showProfileDropdownToast(message) {
+  var el = document.getElementById("emirateProfileToast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "emirateProfileToast";
+    el.className = "profile-dropdown-toast";
+    document.body.appendChild(el);
+  }
+  el.textContent = message;
+  el.classList.add("visible");
+  clearTimeout(showProfileDropdownToast._timer);
+  showProfileDropdownToast._timer = setTimeout(function () {
+    el.classList.remove("visible");
+  }, 2600);
+}
+
+function buildProfileDropdownHtml() {
+  return (
+    '<div class="profile-dropdown-panel profile-dropdown-guest">' +
+      '<p class="profile-dropdown-guest-text" data-i18n="profile.guestTitle"></p>' +
+      '<button type="button" class="profile-dropdown-login-btn" data-i18n="header.login"></button>' +
+    "</div>" +
+    '<div class="profile-dropdown-panel profile-dropdown-logged" hidden>' +
+      '<div class="profile-dropdown-head">' +
+        '<strong class="profile-dropdown-name"></strong>' +
+        '<span class="profile-dropdown-id"></span>' +
+      "</div>" +
+      '<div class="profile-dropdown-balances">' +
+        '<div class="profile-dropdown-balance-card">' +
+          '<span class="profile-dropdown-balance-label" data-i18n="profile.balance"></span> ' +
+          '<strong class="profile-dropdown-balance-value">0</strong>' +
+        "</div>" +
+        '<div class="profile-dropdown-balance-card">' +
+          '<span class="profile-dropdown-balance-label" data-i18n="profile.points"></span> ' +
+          '<strong class="profile-dropdown-points-value">0</strong>' +
+        "</div>" +
+      "</div>" +
+      '<div class="profile-dropdown-actions">' +
+        '<button type="button" class="profile-dropdown-action-btn profile-dropdown-topup" data-i18n="profile.topUp"></button>' +
+        '<button type="button" class="profile-dropdown-action-btn profile-dropdown-coupon" data-i18n="profile.couponActivate"></button>' +
+      "</div>" +
+      '<nav class="profile-dropdown-nav">' +
+        '<a href="login.html" class="profile-dropdown-nav-link">' +
+          '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' +
+          '<span data-i18n="profile.personalInfo"></span>' +
+        "</a>" +
+        '<a href="login.html#orders" class="profile-dropdown-nav-link">' +
+          '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>' +
+          '<span data-i18n="profile.orders"></span>' +
+        "</a>" +
+        '<a href="catalog.html?installment=1" class="profile-dropdown-nav-link">' +
+          '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>' +
+          '<span data-i18n="profile.installments"></span>' +
+        "</a>" +
+      "</nav>" +
+      '<button type="button" class="profile-dropdown-logout">' +
+        '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>' +
+        '<span data-i18n="profile.logout"></span>' +
+      "</button>" +
+    "</div>"
+  );
+}
+
+function bindProfileDropdownEvents(wrap, dropdown) {
+  if (wrap.dataset.profileBound === "1") return;
+  wrap.dataset.profileBound = "1";
+
+  dropdown.addEventListener("click", function (e) {
+    var loginBtn = e.target.closest(".profile-dropdown-login-btn");
+    if (loginBtn) {
+      e.preventDefault();
+      openAuthModal();
+      return;
+    }
+    var topUpBtn = e.target.closest(".profile-dropdown-topup");
+    if (topUpBtn) {
+      e.preventDefault();
+      showProfileDropdownToast(t("profile.topUpSoon") || "Пополнение скоро будет доступно");
+      return;
+    }
+    var couponBtn = e.target.closest(".profile-dropdown-coupon");
+    if (couponBtn) {
+      e.preventDefault();
+      showProfileDropdownToast(t("profile.couponSoon") || "Активация купонов скоро будет доступна");
+      return;
+    }
+    var logoutBtn = e.target.closest(".profile-dropdown-logout");
+    if (logoutBtn) {
+      e.preventDefault();
+      if (window.emirateAuth && window.emirateAuth.signOutCustomer) {
+        window.emirateAuth.signOutCustomer().then(function () {
+          window.location.reload();
+        });
+      }
+    }
+  });
+}
+
+function renderProfileDropdown(wrap, customer) {
+  var dropdown = wrap.querySelector(".profile-dropdown");
+  var trigger = wrap.querySelector(".profile-menu-trigger");
+  if (!dropdown || !trigger) return;
+
+  var guestPanel = dropdown.querySelector(".profile-dropdown-guest");
+  var loggedPanel = dropdown.querySelector(".profile-dropdown-logged");
+  var iconWrap = trigger.querySelector(".profile-trigger-icon");
+  if (!iconWrap) {
+    iconWrap = document.createElement("span");
+    iconWrap.className = "profile-trigger-icon";
+    var svg = trigger.querySelector("svg");
+    if (svg) {
+      iconWrap.appendChild(svg);
+    }
+    trigger.insertBefore(iconWrap, trigger.firstChild);
+  }
+
+  var avatarEl = iconWrap.querySelector(".profile-trigger-avatar");
+  if (!avatarEl) {
+    avatarEl = document.createElement("span");
+    avatarEl.className = "profile-trigger-avatar";
+    avatarEl.hidden = true;
+    iconWrap.appendChild(avatarEl);
+  }
+
+  if (customer) {
+    wrap.classList.add("profile-menu-wrap--auth");
+    wrap.classList.remove("profile-menu-wrap--guest");
+    if (guestPanel) guestPanel.hidden = true;
+    if (loggedPanel) loggedPanel.hidden = false;
+
+    var displayName = customer.name || customer.email || t("profile.unknown") || "—";
+    var nameEl = loggedPanel.querySelector(".profile-dropdown-name");
+    var idEl = loggedPanel.querySelector(".profile-dropdown-id");
+    var balanceEl = loggedPanel.querySelector(".profile-dropdown-balance-value");
+    var pointsEl = loggedPanel.querySelector(".profile-dropdown-points-value");
+    if (nameEl) nameEl.textContent = displayName;
+    if (idEl) {
+      idEl.textContent = (t("profile.idLabel") || "ID:") + " " + formatProfileId(customer.id);
+    }
+    if (balanceEl) balanceEl.textContent = formatProfileMoney(customer.balance || 0);
+    if (pointsEl) pointsEl.textContent = formatProfileMoney(customer.points || 0);
+
+    avatarEl.hidden = false;
+    if (customer.avatar) {
+      avatarEl.innerHTML = '<img src="' + customer.avatar.replace(/"/g, "&quot;") + '" alt="" referrerpolicy="no-referrer">';
+    } else {
+      avatarEl.textContent = profileDropdownInitial(customer.name, customer.email);
+    }
+    var defaultSvg = iconWrap.querySelector("svg");
+    if (defaultSvg) defaultSvg.hidden = true;
+  } else {
+    wrap.classList.add("profile-menu-wrap--guest");
+    wrap.classList.remove("profile-menu-wrap--auth");
+    if (guestPanel) guestPanel.hidden = false;
+    if (loggedPanel) loggedPanel.hidden = true;
+    avatarEl.hidden = true;
+    avatarEl.textContent = "";
+    avatarEl.innerHTML = "";
+    var defaultSvgGuest = iconWrap.querySelector("svg");
+    if (defaultSvgGuest) defaultSvgGuest.hidden = false;
+  }
+}
+
+function ensureProfileDropdownWrap(link) {
+  if (!link || link.closest(".profile-menu-wrap")) {
+    return link && link.closest(".profile-menu-wrap");
+  }
+  if (!link.querySelector("[data-i18n='header.login']")) return null;
+
+  var wrap = document.createElement("div");
+  wrap.className = "profile-menu-wrap";
+  link.classList.add("profile-menu-trigger");
+  link.parentNode.insertBefore(wrap, link);
+  wrap.appendChild(link);
+
+  var dropdown = document.createElement("div");
+  dropdown.className = "profile-dropdown";
+  dropdown.setAttribute("role", "menu");
+  dropdown.innerHTML = buildProfileDropdownHtml();
+  wrap.appendChild(dropdown);
+
+  bindProfileDropdownEvents(wrap, dropdown);
+  applyTranslations();
+  return wrap;
+}
+
+function updateProfileDropdowns() {
+  if (!shouldUseDesktopAuthModal()) return;
+  document.querySelectorAll('a[href="login.html"], a[href="./login.html"]').forEach(function (link) {
+    ensureProfileDropdownWrap(link);
+  });
+  var customer =
+    window.emirateAuth && window.emirateAuth.loadCustomer ? window.emirateAuth.loadCustomer() : null;
+  document.querySelectorAll(".profile-menu-wrap").forEach(function (wrap) {
+    renderProfileDropdown(wrap, customer);
+  });
+}
+
+function initProfileDropdownMenu() {
+  if (!shouldUseDesktopAuthModal()) return;
+  function boot() {
+    updateProfileDropdowns();
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+}
+
+initProfileDropdownMenu();
+window.emirateUpdateProfileDropdown = updateProfileDropdowns;
+
 function initAuthLinks() {
   document.addEventListener("click", function (e) {
     var link = e.target.closest('a[href="login.html"], a[href="./login.html"]');
     if (!link || !shouldUseDesktopAuthModal()) return;
+    if (link.classList.contains("profile-menu-trigger") && link.closest(".profile-menu-wrap--auth")) return;
     if (window.emirateAuth && window.emirateAuth.loadCustomer && window.emirateAuth.loadCustomer()) return;
     e.preventDefault();
     openAuthModal();

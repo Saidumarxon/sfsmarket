@@ -721,7 +721,6 @@ if (isPhotoSearchMode) {
     await refreshCatalogFromRemote();
     applyCategoryFilterFromUrl();
     applyFiltersAndSort();
-    updateSeoCatalogLinks(sourceProducts);
   })();
 }
 

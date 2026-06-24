@@ -541,6 +541,18 @@ html:not(.capacitor-app) .profile-page #profileGuestActions {
   display: none !important;
 }
 
+html:not(.capacitor-app) .profile-page .profile-bottom-actions {
+  display: none !important;
+}
+
+html.capacitor-app .profile-web-only {
+  display: none !important;
+}
+
+html:not(.capacitor-app) .profile-app-only {
+  display: none !important;
+}
+
 /* Login sheet modal */
 .profile-login-modal {
   position: fixed;
