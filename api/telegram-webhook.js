@@ -6,11 +6,14 @@ const bot = require("./telegram-lib");
 
 module.exports = async function handler(req, res) {
   if (req.method === "GET") {
+    const products = await bot.fetchProducts();
     return res.status(200).json({
       ok: true,
       service: "emirate-telegram-webhook",
       configured: Boolean(bot.BOT_TOKEN),
       webhookSecret: Boolean(bot.WEBHOOK_SECRET),
+      supabaseConfigured: Boolean(bot.SUPABASE_ANON),
+      productsCached: Array.isArray(products) ? products.length : 0,
     });
   }
   if (req.method !== "POST") {

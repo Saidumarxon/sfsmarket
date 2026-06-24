@@ -6,7 +6,7 @@
  */
 (function () {
   var DEFAULT_SITE = "https://www.emirateco.uz";
-  var DEFAULT_OG_IMAGE = DEFAULT_SITE + "/icons/icon-512.png";
+  var DEFAULT_OG_IMAGE = DEFAULT_SITE + "/images/og-emirate.png?v=2";
 
   window.EMIRATE_SITE_URL = String(window.EMIRATE_SITE_URL || DEFAULT_SITE).replace(/\/+$/, "");
 

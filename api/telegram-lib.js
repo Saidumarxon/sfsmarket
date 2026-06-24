@@ -3,7 +3,9 @@
  */
 const SITE = String(process.env.EMIRATE_SITE_URL || "https://www.emirateco.uz").replace(/\/+$/, "");
 const SUPABASE_URL = String(process.env.SUPABASE_URL || "https://efoujwgalbnfrodgkqyl.supabase.co").replace(/\/+$/, "");
-const SUPABASE_ANON = String(process.env.SUPABASE_ANON_KEY || "").trim();
+const DEFAULT_SUPABASE_ANON =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmb3Vqd2dhbGJuZnJvZGdrcXlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NjM0MDcsImV4cCI6MjA5NDIzOTQwN30.NbE5q-vi1YTlp7hGvGZmRGZgjnv2SW1S6kYfQMT5KBU";
+const SUPABASE_ANON = String(process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON).trim();
 const BOT_TOKEN = String(process.env.TELEGRAM_BOT_TOKEN || "").trim();
 const WEBHOOK_SECRET = String(process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
 const PHONE = String(process.env.EMIRATE_CONTACT_PHONE || "+998508868844").trim();
@@ -46,7 +48,10 @@ function mapRow(row) {
   return {
     title,
     brand: String(payload.brand || "").trim(),
+    model: String(payload.model || "").trim(),
     category: String(payload.category || "").trim(),
+    nameRu: String(payload.nameRu || "").trim(),
+    nameUz: String(payload.nameUz || "").trim(),
     price,
     oldPrice: oldPrice > price ? oldPrice : 0,
     url: productUrl(title),
@@ -68,7 +73,10 @@ async function fetchProducts() {
       Accept: "application/json",
     },
   });
-  if (!res.ok) return productsCache.items;
+  if (!res.ok) {
+    console.error("[telegram-lib] fetchProducts", res.status, await res.text().catch(function () { return ""; }));
+    return productsCache.items;
+  }
   const rows = await res.json();
   if (!Array.isArray(rows)) return productsCache.items;
   productsCache = {
@@ -76,6 +84,12 @@ async function fetchProducts() {
     items: rows.map(mapRow).filter(Boolean),
   };
   return productsCache.items;
+}
+
+function productSearchHay(product) {
+  return normalizeKey(
+    [product.title, product.brand, product.model, product.category, product.nameRu, product.nameUz].join(" ")
+  );
 }
 
 function searchProducts(query, limit) {
@@ -86,11 +100,12 @@ function searchProducts(query, limit) {
   const scored = [];
   for (let i = 0; i < items.length; i++) {
     const p = items[i];
-    const hay = normalizeKey([p.title, p.brand, p.category].join(" "));
+    const hay = productSearchHay(p);
     if (!hay.includes(key)) continue;
     let score = 0;
     if (normalizeKey(p.title).includes(key)) score += 3;
-    if (normalizeKey(p.brand).includes(key)) score += 2;
+    if (normalizeKey(p.brand).includes(key)) score += 3;
+    if (normalizeKey(p.model).includes(key)) score += 2;
     if (hay.startsWith(key)) score += 2;
     scored.push({ product: p, score });
   }
@@ -229,7 +244,14 @@ async function handleCommand(chatId, command, args) {
 }
 
 async function runSearch(chatId, query) {
-  await fetchProducts();
+  const items = await fetchProducts();
+  if (!items.length) {
+    await sendMessage(
+      chatId,
+      "Каталог временно недоступен.\n\nОткройте сайт:\n" + SITE + "/catalog"
+    );
+    return;
+  }
   const products = searchProducts(query, 5);
   const reply = buildSearchReply(products);
   await sendMessage(chatId, reply.text, reply.extra || { parse_mode: "HTML", disable_web_page_preview: true });
@@ -298,6 +320,10 @@ async function registerCommands() {
   });
 }
 
+async function getWebhookInfo() {
+  return tgApi("getWebhookInfo", {});
+}
+
 function verifyWebhookSecret(req) {
   if (!WEBHOOK_SECRET) return true;
   const header = req.headers["x-telegram-bot-api-secret-token"] || req.headers["X-Telegram-Bot-Api-Secret-Token"];
@@ -308,9 +334,12 @@ module.exports = {
   BOT_TOKEN,
   WEBHOOK_SECRET,
   SITE,
+  SUPABASE_ANON,
   handleUpdate,
   registerWebhook,
   registerCommands,
+  getWebhookInfo,
   verifyWebhookSecret,
   fetchProducts,
+  searchProducts,
 };

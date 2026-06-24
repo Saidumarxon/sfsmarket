@@ -20,6 +20,17 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    if (String(req.query?.status || "") === "1") {
+      const info = await bot.getWebhookInfo();
+      return res.status(200).json({
+        ok: true,
+        webhook: info.url || "",
+        pendingUpdates: info.pending_update_count || 0,
+        lastError: info.last_error_message || "",
+        lastErrorDate: info.last_error_date || 0,
+      });
+    }
+
     const webhookUrl = String(req.query?.url || bot.SITE + "/api/telegram-webhook").trim();
     await bot.registerWebhook(webhookUrl);
     await bot.registerCommands();
