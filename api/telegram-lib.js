@@ -365,6 +365,69 @@ async function updateOrderStatus(orderId, status) {
   return res.ok;
 }
 
+function sanitizeOrderPayload(input) {
+  if (!input || typeof input !== "object") return null;
+  const phone = String(input.phone || "").trim();
+  const full_name = String(input.full_name || input.fullName || "").trim();
+  if (!phone || !full_name) return null;
+  const items = Array.isArray(input.items) ? input.items : [];
+  if (!items.length) return null;
+  const total = Number(input.total_amount != null ? input.total_amount : input.total) || 0;
+  if (total <= 0) return null;
+  const payload = {
+    phone,
+    full_name,
+    region: String(input.region || "").trim(),
+    city: String(input.city || "").trim(),
+    address: String(input.address || "").trim(),
+    comment_text: String(input.comment_text || input.comment || "").trim(),
+    delivery_method: String(input.delivery_method || input.delivery || "quick_buy").trim(),
+    payment_method: String(input.payment_method || input.payment || "callback").trim(),
+    items: items.slice(0, 50).map(function (item) {
+      return {
+        title: String(item.title || item.name || "Товар").trim(),
+        brand: String(item.brand || "").trim(),
+        category: String(item.category || "").trim(),
+        price: Number(item.price) || 0,
+        qty: Math.max(1, Math.min(99, Number(item.qty) || 1)),
+      };
+    }),
+    total_amount: total,
+  };
+  const userId = String(input.user_id || "").trim();
+  const email = String(input.customer_email || input.email || "").trim();
+  if (userId) payload.user_id = userId;
+  if (email) payload.customer_email = email;
+  return payload;
+}
+
+async function insertOrderViaService(orderRow) {
+  if (!SUPABASE_SERVICE) return { ok: false, error: "service_role_missing" };
+  const payload = sanitizeOrderPayload(orderRow);
+  if (!payload) return { ok: false, error: "invalid_order" };
+  const res = await fetch(SUPABASE_URL + "/rest/v1/orders", {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_SERVICE,
+      Authorization: "Bearer " + SUPABASE_SERVICE,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(function () {
+      return "";
+    });
+    console.error("[telegram-lib] insertOrderViaService", res.status, text);
+    return { ok: false, error: text || "insert_failed" };
+  }
+  const rows = await res.json();
+  const id = Array.isArray(rows) && rows[0] ? rows[0].id : null;
+  return { ok: true, id: id, order: payload };
+}
+
 function formatOrderItems(order) {
   const items = order.items || [];
   if (!items.length) return "• (пусто)";
@@ -793,4 +856,6 @@ module.exports = {
   searchProducts,
   fetchOrderById,
   notifyAdminNewOrder,
+  insertOrderViaService,
+  sanitizeOrderPayload,
 };

@@ -635,6 +635,7 @@ function ensureQuickBuyModal() {
         </div>
       </div>
       <form id="quickBuyForm" class="quick-buy-form">
+        <p id="quickBuyAccountHint" class="quick-buy-account-hint" hidden></p>
         <label class="quick-buy-field">
           <span class="quick-buy-label">Номер телефона</span>
           <div class="quick-buy-phone-row">
@@ -713,6 +714,28 @@ function buildQuickBuyOrderItem(product, qty) {
 }
 
 async function emiratePlaceOrder(orderRow) {
+  try {
+    const res = await fetch("/api/place-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: orderRow }),
+    });
+    const data = await res.json().catch(function () {
+      return {};
+    });
+    if (data?.ok && data.id) {
+      return { ok: true, id: data.id };
+    }
+    if (data?.error === "service_role_missing") {
+      return emiratePlaceOrderDirect(orderRow);
+    }
+    return { ok: false, error: data?.error || "order_failed" };
+  } catch (err) {
+    return emiratePlaceOrderDirect(orderRow);
+  }
+}
+
+async function emiratePlaceOrderDirect(orderRow) {
   const api = window.emirateSupabaseApi;
   if (!api?.isConfigured?.()) {
     return { ok: false, error: "Заказы временно недоступны. Позвоните нам." };
@@ -725,23 +748,41 @@ async function emiratePlaceOrder(orderRow) {
       body: JSON.stringify({ orderId: res.id, order: orderRow }),
     }).catch(function () {});
   }
+  if (!res?.ok && res?.error && String(res.error).includes("row-level security")) {
+    return {
+      ok: false,
+      error:
+        "Нет доступа для создания заказа в базе. В Supabase выполните SQL из файла supabase/orders-guest-insert-policy.sql",
+    };
+  }
   return res;
 }
 
-function prefillQuickBuyCustomer() {
-  const customer = window.emirateAuth?.loadCustomer?.();
+function prefillQuickBuyCustomer(customer) {
   const phoneEl = document.getElementById("quickBuyPhone");
   const nameEl = document.getElementById("quickBuyName");
-  if (!customer) return;
-  if (phoneEl && customer.phone) {
-    const digits = String(customer.phone).replace(/\D/g, "");
+  const hintEl = document.getElementById("quickBuyAccountHint");
+  const c = customer || window.emirateAuth?.loadCustomer?.();
+  if (hintEl) {
+    if (c && (c.name || c.email)) {
+      hintEl.hidden = false;
+      hintEl.textContent =
+        "Вы вошли как " + (c.name || c.email) + ". Данные подставлены из профиля.";
+    } else {
+      hintEl.hidden = true;
+      hintEl.textContent = "";
+    }
+  }
+  if (!c) return;
+  if (phoneEl && c.phone) {
+    const digits = String(c.phone).replace(/\D/g, "");
     phoneEl.value = digits.startsWith("998") ? digits.slice(3) : digits;
   }
-  const name = String(customer.name || customer.full_name || "").trim();
+  const name = String(c.name || c.full_name || "").trim();
   if (nameEl && name) nameEl.value = name;
 }
 
-function openQuickBuyModal(product, qty = 1) {
+async function openQuickBuyModal(product, qty = 1) {
   const normalized = normalizeViewedProduct({
     ...product,
     price: emirateParsePriceValue(product?.price),
@@ -756,12 +797,23 @@ function openQuickBuyModal(product, qty = 1) {
   const nameEl = document.getElementById("quickBuyName");
   if (phoneEl) phoneEl.value = "";
   if (nameEl) nameEl.value = "";
-  prefillQuickBuyCustomer();
+  let customer = null;
+  if (window.emirateAuth?.loadCustomerForCheckout) {
+    try {
+      customer = await window.emirateAuth.loadCustomerForCheckout();
+    } catch (_) {
+      customer = window.emirateAuth?.loadCustomer?.() || null;
+    }
+  } else {
+    customer = window.emirateAuth?.loadCustomer?.() || null;
+  }
+  prefillQuickBuyCustomer(customer);
   renderQuickBuySummary();
   if (overlay) {
     overlay.hidden = false;
     document.body.classList.add("quick-buy-modal-open");
-    phoneEl?.focus();
+    if (!phoneEl?.value) phoneEl?.focus();
+    else if (!nameEl?.value) nameEl?.focus();
   }
 }
 
@@ -799,17 +851,34 @@ async function submitQuickBuyOrder(event) {
 
   const qty = quickBuyState.qty;
   const linePrice = emirateParsePriceValue(product.price);
+  let customer = null;
+  if (window.emirateAuth?.loadCustomerForCheckout) {
+    try {
+      customer = await window.emirateAuth.loadCustomerForCheckout();
+    } catch (_) {
+      customer = window.emirateAuth?.loadCustomer?.() || null;
+    }
+  } else {
+    customer = window.emirateAuth?.loadCustomer?.() || null;
+  }
+  const userId = customer?.id || (window.emirateAuth?.getActiveUserId
+    ? await window.emirateAuth.getActiveUserId()
+    : null);
   const orderRow = {
     phone,
     full_name: fullName,
     region: "",
     city: "",
-    address: "",
-    comment_text: "Быстрый заказ: «Купить в один клик»",
+    address: customer?.address || "",
+    comment_text: userId
+      ? "Быстрый заказ (аккаунт " + (customer?.email || userId) + ")"
+      : "Быстрый заказ: «Купить в один клик»",
     delivery_method: "quick_buy",
     payment_method: "callback",
     items: [buildQuickBuyOrderItem(product, qty)],
     total_amount: linePrice * qty,
+    user_id: userId || null,
+    customer_email: customer?.email || "",
   };
 
   try {
@@ -819,6 +888,12 @@ async function submitQuickBuyOrder(event) {
       return;
     }
     showQuickBuySuccessMessage();
+    if (userId && window.emirateAuth?.updateCustomerProfile) {
+      void window.emirateAuth.updateCustomerProfile({
+        fullName: fullName,
+        phone: phone,
+      });
+    }
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;

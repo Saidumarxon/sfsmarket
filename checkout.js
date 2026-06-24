@@ -60,6 +60,20 @@ checkoutFormPageEl?.addEventListener("submit", async (event) => {
   if (!count) return;
 
   const fd = new FormData(checkoutFormPageEl);
+  let customer = null;
+  if (window.emirateAuth?.loadCustomerForCheckout) {
+    try {
+      customer = await window.emirateAuth.loadCustomerForCheckout();
+    } catch (_) {
+      customer = window.emirateAuth?.loadCustomer?.() || null;
+    }
+  } else {
+    customer = window.emirateAuth?.loadCustomer?.() || null;
+  }
+  const userId = customer?.id || (window.emirateAuth?.getActiveUserId
+    ? await window.emirateAuth.getActiveUserId()
+    : null);
+
   const orderRow = {
     phone: String(fd.get("phone") || "").trim(),
     full_name: String(fd.get("full_name") || "").trim(),
@@ -70,7 +84,9 @@ checkoutFormPageEl?.addEventListener("submit", async (event) => {
     delivery_method: String(fd.get("delivery") || "").trim(),
     payment_method: String(fd.get("payment") || "").trim(),
     items,
-    total_amount: total
+    total_amount: total,
+    user_id: userId || null,
+    customer_email: customer?.email || "",
   };
 
   if (window.emirateSupabaseApi?.isConfigured?.()) {
@@ -84,10 +100,41 @@ checkoutFormPageEl?.addEventListener("submit", async (event) => {
     }
   }
 
+  if (userId && window.emirateAuth?.updateCustomerProfile) {
+    void window.emirateAuth.updateCustomerProfile({
+      fullName: orderRow.full_name,
+      phone: orderRow.phone,
+      address: orderRow.address,
+    });
+  }
+
   alert("Заказ принят! Мы свяжемся с вами в ближайшее время.");
   window.emirateClearCart?.();
   checkoutFormPageEl.reset();
   window.location.href = "catalog.html?cart=1";
 });
 
+async function prefillCheckoutForm() {
+  if (!checkoutFormPageEl) return;
+  let customer = null;
+  if (window.emirateAuth?.loadCustomerForCheckout) {
+    try {
+      customer = await window.emirateAuth.loadCustomerForCheckout();
+    } catch (_) {
+      customer = window.emirateAuth?.loadCustomer?.() || null;
+    }
+  } else {
+    customer = window.emirateAuth?.loadCustomer?.() || null;
+  }
+  if (!customer) return;
+  const set = (name, value) => {
+    const el = checkoutFormPageEl.querySelector(`[name="${name}"]`);
+    if (el && value) el.value = String(value).trim();
+  };
+  set("phone", customer.phone);
+  set("full_name", customer.name);
+  set("address", customer.address);
+}
+
 renderCheckoutSummary();
+void prefillCheckoutForm();

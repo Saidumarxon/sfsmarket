@@ -177,6 +177,55 @@
     }
   }
 
+  async function loadCustomerForCheckout() {
+    var local = loadCustomer();
+    var sb = supabaseClient();
+    if (!sb) return local;
+
+    var sessionRes = await sb.auth.getSession();
+    var user = sessionRes.data && sessionRes.data.session && sessionRes.data.session.user;
+    if (!user) return local;
+
+    var profile = extractProfile(user) || {};
+    var merged = {
+      id: user.id,
+      email: String(user.email || profile.email || (local && local.email) || "").trim(),
+      name: String(profile.name || (local && local.name) || "").trim(),
+      phone: String(profile.phone || (local && local.phone) || "").trim(),
+      address: String(profile.address || (local && local.address) || "").trim(),
+      avatar: String(profile.avatar || (local && local.avatar) || "").trim(),
+    };
+
+    try {
+      var dbRes = await sb
+        .from("customer_profiles")
+        .select("full_name,phone,email,address")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (dbRes.data) {
+        var row = dbRes.data;
+        if (row.full_name) merged.name = String(row.full_name).trim();
+        if (row.phone) merged.phone = String(row.phone).trim();
+        if (row.email) merged.email = String(row.email).trim();
+        if (row.address) merged.address = String(row.address).trim();
+      }
+    } catch (_) {}
+
+    return merged;
+  }
+
+  async function getActiveUserId() {
+    var sb = supabaseClient();
+    if (!sb) return null;
+    try {
+      var sessionRes = await sb.auth.getSession();
+      var user = sessionRes.data && sessionRes.data.session && sessionRes.data.session.user;
+      return user && user.id ? user.id : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function clearCustomerSession() {
     try {
       localStorage.removeItem(CUSTOMER_KEY);
@@ -295,6 +344,8 @@
     syncSessionToCustomerStorage: syncSessionToCustomerStorage,
     syncCustomerProfileToDb: syncCustomerProfileToDb,
     loadCustomer: loadCustomer,
+    loadCustomerForCheckout: loadCustomerForCheckout,
+    getActiveUserId: getActiveUserId,
     clearCustomerSession: clearCustomerSession,
     signOutCustomer: signOutCustomer,
     isAdminUser: isAdminUser,
