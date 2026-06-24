@@ -741,6 +741,25 @@ sortSelectEl?.addEventListener("change", applyFiltersAndSort);
 resetFiltersBtn?.addEventListener("click", resetFilters);
 
 function onProductGridClick(e) {
+  const quickBuyBtn = e.target.closest(".quick-buy-open");
+  if (quickBuyBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const card = quickBuyBtn.closest(".product-card");
+    const title =
+      quickBuyBtn.getAttribute("data-product-title") ||
+      card?.getAttribute("data-product-id") ||
+      "";
+    const source = isCartMode ? (window.emirateGetCartItems?.() || []) : sourceProducts;
+    const product =
+      (title ? source.find((item) => item.title === title) : null) ||
+      buildFallbackProductFromCard(card);
+    if (product) {
+      window.emirateOpenQuickBuy?.(product, 1);
+    }
+    return;
+  }
+
   const saveSelectedProduct = (product) => {
     if (!product || typeof product !== "object") return;
     const media = window.emirateResolveProductMedia?.(product);

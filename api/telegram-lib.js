@@ -25,6 +25,18 @@ const ORDER_STATUS_LABELS = {
   successful: "✅ Выполнен",
 };
 
+const DELIVERY_LABELS = {
+  quick_buy: "Купить в один клик",
+  callback: "Перезвонить",
+  pickup: "Самовывоз",
+  delivery: "Доставка",
+};
+
+function formatDeliveryLabel(value) {
+  const key = String(value || "").trim().toLowerCase();
+  return DELIVERY_LABELS[key] || String(value || "").trim();
+}
+
 function parseIdList(value) {
   return String(value || "")
     .split(/[,;\s]+/)
@@ -382,7 +394,7 @@ function formatOrderMessage(order, options) {
   lines.push("📦 " + (order.items || []).length + " поз.");
   lines.push("");
   lines.push(formatOrderItems(order));
-  if (order.delivery_method) lines.push("\n🚚 " + escapeHtml(order.delivery_method));
+  if (order.delivery_method) lines.push("\n🚚 " + escapeHtml(formatDeliveryLabel(order.delivery_method)));
   if (order.payment_method) lines.push("💳 " + escapeHtml(order.payment_method));
   if (order.comment_text) lines.push("💬 " + escapeHtml(order.comment_text));
   lines.push("\nСтатус: " + statusLabel);

@@ -697,7 +697,17 @@ addToCartBtn?.addEventListener("click", () => {
 });
 
 buyNowBtn?.addEventListener("click", () => {
-  window.emirateOpenQuickBuy?.(currentProduct, qty);
+  const qtyValue = Number(qtyValueEl?.textContent || qty) || 1;
+  const payload = {
+    ...currentProduct,
+    price: parsePriceText(currentPriceEl?.textContent) || currentProduct.price,
+    oldPrice: parsePriceText(oldPriceEl?.textContent) || currentProduct.oldPrice,
+    image:
+      currentProduct.image ||
+      mainImageEl?.querySelector(".product-main-photo")?.getAttribute("src") ||
+      "",
+  };
+  window.emirateOpenQuickBuy?.(payload, qtyValue);
 });
 
 productThumbsEl?.addEventListener("click", (event) => {

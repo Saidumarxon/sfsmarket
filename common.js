@@ -584,7 +584,7 @@ function renderQuickBuySummary() {
   const product = quickBuyState.product;
   if (!product) return;
   const imageEl = document.getElementById("quickBuyImage");
-  const titleEl = document.getElementById("quickBuyTitle");
+  const titleEl = document.getElementById("quickBuyProductTitle");
   const priceEl = document.getElementById("quickBuyPrice");
   const qtyEl = document.getElementById("quickBuyQty");
   const media = window.emirateResolveProductMedia?.(product);
@@ -605,15 +605,15 @@ function ensureQuickBuyModal() {
   overlay.className = "quick-buy-modal";
   overlay.hidden = true;
   overlay.innerHTML = `
-    <div class="quick-buy-dialog" role="dialog" aria-modal="true" aria-labelledby="quickBuyTitle">
+    <div class="quick-buy-dialog" role="dialog" aria-modal="true" aria-labelledby="quickBuyHeading">
       <div class="quick-buy-header">
-        <h2 class="quick-buy-heading">Купить в один клик</h2>
+        <h2 class="quick-buy-heading" id="quickBuyHeading">Купить в один клик</h2>
         <button type="button" class="quick-buy-close" id="quickBuyClose" aria-label="Закрыть">×</button>
       </div>
       <div class="quick-buy-product">
         <img id="quickBuyImage" class="quick-buy-image" src="" alt="">
         <div class="quick-buy-product-main">
-          <div id="quickBuyTitle" class="quick-buy-product-title"></div>
+          <div id="quickBuyProductTitle" class="quick-buy-product-title"></div>
           <div class="quick-buy-price-row">
             <div id="quickBuyPrice" class="quick-buy-price"></div>
             <div class="quick-buy-qty" aria-label="Количество">
@@ -662,20 +662,91 @@ function ensureQuickBuyModal() {
   });
 }
 
+function resetQuickBuyModalView() {
+  const form = document.getElementById("quickBuyForm");
+  const productBlock = document.querySelector("#quickBuyModal .quick-buy-product");
+  const successEl = document.getElementById("quickBuySuccess");
+  if (form) form.hidden = false;
+  if (productBlock) productBlock.hidden = false;
+  if (successEl) successEl.hidden = true;
+}
+
+function showQuickBuySuccessMessage() {
+  const form = document.getElementById("quickBuyForm");
+  const productBlock = document.querySelector("#quickBuyModal .quick-buy-product");
+  if (form) form.hidden = true;
+  if (productBlock) productBlock.hidden = true;
+  let successEl = document.getElementById("quickBuySuccess");
+  if (!successEl) {
+    successEl = document.createElement("div");
+    successEl.id = "quickBuySuccess";
+    successEl.className = "quick-buy-success";
+    successEl.innerHTML =
+      '<div class="quick-buy-success-icon" aria-hidden="true">✓</div>' +
+      "<h3>Заказ принят!</h3>" +
+      "<p>Мы свяжемся с вами в ближайшее время.</p>";
+    document.querySelector("#quickBuyModal .quick-buy-dialog")?.appendChild(successEl);
+  }
+  successEl.hidden = false;
+  window.setTimeout(closeQuickBuyModal, 2600);
+}
+
+function buildQuickBuyOrderItem(product, qty) {
+  return {
+    title: product.title,
+    brand: product.brand || "",
+    category: product.category || "",
+    price: emirateParsePriceValue(product.price),
+    oldPrice: emirateParsePriceValue(product.oldPrice),
+    qty: qty,
+  };
+}
+
+async function emiratePlaceOrder(orderRow) {
+  const api = window.emirateSupabaseApi;
+  if (!api?.isConfigured?.()) {
+    return { ok: false, error: "Заказы временно недоступны. Позвоните нам." };
+  }
+  const res = await api.insertOrder(orderRow);
+  if (res?.ok && res.id) {
+    fetch("/api/telegram-notify-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId: res.id, order: orderRow }),
+    }).catch(function () {});
+  }
+  return res;
+}
+
+function prefillQuickBuyCustomer() {
+  const customer = window.emirateAuth?.loadCustomer?.();
+  const phoneEl = document.getElementById("quickBuyPhone");
+  const nameEl = document.getElementById("quickBuyName");
+  if (!customer) return;
+  if (phoneEl && customer.phone) {
+    const digits = String(customer.phone).replace(/\D/g, "");
+    phoneEl.value = digits.startsWith("998") ? digits.slice(3) : digits;
+  }
+  const name = String(customer.name || customer.full_name || "").trim();
+  if (nameEl && name) nameEl.value = name;
+}
+
 function openQuickBuyModal(product, qty = 1) {
   const normalized = normalizeViewedProduct({
     ...product,
     price: emirateParsePriceValue(product?.price),
-    oldPrice: emirateParsePriceValue(product?.oldPrice)
+    oldPrice: emirateParsePriceValue(product?.oldPrice),
   });
   if (!normalized) return;
   ensureQuickBuyModal();
+  resetQuickBuyModalView();
   quickBuyState = { product: normalized, qty: Math.max(1, Math.min(99, Number(qty) || 1)) };
   const overlay = document.getElementById("quickBuyModal");
   const phoneEl = document.getElementById("quickBuyPhone");
   const nameEl = document.getElementById("quickBuyName");
   if (phoneEl) phoneEl.value = "";
   if (nameEl) nameEl.value = "";
+  prefillQuickBuyCustomer();
   renderQuickBuySummary();
   if (overlay) {
     overlay.hidden = false;
@@ -690,6 +761,7 @@ function closeQuickBuyModal() {
   overlay.hidden = true;
   document.body.classList.remove("quick-buy-open");
   quickBuyState = { product: null, qty: 1 };
+  resetQuickBuyModalView();
 }
 
 async function submitQuickBuyOrder(event) {
@@ -701,7 +773,7 @@ async function submitQuickBuyOrder(event) {
   const fullName = String(document.getElementById("quickBuyName")?.value || "").trim();
   const phone = normalizeQuickBuyPhone(phoneRaw);
   if (!phone) {
-    alert("Введите номер телефона в формате 90 123 45 67");
+    alert("Введите номер телефона: 9 цифр после +998 (например 90 123 45 67)");
     return;
   }
   if (!fullName) {
@@ -716,30 +788,27 @@ async function submitQuickBuyOrder(event) {
   }
 
   const qty = quickBuyState.qty;
-  const lineTotal = emirateParsePriceValue(product.price) * qty;
+  const linePrice = emirateParsePriceValue(product.price);
   const orderRow = {
     phone,
     full_name: fullName,
     region: "",
     city: "",
     address: "",
-    comment_text: "Быстрый заказ с сайта",
+    comment_text: "Быстрый заказ: «Купить в один клик»",
     delivery_method: "quick_buy",
     payment_method: "callback",
-    items: [{ ...product, qty }],
-    total_amount: lineTotal
+    items: [buildQuickBuyOrderItem(product, qty)],
+    total_amount: linePrice * qty,
   };
 
   try {
-    if (window.emirateSupabaseApi?.isConfigured?.()) {
-      const res = await window.emirateSupabaseApi.insertOrder(orderRow);
-      if (!res?.ok) {
-        alert("Не удалось отправить заказ. Попробуйте позже или позвоните нам.\n" + (res?.error || ""));
-        return;
-      }
+    const res = await emiratePlaceOrder(orderRow);
+    if (!res?.ok) {
+      alert("Не удалось отправить заказ. Попробуйте позже или позвоните нам.\n" + (res?.error || ""));
+      return;
     }
-    alert("Заказ принят! Мы свяжемся с вами в ближайшее время.");
-    closeQuickBuyModal();
+    showQuickBuySuccessMessage();
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -755,11 +824,16 @@ document.addEventListener("click", (event) => {
   event.stopPropagation();
   const card = btn.closest(".product-card");
   const product = resolveQuickBuyProduct(card, btn);
-  if (product) openQuickBuyModal(product, 1);
+  if (!product) {
+    alert("Не удалось открыть товар. Обновите страницу.");
+    return;
+  }
+  openQuickBuyModal(product, 1);
 });
 
 window.emirateOpenQuickBuy = openQuickBuyModal;
 window.emirateCloseQuickBuy = closeQuickBuyModal;
+window.emiratePlaceOrder = emiratePlaceOrder;
 window.emirateIncrementCart = incrementCart;
 window.emirateAddToCart = addToCart;
 window.emirateSetCartQty = setCartQty;

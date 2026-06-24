@@ -74,19 +74,14 @@ checkoutFormPageEl?.addEventListener("submit", async (event) => {
   };
 
   if (window.emirateSupabaseApi?.isConfigured?.()) {
-    const res = await window.emirateSupabaseApi.insertOrder(orderRow);
-    if (!res.ok) {
+    const res = await window.emiratePlaceOrder?.(orderRow);
+    if (!res?.ok) {
       alert(
         "Не удалось сохранить заказ в Supabase. Проверьте таблицу orders и политики RLS (файл supabase/schema.sql).\n" +
           (res.error || "")
       );
       return;
     }
-    fetch("/api/telegram-notify-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId: res.id, order: orderRow }),
-    }).catch(function () {});
   }
 
   alert("Заказ принят! Мы свяжемся с вами в ближайшее время.");

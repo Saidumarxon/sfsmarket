@@ -4838,6 +4838,35 @@ body.quick-buy-open {
   cursor: wait;
 }
 
+.quick-buy-success {
+  padding: 28px 24px 32px;
+  text-align: center;
+}
+
+.quick-buy-success-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+  font-size: 28px;
+  line-height: 56px;
+  font-weight: 700;
+}
+
+.quick-buy-success h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: var(--text, #0f172a);
+}
+
+.quick-buy-success p {
+  margin: 0;
+  color: var(--text-muted, #64748b);
+  line-height: 1.5;
+}
+
 @media (max-width: 680px) {
   .quick-buy-dialog {
     border-radius: 14px;
