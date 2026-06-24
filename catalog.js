@@ -36,6 +36,7 @@ const textSearchQuery = (new URLSearchParams(window.location.search).get("q") ||
 const categoryFilter = (new URLSearchParams(window.location.search).get("category") || "").trim();
 let photoSearchList = null;
 let photoSearchLoading = false;
+let photoSearchError = "";
 
 function normalizeTitleKey(value) {
   return String(value || "")
@@ -304,6 +305,16 @@ function updateCatalogHeadCount(count) {
   if (isCartMode) {
     if (foundPrefixEl) foundPrefixEl.textContent = "В корзине";
     if (foundSuffixEl) foundSuffixEl.textContent = productWord(count);
+    return;
+  }
+  if (isPhotoSearchMode) {
+    if (foundPrefixEl) {
+      foundPrefixEl.textContent = window.emirateT?.("photo.foundPrefix") || "Найдено";
+    }
+    if (foundSuffixEl) {
+      foundSuffixEl.textContent = window.emirateT?.("photo.foundSuffix") || "похожих";
+    }
+    return;
   }
 }
 
@@ -426,7 +437,7 @@ function applyFiltersAndSort() {
           </svg>
           <p>${
             isPhotoSearchMode
-              ? (window.emirateT?.("photo.empty") || "Похожие товары не найдены")
+              ? photoSearchError || (window.emirateT?.("photo.empty") || "Похожие товары не найдены")
               : isFavoritesMode
                 ? "В избранном пока пусто"
                 : isCartMode
@@ -554,6 +565,7 @@ async function loadImageSearchScript() {
 async function runPhotoSearch() {
   if (!isPhotoSearchMode) return;
   photoSearchLoading = true;
+  photoSearchError = "";
   applyFiltersAndSort();
 
   const api = await loadImageSearchScript();
@@ -561,6 +573,21 @@ async function runPhotoSearch() {
   const queryData = api.loadQueryImage();
   if (!queryData) {
     photoSearchLoading = false;
+    photoSearchError = window.emirateT?.("photo.noImage") || "Изображение не найдено";
+    photoSearchList = [];
+    applyFiltersAndSort();
+    return;
+  }
+
+  const searchableCount = sourceProducts.filter(
+    (product) => (api.collectProductImageUrls?.(product) || []).length > 0
+  ).length;
+
+  if (!searchableCount) {
+    photoSearchLoading = false;
+    photoSearchError =
+      window.emirateT?.("photo.noCatalogPhotos") ||
+      "В каталоге нет товаров с фото для визуального поиска";
     photoSearchList = [];
     applyFiltersAndSort();
     return;
@@ -582,9 +609,15 @@ async function runPhotoSearch() {
       ...entry.product,
       _matchScore: entry.score
     }));
+    if (!photoSearchList.length) {
+      photoSearchError = window.emirateT?.("photo.empty") || "Похожие товары не найдены";
+    }
   } catch (err) {
     console.warn("[photo-search]", err);
     photoSearchList = [];
+    photoSearchError =
+      window.emirateT?.("photo.engineError") ||
+      "Не удалось запустить поиск по фото. Проверьте интернет и попробуйте снова.";
   } finally {
     photoSearchLoading = false;
     applyFiltersAndSort();
@@ -679,7 +712,6 @@ if (isPhotoSearchMode) {
     syncCatalogSeoMeta();
     await refreshCatalogFromRemote();
     await runPhotoSearch();
-    updateSeoCatalogLinks(sourceProducts);
   })();
 } else {
   syncCatalogSeoMeta();

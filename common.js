@@ -1421,12 +1421,9 @@ function ensurePhotoSearchModal() {
     statusEl.textContent = t("photo.searching") || "Ищем…";
     try {
       var api = await ensureImageSearchApi();
-      var img = await api.loadImageFromFile(pendingFile);
-      var dataUrl = await api.compressToDataUrl(img);
-      api.saveQueryImage(dataUrl);
-      window.location.href = "catalog.html?photo=1";
+      await api.startPhotoSearchFromFile(pendingFile);
     } catch (_) {
-      statusEl.textContent = t("photo.noImage") || "Ошибка загрузки";
+      statusEl.textContent = t("photo.engineError") || "Ошибка загрузки";
       btn.disabled = false;
     }
   });
@@ -1503,7 +1500,15 @@ function initPhotoSearchUI() {
     pickInput.addEventListener("change", function () {
       var file = pickInput.files && pickInput.files[0];
       pickInput.value = "";
-      if (file) openPhotoSearchModalWithFile(file);
+      if (!file) return;
+      void (async function () {
+        try {
+          var api = await ensureImageSearchApi();
+          await api.startPhotoSearchFromFile(file);
+        } catch (_) {
+          openPhotoSearchModalWithFile(file);
+        }
+      })();
     });
   });
 }

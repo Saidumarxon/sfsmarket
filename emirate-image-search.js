@@ -4,8 +4,10 @@
 (function () {
   var EMB_CACHE_KEY = "emirate_img_embeddings_v1";
   var QUERY_KEY = "emirate_photo_search_query";
-  var MIN_SCORE = 0.22;
+  var MIN_SCORE = 0.28;
   var MAX_CACHE = 240;
+  var MAX_PRODUCTS = 80;
+  var MAX_IMAGES_PER_PRODUCT = 2;
 
   var modelPromise = null;
 
@@ -34,6 +36,12 @@
         await loadScript(
           "https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"
         );
+        if (window.tf && window.tf.ready) {
+          await window.tf.ready();
+        }
+        if (!window.mobilenet || !window.mobilenet.load) {
+          throw new Error("mobilenet_unavailable");
+        }
         return window.mobilenet.load({ version: 2, alpha: 0.75 });
       })();
     }
@@ -84,7 +92,23 @@
     writeEmbCache(cache);
   }
 
-  function loadImageFromUrl(url) {
+  function loadImageFromBlob(blob) {
+    return new Promise(function (resolve, reject) {
+      var blobUrl = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(blobUrl);
+        resolve(img);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(blobUrl);
+        reject(new Error("image_load_failed"));
+      };
+      img.src = blobUrl;
+    });
+  }
+
+  function loadImageFromUrlLegacy(url) {
     return new Promise(function (resolve, reject) {
       var img = new Image();
       img.crossOrigin = "anonymous";
@@ -96,6 +120,27 @@
       };
       img.src = url;
     });
+  }
+
+  async function loadImageFromUrl(url) {
+    var value = String(url || "").trim();
+    if (!value) throw new Error("image_load_failed");
+
+    if (value.indexOf("data:") === 0) {
+      return loadImageFromDataUrl(value);
+    }
+
+    try {
+      var resp = await fetch(value, { mode: "cors", credentials: "omit", cache: "force-cache" });
+      if (resp.ok) {
+        var blob = await resp.blob();
+        if (blob && blob.size) {
+          return loadImageFromBlob(blob);
+        }
+      }
+    } catch (_) {}
+
+    return loadImageFromUrlLegacy(value);
   }
 
   function loadImageFromDataUrl(dataUrl) {
@@ -113,17 +158,15 @@
 
   function loadImageFromFile(file) {
     return new Promise(function (resolve, reject) {
-      var blobUrl = URL.createObjectURL(file);
-      var img = new Image();
-      img.onload = function () {
-        URL.revokeObjectURL(blobUrl);
-        resolve(img);
-      };
-      img.onerror = function () {
-        URL.revokeObjectURL(blobUrl);
+      if (!file) {
         reject(new Error("image_load_failed"));
-      };
-      img.src = blobUrl;
+        return;
+      }
+      if (file.type && file.type.indexOf("image/") === 0) {
+        loadImageFromBlob(file).then(resolve).catch(reject);
+        return;
+      }
+      reject(new Error("image_load_failed"));
     });
   }
 
@@ -148,15 +191,34 @@
     }
   }
 
+  function isRealProductImageUrl(url) {
+    var value = String(url || "").trim();
+    if (!value || value.indexOf("data:") === 0) return false;
+    if (value.indexOf("picsum.photos") !== -1) return false;
+    if (value.indexOf("placeholder") !== -1) return false;
+    return true;
+  }
+
   function collectProductImageUrls(product) {
     var urls = [];
-    var media =
-      window.emirateResolveProductMedia?.(product) || {
-        image: product.image,
-        photos: product.photos || []
-      };
-    if (media.image) urls.push(media.image);
-    if (Array.isArray(media.photos)) urls.push.apply(urls, media.photos.filter(Boolean));
+    var media = window.emirateResolveProductMedia?.(product) || {
+      image: product.image,
+      photos: product.photos || [],
+      fromUpload: false
+    };
+
+    if (media.fromUpload) {
+      if (media.image) urls.push(media.image);
+      if (Array.isArray(media.photos)) urls.push.apply(urls, media.photos.filter(Boolean));
+    }
+
+    if (Array.isArray(product.photos)) {
+      product.photos.filter(Boolean).forEach(function (url) {
+        urls.push(url);
+      });
+    }
+    if (product.image) urls.push(product.image);
+
     if (Array.isArray(product.colors)) {
       product.colors.forEach(function (variant) {
         if (Array.isArray(variant.photos)) {
@@ -164,12 +226,13 @@
         }
       });
     }
+
     var seen = {};
     return urls.filter(function (url) {
-      if (!url || seen[url]) return false;
+      if (!isRealProductImageUrl(url) || seen[url]) return false;
       seen[url] = true;
-      return !String(url).startsWith("data:");
-    });
+      return true;
+    }).slice(0, MAX_IMAGES_PER_PRODUCT);
   }
 
   async function scoreProduct(queryEmb, product) {
@@ -186,14 +249,22 @@
   async function searchSimilar(querySource, products, options) {
     var opts = options || {};
     var list = Array.isArray(products) ? products : [];
+    var candidates = list.filter(function (product) {
+      return collectProductImageUrls(product).length > 0;
+    }).slice(0, MAX_PRODUCTS);
+
+    if (!candidates.length) {
+      return [];
+    }
+
     var queryEmb = await extractEmbedding(querySource);
     var scored = [];
-    var total = list.length;
+    var total = candidates.length;
 
-    for (var i = 0; i < list.length; i++) {
+    for (var i = 0; i < candidates.length; i++) {
       if (typeof opts.onProgress === "function") opts.onProgress(i + 1, total);
-      var score = await scoreProduct(queryEmb, list[i]);
-      if (score > 0) scored.push({ product: list[i], score: score });
+      var score = await scoreProduct(queryEmb, candidates[i]);
+      if (score > 0) scored.push({ product: candidates[i], score: score });
     }
 
     scored.sort(function (a, b) {
@@ -205,10 +276,7 @@
       return item.score >= minScore;
     });
 
-    if (!filtered.length && scored.length) {
-      return scored.slice(0, Math.min(12, scored.length));
-    }
-    return filtered;
+    return filtered.slice(0, 24);
   }
 
   function saveQueryImage(dataUrl) {
@@ -226,22 +294,13 @@
   function compressToDataUrl(source, maxSide) {
     maxSide = maxSide || 800;
     return new Promise(function (resolve, reject) {
-      var img =
-        source instanceof HTMLImageElement
-          ? source
-          : null;
+      var img = source instanceof HTMLImageElement ? source : null;
       if (!img && source instanceof Blob) {
-        var url = URL.createObjectURL(source);
-        img = new Image();
-        img.onload = function () {
-          URL.revokeObjectURL(url);
-          resolve(drawCompressed(img, maxSide));
-        };
-        img.onerror = function () {
-          URL.revokeObjectURL(url);
-          reject(new Error("compress_failed"));
-        };
-        img.src = url;
+        loadImageFromBlob(source)
+          .then(function (loaded) {
+            resolve(drawCompressed(loaded, maxSide));
+          })
+          .catch(reject);
         return;
       }
       if (!img) {
@@ -255,6 +314,7 @@
   function drawCompressed(img, maxSide) {
     var w = img.naturalWidth || img.width;
     var h = img.naturalHeight || img.height;
+    if (!w || !h) return "";
     if (w > maxSide || h > maxSide) {
       if (w >= h) {
         h = Math.round((h * maxSide) / w);
@@ -271,6 +331,13 @@
     return canvas.toDataURL("image/jpeg", 0.85);
   }
 
+  async function startPhotoSearchFromFile(file) {
+    var img = await loadImageFromFile(file);
+    var dataUrl = await compressToDataUrl(img);
+    saveQueryImage(dataUrl);
+    window.location.href = "catalog.html?photo=1";
+  }
+
   window.emirateImageSearch = {
     getModel: getModel,
     extractEmbedding: extractEmbedding,
@@ -281,6 +348,8 @@
     compressToDataUrl: compressToDataUrl,
     loadImageFromDataUrl: loadImageFromDataUrl,
     loadImageFromFile: loadImageFromFile,
+    startPhotoSearchFromFile: startPhotoSearchFromFile,
+    collectProductImageUrls: collectProductImageUrls,
     QUERY_KEY: QUERY_KEY
   };
 })();

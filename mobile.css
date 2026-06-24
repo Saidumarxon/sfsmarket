@@ -226,12 +226,24 @@ html[data-theme="dark"] .profile-menu-state {
   align-items: flex-start;
 }
 
+.profile-account-avatar-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
 .profile-account-avatar {
   width: 72px;
   height: 72px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+}
+
+.profile-account-avatar[hidden],
+.profile-account-avatar--placeholder[hidden] {
+  display: none !important;
 }
 
 .profile-account-avatar--placeholder {
@@ -354,6 +366,11 @@ html[data-theme="dark"] .profile-menu-state {
   height: 96px;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.profile-edit-avatar[hidden],
+.profile-edit-avatar--placeholder[hidden] {
+  display: none !important;
 }
 
 .profile-edit-avatar--placeholder {

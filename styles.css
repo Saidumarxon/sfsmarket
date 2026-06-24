@@ -651,6 +651,11 @@ body.photo-search-open {
   display: none;
 }
 
+body.photo-search-mode .seo-catalog-links,
+body.photo-search-mode .seo-noscript {
+  display: none !important;
+}
+
 .seo-catalog-links a {
   display: inline-block;
   margin: 0 12px 0 0;

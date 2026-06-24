@@ -87,10 +87,12 @@
       <section class="profile-account-card">
         <div class="profile-account-main">
           <div class="profile-account-identity">
+          <div class="profile-account-avatar-wrap">
             <img class="profile-account-avatar" id="profileAvatar" src="" alt="" width="72" height="72" hidden>
-            <div class="profile-account-avatar profile-account-avatar--placeholder" id="profileAvatarPlaceholder" aria-hidden="true">
+            <div class="profile-account-avatar profile-account-avatar--placeholder" id="profileAvatarPlaceholder" hidden>
               <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
+          </div>
             <div class="profile-account-identity-text">
               <h2 class="profile-account-name" id="profileName">—</h2>
               <p class="profile-account-id" id="profileId">ID: —</p>
@@ -176,7 +178,7 @@
 
       <div class="profile-edit-avatar-wrap">
         <img class="profile-edit-avatar" id="editAvatarImg" src="" alt="" width="96" height="96" hidden>
-        <div class="profile-edit-avatar profile-edit-avatar--placeholder" id="editAvatarPlaceholder" aria-hidden="true">
+        <div class="profile-edit-avatar profile-edit-avatar--placeholder" id="editAvatarPlaceholder" hidden>
           <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </div>
         <button type="button" class="profile-edit-avatar-btn" id="editAvatarBtn" aria-label="Изменить фото">
@@ -491,20 +493,40 @@
         if (emailRow) emailRow.hidden = email === "—";
         if (phoneRow) phoneRow.hidden = phone === "—";
 
-        var avatarEl = document.getElementById("profileAvatar");
-        var avatarPh = document.getElementById("profileAvatarPlaceholder");
-        if (avatar && avatarEl) {
-          avatarEl.src = avatar;
-          avatarEl.alt = name;
-          avatarEl.hidden = false;
-          if (avatarPh) avatarPh.hidden = true;
-        } else if (avatarEl && avatarPh) {
-          avatarEl.hidden = true;
-          avatarPh.hidden = false;
-        }
+        setAccountAvatar(avatar, name);
 
         if (window.emirateAuth && window.emirateAuth.syncCustomerAuthUi) {
           window.emirateAuth.syncCustomerAuthUi();
+        }
+      }
+
+      function setAccountAvatar(url, name) {
+        var avatarEl = document.getElementById("profileAvatar");
+        var avatarPh = document.getElementById("profileAvatarPlaceholder");
+        if (!avatarEl || !avatarPh) return;
+
+        avatarEl.onload = null;
+        avatarEl.onerror = null;
+
+        if (url) {
+          avatarEl.onload = function () {
+            avatarEl.hidden = false;
+            avatarPh.hidden = true;
+          };
+          avatarEl.onerror = function () {
+            avatarEl.hidden = true;
+            avatarPh.hidden = false;
+          };
+          avatarEl.alt = name || "";
+          avatarEl.src = url;
+          if (avatarEl.complete && avatarEl.naturalWidth > 0) {
+            avatarEl.hidden = false;
+            avatarPh.hidden = true;
+          }
+        } else {
+          avatarEl.removeAttribute("src");
+          avatarEl.hidden = true;
+          avatarPh.hidden = false;
         }
       }
 
