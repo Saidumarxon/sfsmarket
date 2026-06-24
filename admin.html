@@ -391,42 +391,81 @@
             <form class="banner-form" id="bannerForm">
               <input type="hidden" id="bannerId">
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="required" for="bannerTag">Метка</label>
-                  <input type="text" id="bannerTag" placeholder="🔥 Акция недели" required>
+              <div class="banner-lang-tabs" role="tablist" aria-label="Язык баннера">
+                <button type="button" class="banner-lang-tab is-active" data-banner-lang="ru" role="tab" aria-selected="true">Русский</button>
+                <button type="button" class="banner-lang-tab" data-banner-lang="uz" role="tab" aria-selected="false">O'zbek</button>
+              </div>
+
+              <div class="banner-lang-panel" data-banner-lang-panel="ru">
+                <h4 class="banner-lang-panel-title">Баннер на русском</h4>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="required" for="bannerTag">Метка</label>
+                    <input type="text" id="bannerTag" placeholder="🔥 Акция недели" required>
+                  </div>
                 </div>
                 <div class="form-group">
-                  <label for="bannerPriority">Приоритет</label>
-                  <input type="number" id="bannerPriority" value="100" min="1">
+                  <label class="required" for="bannerTitle">Заголовок</label>
+                  <input type="text" id="bannerTitle" placeholder="Скидки до 30% на электронику" required>
+                </div>
+                <div class="form-group">
+                  <label class="required" for="bannerDesc">Описание</label>
+                  <textarea id="bannerDesc" rows="3" placeholder="Короткий текст для баннера" required></textarea>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="bannerPrimaryText">Кнопка 1: текст</label>
+                    <input type="text" id="bannerPrimaryText" placeholder="Смотреть предложения">
+                  </div>
+                  <div class="form-group">
+                    <label for="bannerSecondaryText">Кнопка 2: текст</label>
+                    <input type="text" id="bannerSecondaryText" placeholder="Перейти в каталог">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="bannerImageInput">Изображение RU (опционально)</label>
+                  <input type="file" id="bannerImageInput" accept="image/*">
+                  <span class="form-hint banner-image-hint" id="bannerImageMeta">Изображение не выбрано</span>
                 </div>
               </div>
 
-              <div class="form-group">
-                <label class="required" for="bannerTitle">Заголовок</label>
-                <input type="text" id="bannerTitle" placeholder="Скидки до 30% на электронику" required>
-              </div>
-
-              <div class="form-group">
-                <label class="required" for="bannerDesc">Описание</label>
-                <textarea id="bannerDesc" rows="4" placeholder="Короткий текст для баннера" required></textarea>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="bannerPrimaryText">Кнопка 1: текст</label>
-                  <input type="text" id="bannerPrimaryText" placeholder="Смотреть предложения">
+              <div class="banner-lang-panel" data-banner-lang-panel="uz" hidden>
+                <h4 class="banner-lang-panel-title">Banner o'zbek tilida</h4>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="required" for="bannerTagUz">Yorliq (metka)</label>
+                    <input type="text" id="bannerTagUz" placeholder="🔥 Hafta aksiyasi" required>
+                  </div>
                 </div>
+                <div class="form-group">
+                  <label class="required" for="bannerTitleUz">Sarlavha</label>
+                  <input type="text" id="bannerTitleUz" placeholder="Elektronikaga 30% gacha chegirma" required>
+                </div>
+                <div class="form-group">
+                  <label class="required" for="bannerDescUz">Tavsif</label>
+                  <textarea id="bannerDescUz" rows="3" placeholder="Banner uchun qisqa matn" required></textarea>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="bannerPrimaryTextUz">Tugma 1: matn</label>
+                    <input type="text" id="bannerPrimaryTextUz" placeholder="Takliflarni ko'rish">
+                  </div>
+                  <div class="form-group">
+                    <label for="bannerSecondaryTextUz">Tugma 2: matn</label>
+                    <input type="text" id="bannerSecondaryTextUz" placeholder="Katalogga o'tish">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="bannerImageInputUz">Rasm UZ (ixtiyoriy)</label>
+                  <input type="file" id="bannerImageInputUz" accept="image/*">
+                  <span class="form-hint banner-image-hint" id="bannerImageMetaUz">Rasm tanlanmagan</span>
+                </div>
+              </div>
+
+              <div class="form-row banner-shared-fields">
                 <div class="form-group">
                   <label for="bannerPrimaryUrl">Кнопка 1: ссылка</label>
                   <input type="text" id="bannerPrimaryUrl" placeholder="#">
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="bannerSecondaryText">Кнопка 2: текст</label>
-                  <input type="text" id="bannerSecondaryText" placeholder="Перейти в каталог">
                 </div>
                 <div class="form-group">
                   <label for="bannerSecondaryUrl">Кнопка 2: ссылка</label>
@@ -436,9 +475,8 @@
 
               <div class="form-row">
                 <div class="form-group">
-                  <label for="bannerImageInput">Изображение (опционально)</label>
-                  <input type="file" id="bannerImageInput" accept="image/*">
-                  <span class="form-hint banner-image-hint" id="bannerImageMeta">Изображение не выбрано</span>
+                  <label for="bannerPriority">Приоритет</label>
+                  <input type="number" id="bannerPriority" value="100" min="1">
                 </div>
                 <div class="form-group">
                   <label for="bannerActive">Статус</label>

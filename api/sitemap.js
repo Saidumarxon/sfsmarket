@@ -13,6 +13,15 @@ const STATIC_PAGES = [
   { path: "/catalog", changefreq: "daily", priority: "0.9" },
 ];
 
+const CATALOG_CATEGORIES = [
+  "Смартфоны",
+  "Ноутбуки",
+  "ТВ",
+  "Аудио",
+  "Техника",
+  "Аксессуары",
+];
+
 function xmlEscape(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -69,6 +78,14 @@ module.exports = async function handler(req, res) {
     body += urlEntry(SITE + page.path, {
       changefreq: page.changefreq,
       priority: page.priority,
+      lastmod: new Date().toISOString().slice(0, 10),
+    });
+  });
+
+  CATALOG_CATEGORIES.forEach(function (category) {
+    body += urlEntry(SITE + "/catalog?category=" + encodeURIComponent(category), {
+      changefreq: "daily",
+      priority: "0.85",
       lastmod: new Date().toISOString().slice(0, 10),
     });
   });

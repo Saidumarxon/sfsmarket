@@ -196,7 +196,7 @@ function escapeHtmlAttr(value) {
 }
 
 function renderProduct(product, options = {}) {
-  const productHref = `product.html?product=${encodeURIComponent(product.title)}`;
+  const productHref = `/product?product=${encodeURIComponent(product.title)}`;
   const cartControls = options.cartControls === true;
   const productId = product.title;
   const safeProductId = escapeHtmlAttr(productId);
@@ -482,7 +482,7 @@ function updateSeoCatalogLinks(list) {
     .slice(0, 200)
     .map(
       (product) =>
-        '<a href="product.html?product=' +
+        '<a href="/product?product=' +
         encodeURIComponent(product.title) +
         '">' +
         escapeHtmlAttr(product.title) +
@@ -499,6 +499,17 @@ function syncCatalogSeoMeta() {
       description: "Emirate Co",
       path: window.location.pathname + window.location.search,
       noindex: true,
+    });
+    return;
+  }
+  if (categoryFilter) {
+    window.emirateApplySeo({
+      title: categoryFilter + " — каталог Emirate Co",
+      description:
+        "Купить " +
+        categoryFilter +
+        " в Emirate Co. Доставка по Узбекистану, рассрочка, гарантия.",
+      path: "/catalog?category=" + encodeURIComponent(categoryFilter),
     });
     return;
   }

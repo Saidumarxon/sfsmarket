@@ -9,12 +9,25 @@
   <title>Товар — Emirate Co</title>
   <meta name="description" content="Купить электронику и технику в Emirate Co. Рассрочка, доставка по Узбекистану.">
   <meta name="robots" content="index, follow">
-  <link rel="canonical" href="https://www.emirateco.uz/product">
+  <link rel="sitemap" type="application/xml" title="Sitemap" href="https://www.emirateco.uz/sitemap.xml">
+  <script>
+  (function () {
+    var raw = new URLSearchParams(location.search).get("product");
+    if (!raw) return;
+    var title = String(raw).trim();
+    if (!title) return;
+    var canonical = "https://www.emirateco.uz/product?product=" + encodeURIComponent(title);
+    document.title = title + " — Emirate Co";
+    var link = document.createElement("link");
+    link.rel = "canonical";
+    link.href = canonical;
+    document.head.appendChild(link);
+    var desc = document.querySelector('meta[name="description"]');
+    if (desc) desc.content = ("Купить " + title + " в Emirate Co. Рассрочка, доставка по Узбекистану.").slice(0, 160);
+  })();
+  </script>
   <meta property="og:type" content="product">
   <meta property="og:site_name" content="Emirate Co">
-  <meta property="og:title" content="Товар — Emirate Co">
-  <meta property="og:description" content="Купить электронику и технику в Emirate Co. Рассрочка, доставка по Узбекистану.">
-  <meta property="og:url" content="https://www.emirateco.uz/product">
   <meta property="og:image" content="https://www.emirateco.uz/icons/icon-512.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="manifest.webmanifest">

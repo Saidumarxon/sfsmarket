@@ -356,6 +356,12 @@ function defaultHomeBanners() {
       secondaryText: "\u041f\u0435\u0440\u0435\u0439\u0442\u0438 \u0432 \u043a\u0430\u0442\u0430\u043b\u043e\u0433",
       secondaryUrl: "catalog.html",
       image: "",
+      tagUz: "Hafta aksiyasi",
+      titleUz: "Elektronikaga 30% gacha chegirma",
+      descUz: "0-0-12 oy muddatli to'lov, ortiqcha to'lovsiz. Toshkent bo'ylab bepul yetkazib berish.",
+      primaryTextUz: "Takliflarni ko'rish",
+      secondaryTextUz: "Katalogga o'tish",
+      imageUz: "",
       isActive: true,
       priority: 100
     }
@@ -375,8 +381,28 @@ function normalizeHomeBanner(record) {
     secondaryText: String(banner.secondaryText || "").trim() || "",
     secondaryUrl: String(banner.secondaryUrl || "").trim() || "#",
     image: typeof banner.image === "string" ? banner.image : "",
+    tagUz: String(banner.tagUz || "").trim() || "",
+    titleUz: String(banner.titleUz || "").trim() || "",
+    descUz: String(banner.descUz || "").trim() || "",
+    primaryTextUz: String(banner.primaryTextUz || "").trim() || "",
+    secondaryTextUz: String(banner.secondaryTextUz || "").trim() || "",
+    imageUz: typeof banner.imageUz === "string" ? banner.imageUz : "",
     isActive: banner.isActive !== false,
     priority: Number.isFinite(priority) ? priority : 100
+  };
+}
+
+function resolveHomeBannerForLang(banner, lang) {
+  const normalized = normalizeHomeBanner(banner);
+  if (lang !== "uz") return normalized;
+  return {
+    ...normalized,
+    tag: normalized.tagUz || normalized.tag,
+    title: normalized.titleUz || normalized.title,
+    desc: normalized.descUz || normalized.desc,
+    primaryText: normalized.primaryTextUz || normalized.primaryText,
+    secondaryText: normalized.secondaryTextUz || normalized.secondaryText,
+    image: normalized.imageUz || normalized.image
   };
 }
 
@@ -453,12 +479,13 @@ function renderHeroBanners() {
   const heroSlider = document.querySelector(".hero-slider");
   if (!heroSlider) return;
 
-  const banners = loadHomeBanners();
+  const lang = typeof window.emirateLang === "function" ? window.emirateLang() : "ru";
+  const banners = loadHomeBanners().map((banner) => resolveHomeBannerForLang(banner, lang));
   const safeBanners = banners.length
     ? banners
     : isLiveStorefront() && !homeStorefrontReady
       ? []
-      : defaultHomeBanners();
+      : defaultHomeBanners().map((banner) => resolveHomeBannerForLang(banner, lang));
   if (!safeBanners.length) return;
 
   const slidesHtml = safeBanners.map((banner, index) => {
@@ -531,6 +558,8 @@ function renderHeroBanners() {
   startHeroAutoplay();
 }
 
+window.emirateRefreshHomeBanners = renderHeroBanners;
+
 function rebuildAllProductsIndex() {
   allProductsByTitle.clear();
   Object.values(productData).forEach((items) => {
@@ -555,7 +584,7 @@ function renderProductCard(product) {
   const lang = typeof window.emirateLang === "function" ? window.emirateLang() : "ru";
   const ratingHtml = window.emirateProductRatingHtml?.(product, lang) || "";
 
-  const productHref = `product.html?product=${encodeURIComponent(product.title)}`;
+  const productHref = `/product?product=${encodeURIComponent(product.title)}`;
   const discountText = String(product.discount || "").trim();
   const badgeHTML = discountText ? `<span class="badge-sale">${discountText}</span>` : "";
 

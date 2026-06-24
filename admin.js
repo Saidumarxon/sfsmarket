@@ -1160,6 +1160,12 @@ function defaultBannersData() {
       secondaryText: 'Перейти в каталог',
       secondaryUrl: 'catalog.html',
       image: '',
+      tagUz: '🔥 Hafta aksiyasi',
+      titleUz: 'Elektronikaga 30% gacha chegirma',
+      descUz: '0-0-12 oy muddatli to\'lov, ortiqcha to\'lovsiz. Toshkent bo\'ylab bepul yetkazib berish.',
+      primaryTextUz: 'Takliflarni ko\'rish',
+      secondaryTextUz: 'Katalogga o\'tish',
+      imageUz: '',
       isActive: true,
       priority: 100
     }
@@ -1179,6 +1185,12 @@ function normalizeBannerRecord(record) {
     secondaryText: String(banner.secondaryText || '').trim() || '',
     secondaryUrl: String(banner.secondaryUrl || '').trim() || '#',
     image: typeof banner.image === 'string' ? banner.image : '',
+    tagUz: String(banner.tagUz || '').trim() || '🔥 Aksiya',
+    titleUz: String(banner.titleUz || '').trim() || 'Aksiya banneri',
+    descUz: String(banner.descUz || '').trim() || '',
+    primaryTextUz: String(banner.primaryTextUz || '').trim() || '',
+    secondaryTextUz: String(banner.secondaryTextUz || '').trim() || '',
+    imageUz: typeof banner.imageUz === 'string' ? banner.imageUz : '',
     isActive: banner.isActive !== false,
     priority: Number.isFinite(priority) ? priority : 100
   };
@@ -1244,10 +1256,15 @@ function getBannerPreviewDataFromForm() {
   const bannerTagInput = document.getElementById('bannerTag');
   const bannerTitleInput = document.getElementById('bannerTitle');
   const bannerDescInput = document.getElementById('bannerDesc');
+  const bannerTagUzInput = document.getElementById('bannerTagUz');
+  const bannerTitleUzInput = document.getElementById('bannerTitleUz');
+  const bannerDescUzInput = document.getElementById('bannerDescUz');
   const bannerPrimaryTextInput = document.getElementById('bannerPrimaryText');
   const bannerPrimaryUrlInput = document.getElementById('bannerPrimaryUrl');
   const bannerSecondaryTextInput = document.getElementById('bannerSecondaryText');
   const bannerSecondaryUrlInput = document.getElementById('bannerSecondaryUrl');
+  const bannerPrimaryTextUzInput = document.getElementById('bannerPrimaryTextUz');
+  const bannerSecondaryTextUzInput = document.getElementById('bannerSecondaryTextUz');
   const bannerPriorityInput = document.getElementById('bannerPriority');
   const bannerActiveSelect = document.getElementById('bannerActive');
 
@@ -1259,42 +1276,60 @@ function getBannerPreviewDataFromForm() {
     tag: bannerTagInput?.value || '',
     title: bannerTitleInput?.value || '',
     desc: bannerDescInput?.value || '',
+    tagUz: bannerTagUzInput?.value || '',
+    titleUz: bannerTitleUzInput?.value || '',
+    descUz: bannerDescUzInput?.value || '',
     primaryText: bannerPrimaryTextInput?.value || '',
     primaryUrl: sanitizeBannerUrl(bannerPrimaryUrlInput?.value || '#'),
     secondaryText: bannerSecondaryTextInput?.value || '',
     secondaryUrl: sanitizeBannerUrl(bannerSecondaryUrlInput?.value || '#'),
+    primaryTextUz: bannerPrimaryTextUzInput?.value || '',
+    secondaryTextUz: bannerSecondaryTextUzInput?.value || '',
     image: bannerFormImage || existing?.image || '',
+    imageUz: bannerFormImageUz || existing?.imageUz || '',
     isActive: bannerActiveSelect?.value !== 'false',
     priority: Number.isFinite(priority) ? priority : 100
   });
 }
 
+function validateBannerLangFields(draft, lang) {
+  const isUz = lang === 'uz';
+  const prefix = isUz ? ' (UZ)' : ' (RU)';
+  const tag = String(isUz ? draft.tagUz : draft.tag || '').trim();
+  const title = String(isUz ? draft.titleUz : draft.title || '').trim();
+  const desc = String(isUz ? draft.descUz : draft.desc || '').trim();
+  const primaryText = String(isUz ? draft.primaryTextUz : draft.primaryText || '').trim();
+  const secondaryText = String(isUz ? draft.secondaryTextUz : draft.secondaryText || '').trim();
+
+  if (tag.length > BANNER_TAG_MAX) {
+    return `Метка${prefix} слишком длинная. Максимум ${BANNER_TAG_MAX} символов.`;
+  }
+  if (title.length < BANNER_TITLE_MIN || title.length > BANNER_TITLE_MAX) {
+    return `Заголовок${prefix} должен быть от ${BANNER_TITLE_MIN} до ${BANNER_TITLE_MAX} символов.`;
+  }
+  if (desc.length < BANNER_DESC_MIN || desc.length > BANNER_DESC_MAX) {
+    return `Описание${prefix} должно быть от ${BANNER_DESC_MIN} до ${BANNER_DESC_MAX} символов.`;
+  }
+  if (primaryText.length > BANNER_BTN_MAX || secondaryText.length > BANNER_BTN_MAX) {
+    return `Текст кнопки${prefix} должен быть не длиннее ${BANNER_BTN_MAX} символов.`;
+  }
+  if (hasBlockedPhrases(tag, title, desc)) {
+    return `Обнаружены запрещенные фразы в тексте баннера${prefix}.`;
+  }
+  return '';
+}
+
 function validateBannerDraft(draft) {
-  const tag = String(draft.tag || '').trim();
-  const title = String(draft.title || '').trim();
-  const desc = String(draft.desc || '').trim();
-  const primaryText = String(draft.primaryText || '').trim();
-  const secondaryText = String(draft.secondaryText || '').trim();
   const primaryUrl = sanitizeBannerUrl(draft.primaryUrl || '#');
   const secondaryUrl = sanitizeBannerUrl(draft.secondaryUrl || '#');
 
-  if (tag.length > BANNER_TAG_MAX) {
-    return `Метка слишком длинная. Максимум ${BANNER_TAG_MAX} символов.`;
-  }
-  if (title.length < BANNER_TITLE_MIN || title.length > BANNER_TITLE_MAX) {
-    return `Заголовок должен быть от ${BANNER_TITLE_MIN} до ${BANNER_TITLE_MAX} символов.`;
-  }
-  if (desc.length < BANNER_DESC_MIN || desc.length > BANNER_DESC_MAX) {
-    return `Описание должно быть от ${BANNER_DESC_MIN} до ${BANNER_DESC_MAX} символов.`;
-  }
-  if (primaryText.length > BANNER_BTN_MAX || secondaryText.length > BANNER_BTN_MAX) {
-    return `Текст кнопки должен быть не длиннее ${BANNER_BTN_MAX} символов.`;
-  }
+  const ruError = validateBannerLangFields(draft, 'ru');
+  if (ruError) return ruError;
+  const uzError = validateBannerLangFields(draft, 'uz');
+  if (uzError) return uzError;
+
   if (!isAllowedBannerUrl(primaryUrl) || !isAllowedBannerUrl(secondaryUrl)) {
     return 'Разрешены только внутренние ссылки: #, /path, catalog.html, product.html.';
-  }
-  if (hasBlockedPhrases(tag, title, desc)) {
-    return 'Обнаружены запрещенные фразы в тексте баннера.';
   }
   if (!draft.isActive && countActiveBanners(draft.id) < 1) {
     return 'Должен остаться хотя бы один активный баннер.';
@@ -1302,22 +1337,27 @@ function validateBannerDraft(draft) {
   return '';
 }
 
-function renderBannerPreview(data) {
+function renderBannerPreview(data, lang) {
   const preview = document.getElementById('bannerLivePreview');
   if (!preview) return;
 
   const banner = normalizeBannerRecord(data);
-  const firstButton = banner.primaryText || 'Смотреть предложения';
-  const secondButton = banner.secondaryText || 'Перейти в каталог';
-  const imageStyle = banner.image
-    ? `background-image: linear-gradient(115deg, rgba(11,17,32,0.65), rgba(12,61,107,0.66)), url('${banner.image}'); background-size: cover; background-position: center;`
+  const isUz = (lang || bannerFormLang) === 'uz';
+  const tag = isUz ? banner.tagUz : banner.tag;
+  const title = isUz ? banner.titleUz : banner.title;
+  const desc = isUz ? banner.descUz : banner.desc;
+  const image = isUz ? (banner.imageUz || banner.image) : banner.image;
+  const firstButton = (isUz ? banner.primaryTextUz : banner.primaryText) || (isUz ? 'Takliflarni ko\'rish' : 'Смотреть предложения');
+  const secondButton = (isUz ? banner.secondaryTextUz : banner.secondaryText) || (isUz ? 'Katalogga o\'tish' : 'Перейти в каталог');
+  const imageStyle = image
+    ? `background-image: linear-gradient(115deg, rgba(11,17,32,0.65), rgba(12,61,107,0.66)), url('${image}'); background-size: cover; background-position: center;`
     : '';
 
   preview.setAttribute('style', imageStyle);
   preview.innerHTML = `
-    <div class="banner-preview-tag">${escapeHtml(banner.tag)}</div>
-    <h4>${escapeHtml(banner.title)}</h4>
-    <p>${escapeHtml(banner.desc)}</p>
+    <div class="banner-preview-tag">${escapeHtml(tag)}</div>
+    <h4>${escapeHtml(title)}</h4>
+    <p>${escapeHtml(desc)}</p>
     <div class="banner-preview-buttons">
       <span>${escapeHtml(firstButton)}</span>
       <span>${escapeHtml(secondButton)}</span>
@@ -1339,6 +1379,7 @@ function renderBanners() {
         <td>
           <strong>${escapeHtml(banner.title)}</strong>
           <p>${escapeHtml(banner.tag)}</p>
+          <p class="banner-list-uz">${escapeHtml(banner.titleUz)} · ${escapeHtml(banner.tagUz)}</p>
         </td>
         <td>${buttonsText ? `${buttonsText} кноп.` : '—'}</td>
         <td><span class="status-badge ${banner.isActive ? 'active' : 'inactive'}"><span class="status-dot"></span>${banner.isActive ? 'Включен' : 'Отключен'}</span></td>
@@ -1358,7 +1399,25 @@ function renderBanners() {
 }
 
 let bannerFormImage = '';
+let bannerFormImageUz = '';
+let bannerFormLang = 'ru';
 let bannerFeedbackTimer = null;
+
+function setBannerFormLang(lang) {
+  const nextLang = lang === 'uz' ? 'uz' : 'ru';
+  bannerFormLang = nextLang;
+  document.querySelectorAll('.banner-lang-tab').forEach((tab) => {
+    const isActive = tab.getAttribute('data-banner-lang') === nextLang;
+    tab.classList.toggle('is-active', isActive);
+    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  document.querySelectorAll('.banner-lang-panel').forEach((panel) => {
+    const isActive = panel.getAttribute('data-banner-lang-panel') === nextLang;
+    if (isActive) panel.removeAttribute('hidden');
+    else panel.setAttribute('hidden', 'hidden');
+  });
+  renderBannerPreview(getBannerPreviewDataFromForm(), nextLang);
+}
 
 function showBannerFeedback(message, type = 'info', timeoutMs = 2600) {
   const node = document.getElementById('bannerFeedback');
@@ -1408,7 +1467,8 @@ async function restoreDefaultBanners() {
   for (const item of previous) {
     if (!item?.id || keepIds.has(item.id)) continue;
     await window.emirateSupabaseApi?.deleteAdminBanner?.(item.id);
-    if (item.image) void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.([item.image]);
+    const urls = [item.image, item.imageUz].filter(Boolean);
+    if (urls.length) void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.(urls);
   }
   renderBanners();
   fillBannerForm(bannersData[0].id);
@@ -1434,17 +1494,23 @@ function resetBannerForm() {
   const bannerPriorityInput = document.getElementById('bannerPriority');
   const bannerActiveSelect = document.getElementById('bannerActive');
   const bannerImageMeta = document.getElementById('bannerImageMeta');
+  const bannerImageMetaUz = document.getElementById('bannerImageMetaUz');
   const bannerImageInput = document.getElementById('bannerImageInput');
+  const bannerImageInputUz = document.getElementById('bannerImageInputUz');
 
   bannerForm?.reset();
   if (bannerIdInput) bannerIdInput.value = '';
   if (bannerPriorityInput) bannerPriorityInput.value = '100';
   if (bannerActiveSelect) bannerActiveSelect.value = 'true';
   if (bannerImageMeta) bannerImageMeta.textContent = 'Изображение не выбрано';
+  if (bannerImageMetaUz) bannerImageMetaUz.textContent = 'Rasm tanlanmagan';
   if (bannerImageInput) bannerImageInput.value = '';
+  if (bannerImageInputUz) bannerImageInputUz.value = '';
 
   bannerFormImage = '';
-  renderBannerPreview(defaultBannersData()[0]);
+  bannerFormImageUz = '';
+  setBannerFormLang('ru');
+  renderBannerPreview(defaultBannersData()[0], 'ru');
 }
 
 function fillBannerForm(bannerId) {
@@ -1455,28 +1521,41 @@ function fillBannerForm(bannerId) {
   const bannerTagInput = document.getElementById('bannerTag');
   const bannerTitleInput = document.getElementById('bannerTitle');
   const bannerDescInput = document.getElementById('bannerDesc');
+  const bannerTagUzInput = document.getElementById('bannerTagUz');
+  const bannerTitleUzInput = document.getElementById('bannerTitleUz');
+  const bannerDescUzInput = document.getElementById('bannerDescUz');
   const bannerPrimaryTextInput = document.getElementById('bannerPrimaryText');
   const bannerPrimaryUrlInput = document.getElementById('bannerPrimaryUrl');
   const bannerSecondaryTextInput = document.getElementById('bannerSecondaryText');
   const bannerSecondaryUrlInput = document.getElementById('bannerSecondaryUrl');
+  const bannerPrimaryTextUzInput = document.getElementById('bannerPrimaryTextUz');
+  const bannerSecondaryTextUzInput = document.getElementById('bannerSecondaryTextUz');
   const bannerPriorityInput = document.getElementById('bannerPriority');
   const bannerActiveSelect = document.getElementById('bannerActive');
   const bannerImageMeta = document.getElementById('bannerImageMeta');
+  const bannerImageMetaUz = document.getElementById('bannerImageMetaUz');
 
   if (bannerIdInput) bannerIdInput.value = banner.id;
   if (bannerTagInput) bannerTagInput.value = banner.tag;
   if (bannerTitleInput) bannerTitleInput.value = banner.title;
   if (bannerDescInput) bannerDescInput.value = banner.desc;
+  if (bannerTagUzInput) bannerTagUzInput.value = banner.tagUz;
+  if (bannerTitleUzInput) bannerTitleUzInput.value = banner.titleUz;
+  if (bannerDescUzInput) bannerDescUzInput.value = banner.descUz;
   if (bannerPrimaryTextInput) bannerPrimaryTextInput.value = banner.primaryText;
   if (bannerPrimaryUrlInput) bannerPrimaryUrlInput.value = banner.primaryUrl;
   if (bannerSecondaryTextInput) bannerSecondaryTextInput.value = banner.secondaryText;
   if (bannerSecondaryUrlInput) bannerSecondaryUrlInput.value = banner.secondaryUrl;
+  if (bannerPrimaryTextUzInput) bannerPrimaryTextUzInput.value = banner.primaryTextUz;
+  if (bannerSecondaryTextUzInput) bannerSecondaryTextUzInput.value = banner.secondaryTextUz;
   if (bannerPriorityInput) bannerPriorityInput.value = String(banner.priority);
   if (bannerActiveSelect) bannerActiveSelect.value = banner.isActive ? 'true' : 'false';
   if (bannerImageMeta) bannerImageMeta.textContent = banner.image ? 'Текущее изображение загружено' : 'Изображение не выбрано';
+  if (bannerImageMetaUz) bannerImageMetaUz.textContent = banner.imageUz ? 'Joriy rasm yuklangan' : 'Rasm tanlanmagan';
 
   bannerFormImage = banner.image || '';
-  renderBannerPreview(banner);
+  bannerFormImageUz = banner.imageUz || '';
+  renderBannerPreview(banner, bannerFormLang);
 }
 
 async function saveBanner(event) {
@@ -1520,14 +1599,16 @@ async function deleteBanner(bannerId) {
   if (!confirm(`Удалить слайд "${banner.title}"?`)) return;
 
   const imageUrl = banner.image || '';
+  const imageUrlUz = banner.imageUz || '';
   bannersData = bannersData.filter((item) => item.id !== bannerId);
   if (!await persistBannersData()) return;
   const deleteRes = await window.emirateSupabaseApi?.deleteAdminBanner?.(bannerId);
   if (deleteRes && !deleteRes.ok) {
     console.warn('[Supabase] delete banner', deleteRes.error);
   }
-  if (imageUrl) {
-    void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.([imageUrl]);
+  const urls = [imageUrl, imageUrlUz].filter(Boolean);
+  if (urls.length) {
+    void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.(urls);
   }
   renderBanners();
   resetBannerForm();
@@ -2121,70 +2202,99 @@ document.getElementById('bannerRestoreDefaultBtn')?.addEventListener('click', fu
   restoreDefaultBanners();
 });
 
-['bannerTag', 'bannerTitle', 'bannerDesc', 'bannerPrimaryText', 'bannerSecondaryText', 'bannerActive'].forEach((id) => {
+document.querySelectorAll('.banner-lang-tab').forEach((tab) => {
+  tab.addEventListener('click', function() {
+    setBannerFormLang(this.getAttribute('data-banner-lang') || 'ru');
+  });
+});
+
+['bannerTag', 'bannerTitle', 'bannerDesc', 'bannerPrimaryText', 'bannerSecondaryText', 'bannerTagUz', 'bannerTitleUz', 'bannerDescUz', 'bannerPrimaryTextUz', 'bannerSecondaryTextUz', 'bannerActive'].forEach((id) => {
   const el = document.getElementById(id);
   if (!el) return;
   const eventName = id === 'bannerActive' ? 'change' : 'input';
   el.addEventListener(eventName, function() {
-    renderBannerPreview(getBannerPreviewDataFromForm());
+    renderBannerPreview(getBannerPreviewDataFromForm(), bannerFormLang);
   });
 });
 
-document.getElementById('bannerImageInput')?.addEventListener('change', function() {
-  if (!canManageBanners) return;
-  const file = this.files?.[0];
-  const bannerImageMeta = document.getElementById('bannerImageMeta');
+async function handleBannerImageUpload(file, inputEl, options) {
+  const { imageKey, metaEl, emptyMetaText, successPrefix } = options;
   if (!file) {
-    if (!bannerFormImage && bannerImageMeta) bannerImageMeta.textContent = 'Изображение не выбрано';
+    if (!options.getImage() && metaEl) metaEl.textContent = emptyMetaText;
     showBannerFeedback('Изображение не выбрано.');
     return;
   }
   if (!file.type.startsWith('image/')) {
     showBannerFeedback('Можно загрузить только изображение.', 'error', 3200);
     alert('Можно загрузить только изображение.');
-    this.value = '';
+    inputEl.value = '';
     return;
   }
   if (file.size > IMAGE_UPLOAD_MAX_BYTES) {
     showBannerFeedback('Файл больше 15MB и не был добавлен.', 'error', 3200);
     alert('Файл больше 15MB и не был добавлен.');
-    this.value = '';
+    inputEl.value = '';
     return;
   }
-  (async function processBannerImage() {
-    try {
-      const optimized = await prepareImageForUpload(file, { maxSide: 2400, skipIfUnderBytes: 600 * 1024 });
-      let imageSrc = '';
-      if (window.emirateSupabaseApi?.isConfigured?.() && window.emirateSupabaseApi?.uploadAdminAsset) {
-        setAssetUploadState(true);
-        const uploadRes = await window.emirateSupabaseApi.uploadAdminAsset(optimized, { folder: 'banners' });
-        setAssetUploadState(false);
-        if (!uploadRes?.ok || !uploadRes.url) {
-          throw new Error(uploadRes?.error || 'storage upload failed');
-        }
-        imageSrc = uploadRes.url;
-      } else {
-        imageSrc = await readFileAsDataUrl(optimized);
+  try {
+    const optimized = await prepareImageForUpload(file, { maxSide: 2400, skipIfUnderBytes: 600 * 1024 });
+    let imageSrc = '';
+    if (window.emirateSupabaseApi?.isConfigured?.() && window.emirateSupabaseApi?.uploadAdminAsset) {
+      setAssetUploadState(true);
+      const uploadRes = await window.emirateSupabaseApi.uploadAdminAsset(optimized, { folder: 'banners' });
+      setAssetUploadState(false);
+      if (!uploadRes?.ok || !uploadRes.url) {
+        throw new Error(uploadRes?.error || 'storage upload failed');
       }
-      const meta = await getImageMeta(imageSrc);
-      if (meta.ratio < BANNER_IMAGE_RATIO_MIN || meta.ratio > BANNER_IMAGE_RATIO_MAX) {
-        showBannerFeedback('Неверная пропорция изображения для баннера.', 'error', 3800);
-        alert(`Неверная пропорция изображения (${meta.width}x${meta.height}). Используйте горизонтальный баннер примерно 16:6.`);
-        if (bannerImageMeta) bannerImageMeta.textContent = 'Изображение не выбрано';
-        return;
-      }
-      bannerFormImage = imageSrc;
-      const sizeNote = optimized.size < file.size
-        ? `, сжато ${Math.round(file.size / 1024)}→${Math.round(optimized.size / 1024)} КБ`
-        : '';
-      if (bannerImageMeta) bannerImageMeta.textContent = `Загружено: ${file.name} (${meta.width}×${meta.height}${sizeNote})`;
-      renderBannerPreview(getBannerPreviewDataFromForm());
-      showBannerFeedback(`Изображение загружено: ${file.name}.`, 'success');
-    } catch (_) {
-      showBannerFeedback('Не удалось обработать изображение.', 'error', 3200);
-      alert('Не удалось обработать изображение.');
+      imageSrc = uploadRes.url;
+    } else {
+      imageSrc = await readFileAsDataUrl(optimized);
     }
-  })();
+    const meta = await getImageMeta(imageSrc);
+    if (meta.ratio < BANNER_IMAGE_RATIO_MIN || meta.ratio > BANNER_IMAGE_RATIO_MAX) {
+      showBannerFeedback('Неверная пропорция изображения для баннера.', 'error', 3800);
+      alert(`Неверная пропорция изображения (${meta.width}x${meta.height}). Используйте горизонтальный баннер примерно 16:6.`);
+      if (metaEl) metaEl.textContent = emptyMetaText;
+      return;
+    }
+    options.setImage(imageSrc);
+    const sizeNote = optimized.size < file.size
+      ? `, сжато ${Math.round(file.size / 1024)}→${Math.round(optimized.size / 1024)} КБ`
+      : '';
+    if (metaEl) metaEl.textContent = `${successPrefix}: ${file.name} (${meta.width}×${meta.height}${sizeNote})`;
+    renderBannerPreview(getBannerPreviewDataFromForm(), bannerFormLang);
+    showBannerFeedback(`Изображение загружено (${imageKey}): ${file.name}.`, 'success');
+  } catch (_) {
+    showBannerFeedback('Не удалось обработать изображение.', 'error', 3200);
+    alert('Не удалось обработать изображение.');
+  }
+}
+
+document.getElementById('bannerImageInput')?.addEventListener('change', function() {
+  if (!canManageBanners) return;
+  const file = this.files?.[0];
+  void handleBannerImageUpload(file, this, {
+    imageKey: 'RU',
+    metaEl: document.getElementById('bannerImageMeta'),
+    emptyMetaText: 'Изображение не выбрано',
+    successPrefix: 'Загружено',
+    getImage: () => bannerFormImage,
+    setImage: (url) => { bannerFormImage = url; }
+  });
+  this.value = '';
+});
+
+document.getElementById('bannerImageInputUz')?.addEventListener('change', function() {
+  if (!canManageBanners) return;
+  const file = this.files?.[0];
+  void handleBannerImageUpload(file, this, {
+    imageKey: 'UZ',
+    metaEl: document.getElementById('bannerImageMetaUz'),
+    emptyMetaText: 'Rasm tanlanmagan',
+    successPrefix: 'Yuklandi',
+    getImage: () => bannerFormImageUz,
+    setImage: (url) => { bannerFormImageUz = url; }
+  });
   this.value = '';
 });
 

@@ -52,6 +52,11 @@
   /* --- Motion --- */
   --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Profile / card aliases --- */
+  --card-bg: var(--bg-card);
+  --text-primary: var(--text);
+  --bg-secondary: #f1f5f9;
 }
 
 html[data-theme="dark"] {
@@ -73,6 +78,10 @@ html[data-theme="dark"] {
   --shadow-lg: 0 10px 32px rgba(0, 0, 0, 0.38);
   --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.42);
   --shadow-card-hover: 0 12px 36px rgba(0, 0, 0, 0.4);
+
+  --card-bg: var(--bg-card);
+  --text-primary: var(--text);
+  --bg-secondary: #0b0f17;
 }
 
 html[data-theme="dark"] .header {
@@ -1143,6 +1152,47 @@ html[data-theme="dark"] .badge-match {
     border-radius: 16px;
     padding: 24px;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  }
+
+  html[data-theme="dark"]:not(.capacitor-app) .profile-sidebar {
+    background: var(--bg-card);
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  html[data-theme="dark"]:not(.capacitor-app) .profile-sidebar-link {
+    color: var(--text-secondary);
+  }
+
+  html[data-theme="dark"]:not(.capacitor-app) .profile-sidebar-link svg {
+    color: var(--text-muted);
+  }
+
+  html[data-theme="dark"]:not(.capacitor-app) .profile-sidebar-link:hover,
+  html[data-theme="dark"]:not(.capacitor-app) .profile-sidebar-link.is-active {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  html[data-theme="dark"]:not(.capacitor-app) .profile-sidebar-link:hover svg,
+  html[data-theme="dark"]:not(.capacitor-app) .profile-sidebar-link.is-active svg {
+    color: var(--accent);
+  }
+
+  html[data-theme="dark"]:not(.capacitor-app) .profile-sidebar-logout:hover {
+    background: rgba(239, 68, 68, 0.12);
+  }
+
+  html[data-theme="dark"]:not(.capacitor-app) .profile-account-card,
+  html[data-theme="dark"]:not(.capacitor-app) .profile-stat-card,
+  html[data-theme="dark"]:not(.capacitor-app) #profileEditView {
+    background: var(--bg-card);
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  html[data-theme="dark"]:not(.capacitor-app) .profile-account-identity {
+    border-bottom-color: var(--border);
   }
 }
 

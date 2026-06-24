@@ -40,6 +40,22 @@
     el.setAttribute("href", href);
   }
 
+  function upsertHreflang(path) {
+    var pagePath = path != null ? path : window.location.pathname + window.location.search;
+    var pageUrl = absUrl(pagePath);
+    ["ru", "uz", "x-default"].forEach(function (lang) {
+      var selector = 'link[rel="alternate"][hreflang="' + lang + '"]';
+      var el = document.querySelector(selector);
+      if (!el) {
+        el = document.createElement("link");
+        el.setAttribute("rel", "alternate");
+        el.setAttribute("hreflang", lang);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("href", pageUrl);
+    });
+  }
+
   function upsertJsonLd(id, data) {
     if (!data) return;
     var el = document.getElementById(id);
@@ -86,6 +102,7 @@
     upsertMeta("name", "twitter:title", title);
     upsertMeta("name", "twitter:description", description);
     upsertMeta("name", "twitter:image", image);
+    upsertHreflang(path);
 
     if (options.jsonLd) upsertJsonLd("emirate-jsonld", options.jsonLd);
     if (options.productJsonLd) upsertJsonLd("emirate-product-jsonld", options.productJsonLd);
@@ -170,8 +187,36 @@
     });
   }
 
+  function initProductUrlSeo() {
+    var path = window.location.pathname || "";
+    if (!/\/product\/?$/i.test(path) && !/\/product\.html$/i.test(path)) return false;
+    var params = new URLSearchParams(window.location.search);
+    var raw = params.get("product");
+    if (!raw) {
+      window.emirateApplySeo({
+        title: "Товар — Emirate Co",
+        description: "Каталог товаров Emirate Co.",
+        path: "/product",
+        noindex: true,
+      });
+      return true;
+    }
+    var title = String(raw).trim();
+    if (!title) return false;
+    var productPath = "/product?product=" + encodeURIComponent(title);
+    window.emirateApplySeo({
+      title: title + " — Emirate Co",
+      description: ("Купить " + title + " в Emirate Co. Рассрочка, доставка по Узбекистану.").slice(0, 160),
+      path: productPath,
+      type: "product",
+    });
+    return true;
+  }
+
   function initFromDocument() {
     var html = document.documentElement;
+    if (initProductUrlSeo()) return;
+
     var seoTitle = html.getAttribute("data-seo-title");
     var seoDescription = html.getAttribute("data-seo-description");
     var seoPath = html.getAttribute("data-seo-path");

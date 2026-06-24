@@ -993,6 +993,9 @@ if (langSwitch) {
     if (typeof window.emirateUpdateProfileDropdown === "function") {
       window.emirateUpdateProfileDropdown();
     }
+    if (typeof window.emirateRefreshHomeBanners === "function") {
+      window.emirateRefreshHomeBanners();
+    }
   });
 }
 

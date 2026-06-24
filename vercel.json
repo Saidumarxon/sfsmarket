@@ -3,6 +3,29 @@
   "framework": null,
   "outputDirectory": ".",
   "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "emirateco.uz" }],
+      "destination": "https://www.emirateco.uz/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/index.html",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/catalog.html",
+      "destination": "/catalog",
+      "permanent": true
+    },
+    {
+      "source": "/product.html",
+      "destination": "/product",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/sitemap.xml",
