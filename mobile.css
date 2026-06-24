@@ -30,6 +30,10 @@ html.capacitor-app .scroll-top {
   bottom: calc(90px + var(--safe-bottom));
 }
 
+html.capacitor-app .telegram-fab {
+  bottom: calc(90px + var(--safe-bottom));
+}
+
 html.capacitor-app .catalog-dropdown {
   top: calc(var(--header-height, 72px) + var(--safe-top));
 }
@@ -535,14 +539,40 @@ html[data-theme="dark"] .profile-edit-avatar-btn {
   display: flex;
 }
 
-html:not(.capacitor-app) .profile-page .mobile-nav,
-html:not(.capacitor-app) .profile-page #profileGuestView,
-html:not(.capacitor-app) .profile-page #profileGuestActions {
-  display: none !important;
+@media (min-width: 681px) {
+  html:not(.capacitor-app) .profile-page .mobile-nav,
+  html:not(.capacitor-app) .profile-page #profileGuestView,
+  html:not(.capacitor-app) .profile-page #profileGuestActions,
+  html:not(.capacitor-app) .profile-page .profile-bottom-actions {
+    display: none !important;
+  }
 }
 
-html:not(.capacitor-app) .profile-page .profile-bottom-actions {
-  display: none !important;
+@media (max-width: 680px) {
+  html:not(.capacitor-app) .profile-page .profile-web-only {
+    display: none !important;
+  }
+
+  html:not(.capacitor-app) .profile-page .mobile-nav {
+    display: flex !important;
+  }
+
+  html:not(.capacitor-app) .profile-page .profile-app-only {
+    display: block !important;
+  }
+
+  html:not(.capacitor-app) .profile-page .profile-bottom-actions {
+    display: block !important;
+  }
+
+  html:not(.capacitor-app) .profile-page #profileGuestView:not([hidden]),
+  html:not(.capacitor-app) .profile-page #profileGuestActions:not([hidden]) {
+    display: block !important;
+  }
+
+  html:not(.capacitor-app) .profile-page #profileLoggedActions:not([hidden]) {
+    display: block !important;
+  }
 }
 
 html.capacitor-app .profile-web-only {

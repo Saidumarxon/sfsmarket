@@ -934,6 +934,7 @@ function syncThemeLogos(theme) {
   var darkSrc = "images/emirate-logo-dark.svg";
   var lightSrc = "images/emirate-logo.svg";
   document.querySelectorAll(".logo-img").forEach(function (img) {
+    if (img.classList.contains("footer-logo-img") || img.closest(".footer-logo")) return;
     if (!img.dataset.logoDefault) {
       img.dataset.logoDefault = img.getAttribute("src") || lightSrc;
     }
@@ -1008,8 +1009,13 @@ function isNativeApp() {
   return document.documentElement.classList.contains("capacitor-app");
 }
 
+function isMobileViewport() {
+  return window.matchMedia("(max-width: 680px)").matches;
+}
+
 function shouldUseDesktopAuthModal() {
   if (isNativeApp()) return false;
+  if (isMobileViewport()) return false;
   if (document.body && document.body.classList.contains("profile-page")) return false;
   return true;
 }
@@ -1542,6 +1548,7 @@ function initAuthLinks() {
   document.addEventListener("click", function (e) {
     var link = e.target.closest('a[href="login.html"], a[href="./login.html"]');
     if (!link || !shouldUseDesktopAuthModal()) return;
+    if (link.closest(".mobile-nav")) return;
     if (link.classList.contains("profile-menu-trigger") && link.closest(".profile-menu-wrap--auth")) return;
     if (window.emirateAuth && window.emirateAuth.loadCustomer && window.emirateAuth.loadCustomer()) return;
     e.preventDefault();
@@ -1560,6 +1567,19 @@ if (shouldUseDesktopAuthModal()) {
     } else if (authParams.get("auth_error") === "google") {
       openAuthModal();
       showAuthMessage(t("auth.googleError") || "Не удалось войти через Google");
+    }
+  } catch (_) {}
+} else if (isMobileViewport() && !document.body.classList.contains("profile-page")) {
+  try {
+    var mobileAuthParams = new URLSearchParams(window.location.search);
+    if (
+      mobileAuthParams.get("auth") === "1" ||
+      mobileAuthParams.get("auth") === "open" ||
+      mobileAuthParams.get("auth_error") === "google"
+    ) {
+      var next = "login.html?login=1";
+      if (mobileAuthParams.get("auth_error") === "google") next = "login.html?auth_error=google";
+      window.location.replace(next);
     }
   } catch (_) {}
 }
@@ -1800,3 +1820,35 @@ initPhotoSearchUI();
 initHeaderSearchForms();
 window.emirateOpenPhotoSearchModal = openPhotoSearchModal;
 window.emirateOpenPhotoSearchModalWithFile = openPhotoSearchModalWithFile;
+
+function getTelegramBotUsername() {
+  return String(window.EMIRATE_TELEGRAM_BOT || "")
+    .trim()
+    .replace(/^@+/, "");
+}
+
+function initTelegramWidget() {
+  var username = getTelegramBotUsername();
+  if (!username) return;
+  var url = "https://t.me/" + encodeURIComponent(username);
+  document.querySelectorAll('.footer-socials a[title="Telegram"]').forEach(function (link) {
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+  });
+  if (document.querySelector(".telegram-fab")) return;
+  var fab = document.createElement("a");
+  fab.className = "telegram-fab";
+  fab.href = url;
+  fab.target = "_blank";
+  fab.rel = "noopener noreferrer";
+  fab.title = "Telegram";
+  fab.setAttribute("aria-label", "Telegram bot");
+  fab.innerHTML =
+    '<svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
+      '<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6.54l-1.37 6.49c-.1.46-.37.57-.74.35l-2.05-1.51-1 .96c-.1.1-.2.2-.4.2l.15-2.08 3.82-3.45c.17-.15-.04-.23-.26-.09l-4.72 2.97-2.04-.63c-.44-.14-.45-.44.09-.66l7.98-3.08c.37-.14.69.09.54.53z"/>' +
+    "</svg>";
+  document.body.appendChild(fab);
+}
+
+initTelegramWidget();

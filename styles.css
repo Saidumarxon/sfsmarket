@@ -111,7 +111,16 @@ html[data-theme="dark"] .footer {
   background: #070b12;
 }
 
-html[data-theme="dark"] .logo-img {
+html[data-theme="dark"] .footer-logo .logo-img,
+html[data-theme="dark"] .footer-logo-img {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  filter: none;
+}
+
+html[data-theme="dark"] .header .logo-img,
+html[data-theme="dark"] .logo:not(.footer-logo) .logo-img {
   filter: none;
 }
 
@@ -2461,10 +2470,8 @@ body.home-storefront-loading .carousel-track {
 
 .footer-logo .logo-img {
   height: 40px;
-  background: #fff;
-  padding: 6px 10px;
-  border-radius: 10px;
-  box-sizing: content-box;
+  width: auto;
+  display: block;
 }
 
 .footer-logo-main {
@@ -2617,6 +2624,31 @@ body.home-storefront-loading .carousel-track {
   border-color: transparent;
   box-shadow: var(--shadow-accent);
   transform: translateY(-2px);
+}
+
+.telegram-fab {
+  position: fixed;
+  left: 24px;
+  bottom: 90px;
+  width: 46px;
+  height: 46px;
+  background: #229ed9;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(34, 158, 217, 0.45);
+  z-index: 80;
+  color: #fff;
+  transition: transform var(--transition-slow), box-shadow var(--transition-slow);
+}
+
+.telegram-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(34, 158, 217, 0.55);
+  color: #fff;
 }
 
 /* ========================================
@@ -2936,6 +2968,15 @@ body.home-storefront-loading .carousel-track {
   .payment-icons {
     flex-wrap: wrap;
     justify-content: center;
+  }
+
+  .footer-logo .logo-img,
+  .footer-logo-img {
+    height: 36px;
+    width: auto;
+    max-width: min(160px, 70vw);
+    object-fit: contain;
+    display: block;
   }
 
   /* Mobile Bottom Nav */
