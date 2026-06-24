@@ -741,7 +741,7 @@ sortSelectEl?.addEventListener("change", applyFiltersAndSort);
 resetFiltersBtn?.addEventListener("click", resetFilters);
 
 function onProductGridClick(e) {
-  const quickBuyBtn = e.target.closest(".quick-buy-open");
+  const quickBuyBtn = e.target.closest("button.quick-buy-open");
   if (quickBuyBtn) {
     e.preventDefault();
     e.stopPropagation();

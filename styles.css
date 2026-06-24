@@ -4609,7 +4609,7 @@ body.cart-mode.cart-empty-mode .catalog-empty span {
 }
 
 /* ===== QUICK BUY MODAL ===== */
-body.quick-buy-open {
+body.quick-buy-modal-open {
   overflow: hidden;
 }
 

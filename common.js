@@ -561,9 +561,19 @@ function resolveQuickBuyProduct(card, triggerBtn) {
     "";
   if (title && typeof window.emirateLookupProduct === "function") {
     const found = window.emirateLookupProduct(title);
-    if (found) return normalizeViewedProduct(found);
+    if (found) {
+      const normalized = normalizeViewedProduct(found);
+      if (normalized) return normalized;
+    }
   }
-  return buildQuickBuyProductFromCard(card);
+  if (card) {
+    const fromCard = buildQuickBuyProductFromCard(card);
+    if (fromCard) return fromCard;
+  }
+  if (title) {
+    return normalizeViewedProduct({ title, price: 0, brand: "", category: "" });
+  }
+  return null;
 }
 
 let quickBuyState = { product: null, qty: 1 };
@@ -750,7 +760,7 @@ function openQuickBuyModal(product, qty = 1) {
   renderQuickBuySummary();
   if (overlay) {
     overlay.hidden = false;
-    document.body.classList.add("quick-buy-open");
+    document.body.classList.add("quick-buy-modal-open");
     phoneEl?.focus();
   }
 }
@@ -759,7 +769,7 @@ function closeQuickBuyModal() {
   const overlay = document.getElementById("quickBuyModal");
   if (!overlay) return;
   overlay.hidden = true;
-  document.body.classList.remove("quick-buy-open");
+  document.body.classList.remove("quick-buy-modal-open");
   quickBuyState = { product: null, qty: 1 };
   resetQuickBuyModalView();
 }
@@ -818,16 +828,14 @@ async function submitQuickBuyOrder(event) {
 }
 
 document.addEventListener("click", (event) => {
-  const btn = event.target.closest(".quick-buy-open");
-  if (!btn) return;
+  if (event.target.closest("#quickBuyModal")) return;
+  const btn = event.target.closest("button.quick-buy-open");
+  if (!btn || btn.id === "quickBuySubmit") return;
   event.preventDefault();
   event.stopPropagation();
   const card = btn.closest(".product-card");
   const product = resolveQuickBuyProduct(card, btn);
-  if (!product) {
-    alert("Не удалось открыть товар. Обновите страницу.");
-    return;
-  }
+  if (!product) return;
   openQuickBuyModal(product, 1);
 });
 
