@@ -22,13 +22,23 @@ const descriptionTabEl = document.getElementById("description");
 const specsTabEl = document.getElementById("specs");
 const colorValueLabelEl = document.getElementById("colorValueLabel");
 const colorOptionsRowEl = document.getElementById("colorOptionsRow");
+const memoryOptionsRowEl = document.getElementById("memoryOptionsRow");
+const memoryOptionGroupEl = document.getElementById("memoryOptionGroup");
+const memoryValueLabelEl = document.getElementById("memoryValueLabel");
+const memoryAttrLabelEl = document.getElementById("memoryAttrLabel");
+const installmentAmountEl = document.getElementById("installmentAmount");
 const defaultDescriptionHtml = descriptionTabEl?.innerHTML || "";
 const defaultSpecsHtml = specsTabEl?.innerHTML || "";
+const reviewsTabEl = document.getElementById("reviews");
+const reviewsTabBtn = document.querySelector('.tab-btn[data-tab="reviews"]');
 let activePhotoIndex = 0;
 let currentPhotos = [];
 let dragStartX = 0;
 let dragStartIndex = 0;
 let isDraggingPhoto = false;
+let activeMemoryId = "";
+let currentMemoryVariants = [];
+let baseProductPrices = { price: 0, oldPrice: 0 };
 let activeColorId = "";
 let currentColorVariants = [];
 let colorRenderContext = { title: "Товар", fallbackPhotos: [] };
@@ -79,6 +89,92 @@ function normalizeSpec(spec) {
     key: keyRu || keyUz,
     value: valueRu || valueUz
   };
+}
+
+function normalizeMemoryVariant(variant) {
+  const nameRu = String(variant?.nameRu || variant?.name || "").trim();
+  const nameUz = String(variant?.nameUz || "").trim();
+  if (!(nameRu || nameUz)) return null;
+  return {
+    id: String(variant?.id || `memory_${nameRu || nameUz}`),
+    nameRu,
+    nameUz,
+    name: nameRu || nameUz,
+    status: variant?.status === "inactive" ? "inactive" : "active",
+    priceUsd: variant?.priceUsd != null ? variant.priceUsd : "",
+    oldPriceUsd: variant?.oldPriceUsd != null ? variant.oldPriceUsd : "",
+    price: String(variant?.price || "").trim(),
+    oldPrice: String(variant?.oldPrice || "").trim()
+  };
+}
+
+function resolveMemoryVariantPrices(variant) {
+  if (!variant) return { price: 0, oldPrice: 0 };
+  if (window.emirateExchange?.resolveStorefrontPricesFromProduct) {
+    return window.emirateExchange.resolveStorefrontPricesFromProduct(variant);
+  }
+  if (window.emirateSupabaseApi?.applyStorefrontMarkupToPrices) {
+    const rawPrice = parsePriceText(variant.price);
+    const rawOldPrice = parsePriceText(variant.oldPrice) || rawPrice;
+    return window.emirateSupabaseApi.applyStorefrontMarkupToPrices(rawPrice, rawOldPrice);
+  }
+  const price = parsePriceText(variant.price);
+  const oldPrice = parsePriceText(variant.oldPrice) || price;
+  return { price, oldPrice: Math.max(oldPrice, price) };
+}
+
+function getMemoryDisplayName(variant, lang) {
+  return lang === "uz"
+    ? (variant.nameUz || variant.nameRu || variant.name || "")
+    : (variant.nameRu || variant.nameUz || variant.name || "");
+}
+
+function updateProductPriceUi(price, oldPrice) {
+  if (currentPriceEl) currentPriceEl.textContent = `${formatMoney(price)} сум`;
+  if (oldPriceEl) oldPriceEl.textContent = oldPrice > price ? `${formatMoney(oldPrice)} сум` : "";
+  if (installmentAmountEl) {
+    installmentAmountEl.textContent = `${formatMoney(Math.round(price / 12))} сум/мес`;
+  }
+  currentProduct.price = price;
+  currentProduct.oldPrice = oldPrice;
+}
+
+function renderMemoryButtons(lang) {
+  if (!memoryOptionsRowEl) return;
+  memoryOptionsRowEl.innerHTML = currentMemoryVariants
+    .map((variant) => `
+      <button
+        type="button"
+        class="option-btn memory-option-btn ${variant.id === activeMemoryId ? "active" : ""}"
+        data-memory-id="${escapeHtml(variant.id)}"
+      >${escapeHtml(getMemoryDisplayName(variant, lang))}</button>
+    `)
+    .join("");
+}
+
+function applyActiveMemoryVariant(lang) {
+  if (!currentMemoryVariants.length) {
+    if (memoryOptionGroupEl) memoryOptionGroupEl.hidden = true;
+    updateProductPriceUi(baseProductPrices.price, baseProductPrices.oldPrice);
+    return;
+  }
+
+  const activeVariant = currentMemoryVariants.find((item) => item.id === activeMemoryId) || currentMemoryVariants[0];
+  activeMemoryId = activeVariant.id;
+  const marked = resolveMemoryVariantPrices(activeVariant);
+  if (memoryOptionGroupEl) memoryOptionGroupEl.hidden = false;
+  if (memoryAttrLabelEl) {
+    const attrLabel = lang === "uz"
+      ? (currentProduct.memoryMeta?.nameUz || currentProduct.memoryMeta?.nameRu || "Xotira")
+      : (currentProduct.memoryMeta?.nameRu || currentProduct.memoryMeta?.nameUz || "Память");
+    memoryAttrLabelEl.textContent = attrLabel;
+  }
+  if (memoryValueLabelEl) {
+    memoryValueLabelEl.textContent = getMemoryDisplayName(activeVariant, lang);
+  }
+  renderMemoryButtons(lang);
+  updateProductPriceUi(marked.price, marked.oldPrice);
+  currentProduct.selectedMemory = getMemoryDisplayName(activeVariant, lang);
 }
 
 function normalizeColorVariant(variant) {
@@ -149,8 +245,9 @@ function readAdminProducts() {
           category: item.category || "Смартфоны",
           price,
           oldPrice,
-          rating: Number(item.rating || 4.6),
-          reviews: Number(item.reviews || 0),
+          rating: Number(item.rating) || 0,
+          reviews: Number(item.reviews) || 0,
+          reviewItems: Array.isArray(item.reviewItems) ? item.reviewItems : [],
           badge: item.promo === "yes" ? "sale" : (item.express === "yes" ? "hit" : "new"),
           image: media.image,
           photos: media.photos,
@@ -162,7 +259,17 @@ function readAdminProducts() {
             : [],
           colors: Array.isArray(item.colors)
             ? item.colors.map((variant) => normalizeColorVariant(variant)).filter(Boolean)
-            : []
+            : [],
+          memoryVariants: Array.isArray(item.memoryVariants)
+            ? item.memoryVariants.map((variant) => normalizeMemoryVariant(variant)).filter(Boolean)
+            : [],
+          memoryMeta: item.memoryMeta && typeof item.memoryMeta === "object"
+            ? {
+                nameRu: String(item.memoryMeta.nameRu || "Память").trim() || "Память",
+                nameUz: String(item.memoryMeta.nameUz || "Xotira").trim() || "Xotira",
+                status: item.memoryMeta.status === "inactive" ? "inactive" : "active"
+              }
+            : { nameRu: "Память", nameUz: "Xotira", status: "active" }
         };
       });
   } catch (_) {
@@ -342,12 +449,73 @@ function applyActiveColorVariant(lang) {
   renderThumbs(photos, colorRenderContext.title);
 }
 
+function renderProductReviews(product, lang) {
+  var reviewData = window.emirateResolveProductReviews
+    ? window.emirateResolveProductReviews(product)
+    : { rating: 0, count: 0, items: [] };
+  var count = reviewData.count;
+  var rating = reviewData.rating;
+  var items = reviewData.items;
+  var noReviewsText = window.emirateT?.("product.noReviews") || "Пока нет отзывов";
+  var noReviewsHint = window.emirateT?.("product.noReviewsHint") || "Оставьте отзыв после покупки";
+  var tabReviewsLabel = window.emirateT?.("product.tabReviews") || "Отзывы";
+
+  if (ratingChipEl) {
+    var chipHtml = window.emirateProductRatingChipHtml?.(product, lang) || "";
+    ratingChipEl.innerHTML = chipHtml;
+    ratingChipEl.hidden = !chipHtml;
+  }
+
+  if (reviewsTabBtn) {
+    reviewsTabBtn.innerHTML =
+      '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> ' +
+      tabReviewsLabel +
+      (count > 0 ? " (" + count + ")" : "");
+  }
+
+  if (!reviewsTabEl) return;
+
+  if (count <= 0) {
+    reviewsTabEl.innerHTML =
+      '<div class="reviews-empty">' +
+        '<p class="reviews-empty-title">' + escapeHtml(noReviewsText) + "</p>" +
+        '<p class="reviews-empty-hint">' + escapeHtml(noReviewsHint) + "</p>" +
+      "</div>";
+    return;
+  }
+
+  var stars = window.emirateFormatReviewStars?.(rating) || "";
+  var countLabel = window.emirateReviewsCountLabel?.(count, lang) || String(count);
+  var itemsHtml = items.map(function (review) {
+    var itemStars = window.emirateFormatReviewStars?.(review.rating) || "";
+    var dateText = window.emirateFormatReviewDate?.(review.date) || "";
+    return (
+      '<div class="review-item">' +
+        '<div class="review-header">' +
+          "<strong>" + escapeHtml(review.author) + "</strong>" +
+          (dateText ? '<span class="review-date">' + escapeHtml(dateText) + "</span>" : "") +
+          '<span class="review-rating">' + itemStars + "</span>" +
+        "</div>" +
+        (review.text ? "<p>" + escapeHtml(review.text) + "</p>" : "") +
+      "</div>"
+    );
+  }).join("");
+
+  reviewsTabEl.innerHTML =
+    '<div class="review-summary">' +
+      '<div class="review-score">' +
+        '<span class="score-number">' + rating.toFixed(1) + "</span>" +
+        '<div class="score-stars">' + stars + "</div>" +
+        '<span class="score-count">' + escapeHtml(countLabel) + "</span>" +
+      "</div>" +
+    "</div>" +
+    itemsHtml;
+}
+
 function hydratePageProduct(product) {
   const title = product.title || "Товар";
   const price = Number(product.price) || 0;
   const oldPrice = Number(product.oldPrice) || price;
-  const rating = Number(product.rating) || 4.6;
-  const reviews = Number(product.reviews) || 0;
   const sku = product.sku || `${(product.brand || "PRD").slice(0, 3).toUpperCase()}-${normalizeTitleKey(title).slice(0, 8).toUpperCase()}`;
   const media = window.emirateResolveProductMedia?.(product) || {
     image: product.image || "",
@@ -363,18 +531,24 @@ function hydratePageProduct(product) {
     ? product.colors.map((item) => normalizeColorVariant(item)).filter(Boolean)
     : [];
   const activeColorVariants = colorVariants.filter((item) => item.status !== "inactive");
+  const memoryVariants = Array.isArray(product.memoryVariants)
+    ? product.memoryVariants.map((item) => normalizeMemoryVariant(item)).filter(Boolean)
+    : [];
+  const activeMemoryVariants = memoryVariants.filter((item) => item.status !== "inactive");
   const lang = getActiveLang();
+
+  baseProductPrices = { price, oldPrice };
+  currentMemoryVariants = activeMemoryVariants;
+  if (product.memoryMeta) currentProduct.memoryMeta = product.memoryMeta;
 
   if (productTitleEl) productTitleEl.textContent = title;
   if (breadcrumbProductEl) breadcrumbProductEl.textContent = title;
   if (currentPriceEl) currentPriceEl.textContent = `${formatMoney(price)} сум`;
   if (oldPriceEl) oldPriceEl.textContent = oldPrice > price ? `${formatMoney(oldPrice)} сум` : "";
   if (skuChipEl) skuChipEl.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> ${sku}`;
-  if (ratingChipEl) {
-    ratingChipEl.innerHTML = `<svg width="14" height="14" fill="#f59e0b" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${rating.toFixed(1)} <span class="reviews-count">(${reviews} отзыва)</span>`;
-  }
+  renderProductReviews(product, lang);
 
-  document.title = `${title} — Emirate Co`;
+  window.emirateProductSeo?.(product);
 
   colorRenderContext = { title, fallbackPhotos: photos };
   currentColorVariants = activeColorVariants;
@@ -389,6 +563,16 @@ function hydratePageProduct(product) {
     activePhotoIndex = 0;
     renderMainImage(photos[0] || product.image || "", title);
     renderThumbs(photos, title);
+  }
+
+  if (currentMemoryVariants.length) {
+    if (!activeMemoryId || !currentMemoryVariants.some((item) => item.id === activeMemoryId)) {
+      activeMemoryId = currentMemoryVariants[0].id;
+    }
+    applyActiveMemoryVariant(lang);
+  } else {
+    activeMemoryId = "";
+    applyActiveMemoryVariant(lang);
   }
 
   if (descriptionTabEl) {
@@ -456,6 +640,16 @@ colorOptionsRowEl?.addEventListener("click", (event) => {
   activeColorId = colorId;
   applyActiveColorVariant(getActiveLang());
 });
+
+memoryOptionsRowEl?.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-memory-id]");
+  if (!button) return;
+  const memoryId = button.getAttribute("data-memory-id");
+  if (!memoryId || memoryId === activeMemoryId) return;
+  activeMemoryId = memoryId;
+  applyActiveMemoryVariant(getActiveLang());
+});
+
 document.getElementById("langSwitch")?.addEventListener("click", () => {
   hydratePageProduct(currentProduct);
 });
@@ -545,6 +739,7 @@ mainImageEl?.addEventListener("pointerleave", () => releasePhotoDrag());
 
 document.querySelectorAll(".option-row").forEach((row) => {
   if (row.getAttribute("data-role") === "color-options" && currentColorVariants.length) return;
+  if (row.id === "memoryOptionsRow" && currentMemoryVariants.length) return;
   row.querySelectorAll(".option-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       row.querySelectorAll(".option-btn").forEach((item) => item.classList.remove("active"));

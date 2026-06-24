@@ -98,6 +98,16 @@ body.profile-page {
   font-weight: 500;
 }
 
+.profile-menu-state {
+  font-size: 13px;
+  color: #64748b;
+  margin-right: 4px;
+}
+
+html[data-theme="dark"] .profile-menu-state {
+  color: #94a3b8;
+}
+
 .profile-menu-chevron {
   flex-shrink: 0;
   color: #94a3b8;
@@ -270,9 +280,44 @@ body.profile-page {
   visibility: visible;
 }
 
+html[data-theme="dark"] body.profile-page {
+  background: #0b0f17;
+  color: #f3f4f6;
+}
+
+html[data-theme="dark"] .profile-menu-group,
+html[data-theme="dark"] .profile-menu-item,
+html[data-theme="dark"] .profile-login-sheet {
+  background: #151c27;
+  color: #f3f4f6;
+}
+
+html[data-theme="dark"] .profile-menu-item {
+  border-bottom-color: #243044;
+}
+
+html[data-theme="dark"] .profile-bottom-actions {
+  background: linear-gradient(to top, #0b0f17 85%, rgba(11, 15, 23, 0));
+}
+
+html[data-theme="dark"] .profile-sheet-close {
+  background: #1c2433;
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .profile-form-group input {
+  background: #111827;
+  border-color: #243044;
+  color: #f3f4f6;
+}
+
 @media (min-width: 769px) {
   body.profile-page {
     background: #e5e7eb;
+  }
+
+  html[data-theme="dark"] body.profile-page {
+    background: #070b12;
   }
 
   .profile-page .profile-screen {

@@ -31,6 +31,10 @@ const proceedCheckoutBtn = document.getElementById("proceedCheckoutBtn");
 const clearCartBtn = document.getElementById("clearCartBtn");
 const isFavoritesMode = new URLSearchParams(window.location.search).get("favorites") === "1";
 const isCartMode = new URLSearchParams(window.location.search).get("cart") === "1";
+const isPhotoSearchMode = new URLSearchParams(window.location.search).get("photo") === "1";
+const textSearchQuery = (new URLSearchParams(window.location.search).get("q") || "").trim().toLowerCase();
+let photoSearchList = null;
+let photoSearchLoading = false;
 
 function normalizeTitleKey(value) {
   return String(value || "")
@@ -68,8 +72,9 @@ function loadAdminProductsForCatalog() {
         category: item.category || "Аксессуары",
         price: marked.price,
         oldPrice: marked.oldPrice,
-        rating: Number(item.rating || 4.6),
-        reviews: Number(item.reviews || 0),
+        rating: Number(item.rating) || 0,
+        reviews: Number(item.reviews) || 0,
+        reviewItems: Array.isArray(item.reviewItems) ? item.reviewItems : [],
         badge: item.promo === "yes" ? "sale" : (item.express === "yes" ? "hit" : "new"),
         image: media.image,
         photos: media.photos,
@@ -106,6 +111,10 @@ function loadAdminProductsForCatalog() {
           status: item.colorMeta?.status === "inactive" ? "inactive" : "active",
           type: item.colorMeta?.type === "text" ? "text" : "image"
         },
+        memoryVariants: Array.isArray(item.memoryVariants) ? item.memoryVariants : [],
+        memoryMeta: item.memoryMeta && typeof item.memoryMeta === "object"
+          ? item.memoryMeta
+          : { nameRu: "Память", nameUz: "Xotira", status: "active" },
         installmentStatus: item.installmentStatus === "inactive" ? "inactive" : "active",
         express: item.express === "yes" ? "yes" : "no",
         priority: Number(item.priority) || 300
@@ -193,10 +202,21 @@ function renderProduct(product, options = {}) {
   const cartQty = Math.max(1, Number(product.qty) || 1);
   const installment = Math.round(product.price / 12);
   const discount = Math.round((1 - product.price / product.oldPrice) * 100);
-  const stars = "★".repeat(Math.floor(product.rating)) + (product.rating % 1 >= 0.5 ? "½" : "");
+  const lang = typeof window.emirateLang === "function" ? window.emirateLang() : "ru";
+  const ratingHtml = window.emirateProductRatingHtml?.(product, lang) || "";
 
   const discountText = Number.isFinite(discount) && discount > 0 ? `-${discount}%` : "";
-  const badgeHTML = discountText ? `<span class="badge-sale">${discountText}</span>` : "";
+  const matchPct =
+    options.matchScore != null && Number.isFinite(options.matchScore)
+      ? Math.round(options.matchScore * 100)
+      : null;
+  const matchBadge =
+    matchPct != null
+      ? `<span class="badge-match" title="${typeof window.emirateT === "function" ? window.emirateT("photo.match") : "Совпадение"}">${matchPct}%</span>`
+      : "";
+  const badgeHTML = [matchBadge, discountText ? `<span class="badge-sale">${discountText}</span>` : ""]
+    .filter(Boolean)
+    .join("");
 
   const media = window.emirateResolveProductMedia?.(product) || {
     image: product.image,
@@ -227,11 +247,7 @@ function renderProduct(product, options = {}) {
         </div>
       </div>
       <h3 class="product-title"><a class="product-link" href="${productHref}">${product.title}</a></h3>
-      <div class="product-rating">
-        <span class="product-stars">${stars}</span>
-        <span class="product-rating-num">${product.rating}</span>
-        <span class="product-reviews">(${product.reviews})</span>
-      </div>
+      ${ratingHtml ? `<div class="product-rating">${ratingHtml}</div>` : ""}
       ${window.emirateProductPriceHtml?.(product.price, product.oldPrice) || ""}
       ${window.emirateProductInstallmentHtml?.(product, installment) || ""}
       ${
@@ -344,6 +360,14 @@ function getCheckedValues(selector) {
     .map(x => x.value);
 }
 
+function matchesTextSearch(product) {
+  if (!textSearchQuery) return true;
+  const haystack = [product.title, product.brand, product.category, product.sku]
+    .map((part) => String(part || "").toLowerCase())
+    .join(" ");
+  return haystack.includes(textSearchQuery);
+}
+
 function applyFiltersAndSort() {
   const categories = getCheckedValues(".filter-category");
   const brands = getCheckedValues(".filter-brand");
@@ -352,41 +376,229 @@ function applyFiltersAndSort() {
   const max = maxPriceEl?.value ? Number(maxPriceEl.value) : null;
   const sort = sortSelectEl?.value || "popular";
 
-  let list = isCartMode
-    ? (window.emirateGetCartItems?.() || [])
-    : sourceProducts.filter(p => {
-        if (categories.length && !categories.includes(p.category)) return false;
-        if (brands.length && !brands.includes(p.brand)) return false;
-        if (min !== null && p.price < min) return false;
-        if (max !== null && p.price > max) return false;
-        if (ratings.length && !ratings.some(r => p.rating >= r)) return false;
-        return true;
-      });
+  let list;
+
+  if (isPhotoSearchMode) {
+    if (photoSearchLoading) {
+      if (productsGridEl) {
+        productsGridEl.innerHTML = renderPhotoSearchLoadingHtml();
+      }
+      updateCatalogHeadCount(0);
+      return;
+    }
+    list = Array.isArray(photoSearchList) ? photoSearchList : [];
+  } else {
+    list = isCartMode
+      ? (window.emirateGetCartItems?.() || [])
+      : sourceProducts.filter(p => {
+          if (!matchesTextSearch(p)) return false;
+          if (categories.length && !categories.includes(p.category)) return false;
+          if (brands.length && !brands.includes(p.brand)) return false;
+          if (min !== null && p.price < min) return false;
+          if (max !== null && p.price > max) return false;
+          if (ratings.length && !ratings.some(r => p.rating >= r)) return false;
+          return true;
+        });
+  }
 
   if (isFavoritesMode) {
     list = list.filter((p) => window.emirateIsFavorite?.(p.title) === true);
   }
 
-  if (sort === "price_asc") list.sort((a, b) => a.price - b.price);
-  if (sort === "price_desc") list.sort((a, b) => b.price - a.price);
-  if (sort === "rating_desc") list.sort((a, b) => b.rating - a.rating);
+  if (!isPhotoSearchMode) {
+    if (sort === "price_asc") list.sort((a, b) => a.price - b.price);
+    if (sort === "price_desc") list.sort((a, b) => b.price - a.price);
+    if (sort === "rating_desc") list.sort((a, b) => b.rating - a.rating);
+  }
 
   if (productsGridEl) {
     productsGridEl.innerHTML = list.length
-      ? list.map((item) => renderProduct(item, { cartControls: isCartMode })).join("")
+      ? list.map((item) =>
+          renderProduct(item, {
+            cartControls: isCartMode,
+            matchScore: item._matchScore
+          })
+        ).join("")
       : `<div class="catalog-empty">
           <svg width="48" height="48" fill="none" stroke="#94a3b8" stroke-width="1.5" viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
-          <p>${isFavoritesMode ? "В избранном пока пусто" : isCartMode ? "Корзина пока пуста" : "Товары не найдены"}</p>
-          <span>${isFavoritesMode ? "Добавьте товары, нажимая на сердечко" : isCartMode ? "Начните с основ или найдите продукт с помощью функции поиска." : "Попробуйте изменить фильтры"}</span>
+          <p>${
+            isPhotoSearchMode
+              ? (window.emirateT?.("photo.empty") || "Похожие товары не найдены")
+              : isFavoritesMode
+                ? "В избранном пока пусто"
+                : isCartMode
+                  ? "Корзина пока пуста"
+                  : textSearchQuery
+                    ? "Ничего не найдено"
+                    : "Товары не найдены"
+          }</p>
+          <span>${
+            isPhotoSearchMode
+              ? (window.emirateT?.("photo.emptyHint") || "Попробуйте другое фото")
+              : isFavoritesMode
+                ? "Добавьте товары, нажимая на сердечко"
+                : isCartMode
+                  ? "Начните с основ или найдите продукт с помощью функции поиска."
+                  : textSearchQuery
+                    ? "Измените запрос или сбросьте фильтры"
+                    : "Попробуйте изменить фильтры"
+          }</span>
           ${isCartMode ? '<a class="btn-primary cart-empty-home-btn" href="index.html">Главное меню</a>' : ""}
+          ${isPhotoSearchMode ? '<button type="button" class="btn-primary photo-empty-retry-btn" id="photoSearchRetry">' + (window.emirateT?.("photo.change") || "Другое фото") + "</button>" : ""}
         </div>`;
     window.emirateSyncFavoritesUI?.(productsGridEl);
+    productsGridEl.querySelector("#photoSearchRetry")?.addEventListener("click", () => {
+      document.querySelector(".search-photo-btn")?.click();
+    });
   }
   updateCatalogHeadCount(list.length);
+  updateSeoCatalogLinks(isPhotoSearchMode || isCartMode || isFavoritesMode ? [] : list);
   renderCartPanels();
   renderViewedProducts();
+}
+
+function updateSeoCatalogLinks(list) {
+  const el = document.getElementById("seoCatalogLinks");
+  if (!el) return;
+  if (!list.length) {
+    el.innerHTML = "";
+    return;
+  }
+  el.innerHTML = list
+    .slice(0, 200)
+    .map(
+      (product) =>
+        '<a href="product.html?product=' +
+        encodeURIComponent(product.title) +
+        '">' +
+        escapeHtmlAttr(product.title) +
+        "</a>"
+    )
+    .join("");
+}
+
+function syncCatalogSeoMeta() {
+  if (!window.emirateApplySeo) return;
+  if (isPhotoSearchMode || isCartMode || isFavoritesMode || textSearchQuery) {
+    window.emirateApplySeo({
+      title: document.title,
+      description: "Emirate Co",
+      path: window.location.pathname + window.location.search,
+      noindex: true,
+    });
+    return;
+  }
+  window.emirateApplySeo({
+    title: "Каталог товаров — Emirate Co",
+    description:
+      "Каталог Emirate Co: смартфоны, ноутбуки, телевизоры, аудио и бытовая техника с доставкой по Узбекистану.",
+    path: "/catalog",
+  });
+}
+
+function renderPhotoSearchLoadingHtml() {
+  const label = window.emirateT?.("photo.searching") || "Ищем похожие товары…";
+  return (
+    '<div class="photo-search-loading">' +
+      '<div class="photo-search-spinner" aria-hidden="true"></div>' +
+      '<p>' + label + "</p>" +
+      '<span class="photo-search-progress" id="photoSearchProgress"></span>' +
+    "</div>"
+  );
+}
+
+function ensurePhotoSearchBanner() {
+  if (!isPhotoSearchMode || document.getElementById("photoSearchBanner")) return;
+  const head = document.querySelector(".catalog-head");
+  if (!head) return;
+  const queryImg =
+    window.emirateImageSearch?.loadQueryImage?.() ||
+    sessionStorage.getItem("emirate_photo_search_query") ||
+    "";
+  const banner = document.createElement("div");
+  banner.id = "photoSearchBanner";
+  banner.className = "photo-search-banner";
+  banner.innerHTML =
+    (queryImg ? '<img class="photo-search-banner-img" src="' + queryImg.replace(/"/g, "&quot;") + '" alt="">' : "") +
+    '<div class="photo-search-banner-text">' +
+      '<p class="photo-search-banner-label">' + (window.emirateT?.("photo.pageTitle") || "Результаты поиска по фото") + "</p>" +
+      '<button type="button" class="photo-search-banner-change" id="photoSearchChange">' +
+        (window.emirateT?.("photo.change") || "Другое фото") +
+      "</button>" +
+    "</div>";
+  head.appendChild(banner);
+  banner.querySelector("#photoSearchChange")?.addEventListener("click", () => {
+    document.querySelector(".search-photo-btn")?.click();
+  });
+}
+
+async function loadImageSearchScript() {
+  if (window.emirateImageSearch) return window.emirateImageSearch;
+  await new Promise((resolve, reject) => {
+    if (document.querySelector('script[src="emirate-image-search.js"]')) {
+      resolve();
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = "emirate-image-search.js";
+    s.onload = resolve;
+    s.onerror = reject;
+    document.body.appendChild(s);
+  });
+  return window.emirateImageSearch;
+}
+
+async function runPhotoSearch() {
+  if (!isPhotoSearchMode) return;
+  photoSearchLoading = true;
+  applyFiltersAndSort();
+
+  const api = await loadImageSearchScript();
+  ensurePhotoSearchBanner();
+  const queryData = api.loadQueryImage();
+  if (!queryData) {
+    photoSearchLoading = false;
+    photoSearchList = [];
+    applyFiltersAndSort();
+    return;
+  }
+
+  try {
+    await api.getModel();
+    const img = await api.loadImageFromDataUrl(queryData);
+    const progressEl = document.getElementById("photoSearchProgress");
+    const results = await api.searchSimilar(img, sourceProducts, {
+      onProgress(done, total) {
+        if (progressEl) {
+          progressEl.textContent =
+            (window.emirateT?.("photo.progress") || "Анализ каталога") + ": " + done + " / " + total;
+        }
+      }
+    });
+    photoSearchList = results.map((entry) => ({
+      ...entry.product,
+      _matchScore: entry.score
+    }));
+  } catch (err) {
+    console.warn("[photo-search]", err);
+    photoSearchList = [];
+  } finally {
+    photoSearchLoading = false;
+    applyFiltersAndSort();
+  }
+}
+
+async function refreshCatalogFromRemote() {
+  const api = window.emirateSupabaseApi;
+  if (!api || !api.isConfigured()) return;
+  try {
+    const remote = await api.fetchPublicCatalogProducts();
+    sourceProducts = buildSourceProducts(remote);
+  } catch (err) {
+    console.warn("[Supabase] catalog", err);
+  }
 }
 
 function findCartCardByProductId(productId) {
@@ -426,7 +638,7 @@ function resetFilters() {
 }
 
 // Init
-if (isFavoritesMode || isCartMode) {
+if (isFavoritesMode || isCartMode || isPhotoSearchMode) {
   if (filtersCardEl) filtersCardEl.hidden = true;
   if (toolbarEl) toolbarEl.hidden = true;
   if (catalogLayoutEl) catalogLayoutEl.classList.add("catalog-layout--favorites");
@@ -439,20 +651,34 @@ if (isCartMode) {
   document.body.classList.add("cart-mode");
   if (pageTitleEl) pageTitleEl.textContent = "Корзина";
 }
-
-applyFiltersAndSort();
-
-void (async () => {
-  const api = window.emirateSupabaseApi;
-  if (!api || !api.isConfigured()) return;
-  try {
-    const remote = await api.fetchPublicCatalogProducts();
-    sourceProducts = buildSourceProducts(remote);
-    applyFiltersAndSort();
-  } catch (err) {
-    console.warn("[Supabase] catalog", err);
+if (isPhotoSearchMode) {
+  document.body.classList.add("photo-search-mode");
+  if (pageTitleEl) {
+    pageTitleEl.textContent = window.emirateT?.("photo.pageTitle") || "Результаты поиска по фото";
   }
-})();
+}
+if (textSearchQuery && pageTitleEl && !isPhotoSearchMode && !isCartMode && !isFavoritesMode) {
+  pageTitleEl.textContent = "Поиск: " + textSearchQuery;
+  const searchInput = document.querySelector('.search-bar input[type="search"]');
+  if (searchInput) searchInput.value = textSearchQuery;
+}
+
+if (isPhotoSearchMode) {
+  void (async () => {
+    syncCatalogSeoMeta();
+    await refreshCatalogFromRemote();
+    await runPhotoSearch();
+    updateSeoCatalogLinks(sourceProducts);
+  })();
+} else {
+  syncCatalogSeoMeta();
+  applyFiltersAndSort();
+  void (async () => {
+    await refreshCatalogFromRemote();
+    applyFiltersAndSort();
+    updateSeoCatalogLinks(sourceProducts);
+  })();
+}
 
 // Events
 applyFiltersBtn?.addEventListener("click", applyFiltersAndSort);

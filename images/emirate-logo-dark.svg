@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" role="img" aria-labelledby="title desc">
+  <title id="title">Emirate Co logo</title>
+  <desc id="desc">Light wordmark for dark backgrounds.</desc>
+  <path d="M146 106C208 44 319 26 446 46C371 48 281 72 198 130Z" fill="#4bb7ee"/>
+  <path d="M240 124C305 84 388 72 490 82C420 83 343 98 269 138Z" fill="#cbd5e1"/>
+  <text x="130" y="210" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="96" font-weight="700">Emirate</text>
+  <text x="314" y="260" fill="#7dd3fc" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700">Co</text>
+</svg>

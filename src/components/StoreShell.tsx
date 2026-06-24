@@ -155,7 +155,7 @@ export default function StoreShell({ children }: Props) {
           </div>
           <div className="footer-col">
             <h4>Контакты</h4>
-            <a href="tel:+998712000000">+998 71 200-00-00</a>
+            <a href="tel:+998508868844">+998 50 886-88-44</a>
             <a href="mailto:info@emirateco.uz">info@emirateco.uz</a>
             <p className="footer-address">Ташкент, ул. Мустакиллик, 1</p>
             <p className="footer-schedule">Пн–Вс: 09:00–21:00</p>

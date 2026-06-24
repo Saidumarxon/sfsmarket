@@ -191,7 +191,7 @@ function getAdminProductsForStorefront() {
           price: formatMoney(priceNum),
           oldPrice: formatMoney(safeOldPrice),
           discount: discount > 0 ? `-${discount}%` : "",
-          rating: 4.6,
+          rating: 0,
           reviews: 0,
           installment: formatMoney(Math.round(priceNum / 12)),
           badge: promoEnabled ? "sale" : (expressEnabled ? "hit" : "new"),
@@ -271,8 +271,9 @@ function mapRemoteCatalogToHomeCard(item) {
     discount: oldPriceNum > priceNum
       ? `-${Math.max(0, Math.round((1 - priceNum / Math.max(oldPriceNum, 1)) * 100))}%`
       : "",
-    rating: Number(item.rating || 4.6),
-    reviews: Number(item.reviews || 0),
+    rating: Number(item.rating) || 0,
+    reviews: Number(item.reviews) || 0,
+    reviewItems: Array.isArray(item.reviewItems) ? item.reviewItems : [],
     installment: formatMoney(Math.round(priceNum / 12)),
     badge: item.badge || "new",
     image: media.image,
@@ -282,6 +283,8 @@ function mapRemoteCatalogToHomeCard(item) {
     specs: Array.isArray(item.specs) ? item.specs : [],
     colors: Array.isArray(item.colors) ? item.colors : [],
     colorMeta: item.colorMeta || {},
+    memoryVariants: Array.isArray(item.memoryVariants) ? item.memoryVariants : [],
+    memoryMeta: item.memoryMeta || {},
     brand: item.brand || "",
     category: item.category || "",
     installmentStatus: item.installmentStatus === "inactive" ? "inactive" : "active",
@@ -467,12 +470,11 @@ function renderHeroBanners() {
       ? `<a href="${escapeHtmlAttr(banner.secondaryUrl || "#")}" class="btn-outline">${escapeHtmlText(banner.secondaryText)}</a>`
       : "";
     const visualHtml = hasImage
-      ? ""
+      ? `<div class="hero-slide-visual has-image" aria-hidden="true"><img class="hero-slide-photo" src="${escapeHtmlAttr(banner.image)}" alt="" loading="${index === 0 ? "eager" : "lazy"}" decoding="async"></div>`
       : `<div class="hero-slide-visual"><div class="hero-device-mockup"><svg width="120" height="120" fill="none" stroke="#4db8e8" stroke-width="1.2" viewBox="0 0 24 24" opacity=".4"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div></div>`;
     const slideStyle = hasImage
       ? ` style="background-image: linear-gradient(100deg, rgba(5,10,22,0.88) 0%, rgba(7,24,46,0.78) 45%, rgba(9,37,67,0.30) 74%, rgba(9,37,67,0.12) 100%), url('${escapeHtmlAttr(banner.image)}');"`
       : "";
-
     return `
       <div class="hero-slide ${index === 0 ? "active" : ""} ${hasImage ? "hero-slide--image" : ""}"${slideStyle}>
         <div class="hero-slide-text">
@@ -550,8 +552,8 @@ function renderProductCard(product) {
   const productId = product.title;
   const safeProductId = escapeHtmlAttr(productId);
   const isFavorite = window.emirateIsFavorite?.(productId) === true;
-  const stars = "\u2605".repeat(Math.floor(product.rating)) +
-                (product.rating % 1 >= 0.5 ? "\u00BD" : "");
+  const lang = typeof window.emirateLang === "function" ? window.emirateLang() : "ru";
+  const ratingHtml = window.emirateProductRatingHtml?.(product, lang) || "";
 
   const productHref = `product.html?product=${encodeURIComponent(product.title)}`;
   const discountText = String(product.discount || "").trim();
@@ -588,11 +590,7 @@ function renderProductCard(product) {
         </div>
       </div>
       <h3 class="product-title"><a class="product-link" href="${productHref}">${product.title}</a></h3>
-      <div class="product-rating">
-        <span class="product-stars">${stars}</span>
-        <span class="product-rating-num">${product.rating}</span>
-        <span class="product-reviews">(${product.reviews})</span>
-      </div>
+      ${ratingHtml ? `<div class="product-rating">${ratingHtml}</div>` : ""}
       ${window.emirateProductPriceHtml?.(product.price, product.oldPrice) || ""}
       ${window.emirateProductInstallmentHtml?.(product, window.emirateParsePriceValue?.(product.price) / 12 || product.installment) || ""}
       ${window.emirateProductActionsHtml?.(productHref, safeProductId) || ""}

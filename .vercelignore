@@ -1,7 +1,8 @@
 /*
 !.vercelignore
 !.gitignore
-!vercel.json
+!robots.txt
+!emirate-seo.js
 !*.html
 !*.css
 !*.js

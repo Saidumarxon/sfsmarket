@@ -19,9 +19,12 @@ const JS_FILES = [
   "product.js",
   "checkout.js",
   "common.js",
+  "theme.js",
   "translations.js",
   "emirate-exchange.js",
   "emirate-supabase-api.js",
+  "emirate-image-search.js",
+  "emirate-seo.js",
   "supabase-config.prod.js",
 ];
 
@@ -102,6 +105,7 @@ for (const file of JS_FILES) {
 
 copyFile(path.join(root, "supabase-config.prod.js"), path.join(www, "supabase-config.js"));
 copyFile(path.join(root, "styles.css"), path.join(www, "styles.css"));
+copyFile(path.join(root, "robots.txt"), path.join(www, "robots.txt"));
 copyFile(path.join(root, "mobile", "mobile-bridge.js"), path.join(www, "mobile-bridge.js"));
 
 for (const file of STATIC_FILES) {

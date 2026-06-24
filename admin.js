@@ -823,6 +823,26 @@ function normalizeProductRecord(product) {
       status: colorMeta.status === 'inactive' ? 'inactive' : 'active',
       type: colorMeta.type === 'text' ? 'text' : 'image'
     },
+    memoryVariants: Array.isArray(p.memoryVariants)
+      ? p.memoryVariants
+          .map((item, index) => ({
+            id: String(item?.id || `memory_${Date.now()}_${index}`),
+            nameRu: String(item?.nameRu || item?.name || '').trim(),
+            nameUz: String(item?.nameUz || '').trim(),
+            status: item?.status === 'inactive' ? 'inactive' : 'active',
+            priceUsd: item?.priceUsd != null ? String(item.priceUsd) : '',
+            oldPriceUsd: item?.oldPriceUsd != null ? String(item.oldPriceUsd) : '',
+            price: String(item?.price || '').trim(),
+            oldPrice: String(item?.oldPrice || '').trim()
+          }))
+          .filter((item) => item.nameRu || item.nameUz)
+          .map((item) => ({ ...item, name: item.nameRu || item.nameUz }))
+      : [],
+    memoryMeta: {
+      nameRu: String((p.memoryMeta && p.memoryMeta.nameRu) || 'Память').trim() || 'Память',
+      nameUz: String((p.memoryMeta && p.memoryMeta.nameUz) || 'Xotira').trim() || 'Xotira',
+      status: p.memoryMeta && p.memoryMeta.status === 'inactive' ? 'inactive' : 'active'
+    },
     priceUsd: window.emirateExchange?.parseUsdInput
       ? window.emirateExchange.parseUsdInput(p.priceUsd)
       : Number(String(p.priceUsd || '').replace(/[^\d.]/g, '')) || 0,
@@ -2194,6 +2214,26 @@ let productColorMeta = {
   status: 'active',
   type: 'image'
 };
+let productMemoryVariants = [];
+let productMemoryMeta = {
+  nameRu: 'Память',
+  nameUz: 'Xotira',
+  status: 'active'
+};
+let editingMemoryVariantId = null;
+const memoryVariantsList = document.getElementById('memoryVariantsList');
+const memoryVariantSaveBtn = document.getElementById('memoryVariantSaveBtn');
+const memoryVariantResetBtn = document.getElementById('memoryVariantResetBtn');
+const memoryAttrNameRuInput = document.getElementById('pMemoryAttrNameRu');
+const memoryAttrNameUzInput = document.getElementById('pMemoryAttrNameUz');
+const memoryAttrStatusInput = document.getElementById('pMemoryAttrStatus');
+const memoryNameRuInput = document.getElementById('pMemoryNameRu');
+const memoryNameUzInput = document.getElementById('pMemoryNameUz');
+const memoryPriceUsdInput = document.getElementById('pMemoryPriceUsd');
+const memoryOldPriceUsdInput = document.getElementById('pMemoryOldPriceUsd');
+const memoryPriceInput = document.getElementById('pMemoryPrice');
+const memoryOldPriceInput = document.getElementById('pMemoryOldPrice');
+const memoryStatusInput = document.getElementById('pMemoryStatus');
 let editingColorVariantId = null;
 let uploadedColorVariantPhotos = [];
 
@@ -2235,6 +2275,118 @@ function resetColorVariantForm() {
   if (colorStatusInput) colorStatusInput.value = 'active';
   if (colorVariantSaveBtn) colorVariantSaveBtn.textContent = '+ Добавить цвет';
   renderColorVariantPhotoPreview();
+}
+
+function syncMemoryMetaFromForm() {
+  productMemoryMeta = {
+    nameRu: String(memoryAttrNameRuInput?.value || 'Память').trim() || 'Память',
+    nameUz: String(memoryAttrNameUzInput?.value || 'Xotira').trim() || 'Xotira',
+    status: memoryAttrStatusInput?.value === 'inactive' ? 'inactive' : 'active'
+  };
+}
+
+function getMemoryVariantDisplayName(variant) {
+  return variant.nameRu || variant.nameUz || 'Без названия';
+}
+
+function resetMemoryVariantForm() {
+  editingMemoryVariantId = null;
+  if (memoryNameRuInput) memoryNameRuInput.value = '';
+  if (memoryNameUzInput) memoryNameUzInput.value = '';
+  if (memoryPriceUsdInput) memoryPriceUsdInput.value = '';
+  if (memoryOldPriceUsdInput) memoryOldPriceUsdInput.value = '';
+  if (memoryPriceInput) memoryPriceInput.value = '';
+  if (memoryOldPriceInput) memoryOldPriceInput.value = '';
+  if (memoryStatusInput) memoryStatusInput.value = 'active';
+  if (memoryVariantSaveBtn) memoryVariantSaveBtn.textContent = '+ Добавить память';
+}
+
+function renderMemoryVariantsList() {
+  if (!memoryVariantsList) return;
+  syncMemoryMetaFromForm();
+  const isInactive = productMemoryMeta.status === 'inactive';
+  if (!productMemoryVariants.length) {
+    memoryVariantsList.innerHTML = `<p class="color-variant-empty">Варианты памяти еще не добавлены.${isInactive ? ' Атрибут отключен.' : ''}</p>`;
+    return;
+  }
+
+  memoryVariantsList.innerHTML = productMemoryVariants.map((variant) => {
+    const preview = window.emirateExchange?.previewStorefrontFromUsd
+      ? window.emirateExchange.previewStorefrontFromUsd(variant.priceUsd, variant.oldPriceUsd)
+      : null;
+    const priceHint = preview && window.emirateExchange?.parseUsdInput?.(variant.priceUsd) > 0
+      ? ` · витрина: ${window.emirateExchange.formatUzs(preview.price)}`
+      : (variant.price ? ` · ${variant.price} сум` : '');
+    return `
+    <div class="color-variant-item">
+      <div class="color-variant-item-main">
+        <div class="color-variant-item-title">${escapeHtml(getMemoryVariantDisplayName(variant))}</div>
+        <div class="color-variant-item-meta">USD: ${escapeHtml(String(variant.priceUsd || '—'))}${priceHint} · UZ: ${escapeHtml(variant.nameUz || '—')} · ${variant.status === 'inactive' ? 'Отключено' : 'Включено'}</div>
+      </div>
+      <div class="color-variant-item-actions">
+        <button type="button" class="action-btn" data-action="edit-memory-variant" data-memory-id="${escapeHtml(variant.id)}" title="Редактировать"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button type="button" class="action-btn" data-action="toggle-memory-variant" data-memory-id="${escapeHtml(variant.id)}" title="Переключить статус">${variant.status === 'inactive' ? '↻' : '⏸'}</button>
+        <button type="button" class="action-btn delete" data-action="delete-memory-variant" data-memory-id="${escapeHtml(variant.id)}" title="Удалить"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+      </div>
+    </div>
+  `;
+  }).join('');
+}
+
+function loadMemoryVariantToForm(id) {
+  const variant = productMemoryVariants.find((item) => item.id === id);
+  if (!variant) return;
+  editingMemoryVariantId = variant.id;
+  if (memoryNameRuInput) memoryNameRuInput.value = variant.nameRu || '';
+  if (memoryNameUzInput) memoryNameUzInput.value = variant.nameUz || '';
+  if (memoryPriceUsdInput) memoryPriceUsdInput.value = variant.priceUsd || '';
+  if (memoryOldPriceUsdInput) memoryOldPriceUsdInput.value = variant.oldPriceUsd || '';
+  if (memoryPriceInput) memoryPriceInput.value = variant.price || '';
+  if (memoryOldPriceInput) memoryOldPriceInput.value = variant.oldPrice || '';
+  if (memoryStatusInput) memoryStatusInput.value = variant.status === 'inactive' ? 'inactive' : 'active';
+  if (memoryVariantSaveBtn) memoryVariantSaveBtn.textContent = 'Обновить память';
+}
+
+function saveMemoryVariant() {
+  const nameRu = memoryNameRuInput?.value?.trim() || '';
+  const nameUz = memoryNameUzInput?.value?.trim() || '';
+  const priceUsd = memoryPriceUsdInput?.value?.trim() || '';
+  const oldPriceUsd = memoryOldPriceUsdInput?.value?.trim() || '';
+  const price = memoryPriceInput?.value?.trim() || '';
+  const oldPrice = memoryOldPriceInput?.value?.trim() || '';
+  const status = memoryStatusInput?.value === 'inactive' ? 'inactive' : 'active';
+  const hasUsd = window.emirateExchange?.parseUsdInput?.(priceUsd) > 0;
+  const hasSum = Number(String(price || '').replace(/\s+/g, '').replace(/[^\d]/g, '')) > 0;
+
+  if (!nameRu && !nameUz) {
+    alert('Введите объём памяти хотя бы на одном языке.');
+    return;
+  }
+  if (!hasUsd && !hasSum) {
+    alert('Укажите цену для этого объёма памяти (USD или сум).');
+    return;
+  }
+
+  const nextVariant = {
+    id: editingMemoryVariantId || `memory_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    nameRu,
+    nameUz,
+    name: nameRu || nameUz,
+    status,
+    priceUsd,
+    oldPriceUsd,
+    price,
+    oldPrice
+  };
+
+  if (editingMemoryVariantId) {
+    productMemoryVariants = productMemoryVariants.map((item) => item.id === editingMemoryVariantId ? nextVariant : item);
+  } else {
+    productMemoryVariants.push(nextVariant);
+  }
+
+  renderMemoryVariantsList();
+  resetMemoryVariantForm();
 }
 
 function renderColorVariantsList() {
@@ -2391,6 +2543,27 @@ function openEditorForProduct(id) {
   if (colorAttrTypeInput) colorAttrTypeInput.value = productColorMeta.type;
   renderColorVariantsList();
   resetColorVariantForm();
+  productMemoryVariants = Array.isArray(p.memoryVariants) ? p.memoryVariants.map((item) => ({
+    id: String(item?.id || `memory_${Date.now()}_${Math.floor(Math.random() * 1000)}`),
+    nameRu: String(item?.nameRu || item?.name || '').trim(),
+    nameUz: String(item?.nameUz || '').trim(),
+    name: String(item?.nameRu || item?.nameUz || item?.name || '').trim(),
+    status: item?.status === 'inactive' ? 'inactive' : 'active',
+    priceUsd: item?.priceUsd != null ? String(item.priceUsd) : '',
+    oldPriceUsd: item?.oldPriceUsd != null ? String(item.oldPriceUsd) : '',
+    price: String(item?.price || '').trim(),
+    oldPrice: String(item?.oldPrice || '').trim()
+  })).filter((item) => (item.nameRu || item.nameUz)) : [];
+  productMemoryMeta = {
+    nameRu: String(p.memoryMeta?.nameRu || 'Память').trim() || 'Память',
+    nameUz: String(p.memoryMeta?.nameUz || 'Xotira').trim() || 'Xotira',
+    status: p.memoryMeta?.status === 'inactive' ? 'inactive' : 'active'
+  };
+  if (memoryAttrNameRuInput) memoryAttrNameRuInput.value = productMemoryMeta.nameRu;
+  if (memoryAttrNameUzInput) memoryAttrNameUzInput.value = productMemoryMeta.nameUz;
+  if (memoryAttrStatusInput) memoryAttrStatusInput.value = productMemoryMeta.status;
+  renderMemoryVariantsList();
+  resetMemoryVariantForm();
   uploadedPhotos = Array.isArray(p.photos) ? [...p.photos] : [];
   renderPhotoPreviews();
   renderProductEditorPreviews();
@@ -2445,6 +2618,13 @@ function clearEditorForm() {
   if (colorAttrTypeInput) colorAttrTypeInput.value = productColorMeta.type;
   renderColorVariantsList();
   resetColorVariantForm();
+  productMemoryVariants = [];
+  productMemoryMeta = { nameRu: 'Память', nameUz: 'Xotira', status: 'active' };
+  if (memoryAttrNameRuInput) memoryAttrNameRuInput.value = productMemoryMeta.nameRu;
+  if (memoryAttrNameUzInput) memoryAttrNameUzInput.value = productMemoryMeta.nameUz;
+  if (memoryAttrStatusInput) memoryAttrStatusInput.value = productMemoryMeta.status;
+  renderMemoryVariantsList();
+  resetMemoryVariantForm();
   renderProductEditorPreviews();
 
   // Clear validation errors
@@ -2577,6 +2757,22 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
     swatch: normalizeColorHex(item.swatch),
     photos: Array.isArray(item.photos) ? item.photos.filter(Boolean) : []
   })).filter((item) => (item.nameRu || item.nameUz));
+  const memoryMeta = {
+    nameRu: String(memoryAttrNameRuInput?.value || 'Память').trim() || 'Память',
+    nameUz: String(memoryAttrNameUzInput?.value || 'Xotira').trim() || 'Xotira',
+    status: memoryAttrStatusInput?.value === 'inactive' ? 'inactive' : 'active'
+  };
+  const memoryVariants = productMemoryVariants.map((item) => ({
+    id: String(item.id || `memory_${Date.now()}_${Math.floor(Math.random() * 1000)}`),
+    nameRu: String(item.nameRu || item.name || '').trim(),
+    nameUz: String(item.nameUz || '').trim(),
+    name: String(item.nameRu || item.nameUz || item.name || '').trim(),
+    status: item.status === 'inactive' ? 'inactive' : 'active',
+    priceUsd: String(item.priceUsd || '').trim(),
+    oldPriceUsd: String(item.oldPriceUsd || '').trim(),
+    price: String(item.price || '').trim(),
+    oldPrice: String(item.oldPrice || '').trim()
+  })).filter((item) => (item.nameRu || item.nameUz));
 
   // Validation
   let hasError = false;
@@ -2642,6 +2838,8 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
         specs,
         colorMeta,
         colors,
+        memoryMeta,
+        memoryVariants,
         priority: Number.isFinite(priority) ? priority : 300,
         priceUsd,
         oldPriceUsd,
@@ -2679,6 +2877,8 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
       specs,
       colorMeta,
       colors,
+      memoryMeta,
+      memoryVariants,
       priority: Number.isFinite(priority) ? priority : 300,
       brand,
       model,
@@ -2922,6 +3122,38 @@ colorVariantsList?.addEventListener('click', function(e) {
     if (editingColorVariantId === colorId) {
       resetColorVariantForm();
     }
+  }
+});
+
+memoryVariantSaveBtn?.addEventListener('click', saveMemoryVariant);
+memoryVariantResetBtn?.addEventListener('click', resetMemoryVariantForm);
+memoryVariantsList?.addEventListener('click', function(e) {
+  const button = e.target.closest('button[data-action]');
+  if (!button) return;
+  const memoryId = button.getAttribute('data-memory-id');
+  if (!memoryId) return;
+  const action = button.getAttribute('data-action');
+  if (action === 'edit-memory-variant') {
+    loadMemoryVariantToForm(memoryId);
+    return;
+  }
+  if (action === 'toggle-memory-variant') {
+    productMemoryVariants = productMemoryVariants.map((item) => {
+      if (item.id !== memoryId) return item;
+      return { ...item, status: item.status === 'inactive' ? 'active' : 'inactive' };
+    });
+    renderMemoryVariantsList();
+    if (editingMemoryVariantId === memoryId) {
+      const edited = productMemoryVariants.find((item) => item.id === memoryId);
+      if (edited && memoryStatusInput) memoryStatusInput.value = edited.status;
+    }
+    return;
+  }
+  if (action === 'delete-memory-variant') {
+    if (!confirm('Удалить этот вариант памяти?')) return;
+    productMemoryVariants = productMemoryVariants.filter((item) => item.id !== memoryId);
+    renderMemoryVariantsList();
+    if (editingMemoryVariantId === memoryId) resetMemoryVariantForm();
   }
 });
 

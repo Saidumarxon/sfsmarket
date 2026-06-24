@@ -94,8 +94,22 @@
       category: item.category || "Аксессуары",
       price: marked.price,
       oldPrice: marked.oldPrice,
-      rating: Number(item.rating || 4.6),
-      reviews: Number(item.reviews || 0),
+      rating: Number(item.rating) || 0,
+      reviews: Number(item.reviews) || 0,
+      reviewItems: Array.isArray(item.reviewItems)
+        ? item.reviewItems
+            .map(function (review) {
+              return {
+                author: String((review && review.author) || (review && review.name) || "").trim(),
+                date: String((review && review.date) || (review && review.createdAt) || "").trim(),
+                rating: Number(review && review.rating) || 0,
+                text: String((review && review.text) || (review && review.comment) || "").trim()
+              };
+            })
+            .filter(function (review) {
+              return review.author || review.text;
+            })
+        : [],
       badge: item.promo === "yes" ? "sale" : item.express === "yes" ? "hit" : "new",
       image: media.image,
       photos: media.photos,
@@ -134,6 +148,30 @@
               return variant.name;
             })
         : [],
+      memoryVariants: Array.isArray(item.memoryVariants)
+        ? item.memoryVariants
+            .map(function (variant, index) {
+              return {
+                id: String((variant && variant.id) || "memory_" + (item.id || "p") + "_" + index),
+                nameRu: String((variant && variant.nameRu) || (variant && variant.name) || "").trim(),
+                nameUz: String((variant && variant.nameUz) || "").trim(),
+                name: String((variant && variant.nameRu) || (variant && variant.nameUz) || (variant && variant.name) || "").trim(),
+                status: variant && variant.status === "inactive" ? "inactive" : "active",
+                priceUsd: variant && variant.priceUsd != null ? variant.priceUsd : "",
+                oldPriceUsd: variant && variant.oldPriceUsd != null ? variant.oldPriceUsd : "",
+                price: String((variant && variant.price) || "").trim(),
+                oldPrice: String((variant && variant.oldPrice) || "").trim()
+              };
+            })
+            .filter(function (variant) {
+              return variant.name;
+            })
+        : [],
+      memoryMeta: {
+        nameRu: String((item.memoryMeta && item.memoryMeta.nameRu) || "Память").trim() || "Память",
+        nameUz: String((item.memoryMeta && item.memoryMeta.nameUz) || "Xotira").trim() || "Xotira",
+        status: item.memoryMeta && item.memoryMeta.status === "inactive" ? "inactive" : "active"
+      },
       colorMeta: {
         nameRu: String((item.colorMeta && item.colorMeta.nameRu) || "Цвет").trim() || "Цвет",
         nameUz: String((item.colorMeta && item.colorMeta.nameUz) || "rang").trim() || "rang",

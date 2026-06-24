@@ -1,9 +1,11 @@
 ﻿<!doctype html>
-<html lang="ru">
+<html lang="ru" data-seo-noindex="1">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — Emirate Co</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://www.emirateco.uz/admin">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -804,6 +806,70 @@
                     <option value="24">24 месяца</option>
                   </select>
                 </div>
+                <div class="color-variants-editor memory-variants-editor">
+                  <div class="specs-header">
+                    <h4>Варианты памяти (256 GB / 512 GB / 1 TB)</h4>
+                    <p class="form-hint" style="margin:0;">Для каждого объёма укажите цену — на сайте цена меняется при выборе памяти.</p>
+                  </div>
+                  <div class="color-attribute-grid">
+                    <div class="form-group">
+                      <label>Название Ru</label>
+                      <input type="text" id="pMemoryAttrNameRu" placeholder="Память" value="Память">
+                    </div>
+                    <div class="form-group">
+                      <label>Название Uz</label>
+                      <input type="text" id="pMemoryAttrNameUz" placeholder="Xotira" value="Xotira">
+                    </div>
+                    <div class="form-group">
+                      <label>Status</label>
+                      <select id="pMemoryAttrStatus">
+                        <option value="active">Включено</option>
+                        <option value="inactive">Отключено</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="color-variant-form-grid">
+                    <div class="form-group">
+                      <label>Объём Ru</label>
+                      <input type="text" id="pMemoryNameRu" placeholder="256 GB">
+                    </div>
+                    <div class="form-group">
+                      <label>Объём Uz</label>
+                      <input type="text" id="pMemoryNameUz" placeholder="256 GB">
+                    </div>
+                    <div class="form-group">
+                      <label>Цена (USD)</label>
+                      <input type="text" id="pMemoryPriceUsd" inputmode="decimal" placeholder="например 1200">
+                    </div>
+                    <div class="form-group">
+                      <label>Старая (USD)</label>
+                      <input type="text" id="pMemoryOldPriceUsd" inputmode="decimal" placeholder="опционально">
+                    </div>
+                    <div class="form-group">
+                      <label>Цена (сум)</label>
+                      <input type="text" id="pMemoryPrice" placeholder="если без USD">
+                    </div>
+                    <div class="form-group">
+                      <label>Старая (сум)</label>
+                      <input type="text" id="pMemoryOldPrice" placeholder="опционально">
+                    </div>
+                    <div class="form-group">
+                      <label>Статус</label>
+                      <select id="pMemoryStatus">
+                        <option value="active">Включено</option>
+                        <option value="inactive">Отключено</option>
+                      </select>
+                    </div>
+                    <div class="form-group color-variant-actions-group">
+                      <label>&nbsp;</label>
+                      <div class="color-variant-actions">
+                        <button type="button" class="btn-filter-reset" id="memoryVariantResetBtn">Очистить</button>
+                        <button type="button" class="btn-add btn-sm" id="memoryVariantSaveBtn">+ Добавить память</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="color-variants-list" id="memoryVariantsList"></div>
+                </div>
               </div>
             </div>
 
@@ -998,13 +1064,13 @@
         var sb = window.emirateSupabase;
         var sessionRes = await sb.auth.getSession();
         if (!sessionRes.data || !sessionRes.data.session) {
-          window.location.href = "login.html";
+          window.location.href = "index.html?auth=admin";
           return;
         }
         var email = (sessionRes.data.session.user && sessionRes.data.session.user.email) || "admin";
         localStorage.setItem("emirate_admin", JSON.stringify({ user: email, role: "admin", ts: Date.now() }));
       } else if (!localStorage.getItem("emirate_admin")) {
-        window.location.href = "login.html";
+        window.location.href = "index.html?auth=admin";
         return;
       }
       var tag = document.createElement("script");

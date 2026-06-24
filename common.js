@@ -379,6 +379,90 @@ function emirateProductPriceHtml(price, oldPrice) {
   `;
 }
 
+function emirateNormalizeReviewItem(item) {
+  if (!item || typeof item !== "object") return null;
+  var author = String(item.author || item.name || item.userName || "").trim();
+  var text = String(item.text || item.comment || item.body || "").trim();
+  var rating = Number(item.rating);
+  if (!Number.isFinite(rating)) rating = 0;
+  rating = Math.max(0, Math.min(5, rating));
+  if (!author && !text) return null;
+  if (rating <= 0 && !text) return null;
+  return {
+    author: author || "Покупатель",
+    date: String(item.date || item.createdAt || item.created_at || "").trim(),
+    rating: rating,
+    text: text
+  };
+}
+
+function emirateResolveProductReviews(product) {
+  var items = Array.isArray(product && product.reviewItems)
+    ? product.reviewItems.map(emirateNormalizeReviewItem).filter(Boolean)
+    : [];
+  var count = Math.max(0, Number(product && product.reviews) || 0);
+  var rating = Number(product && product.rating);
+  if (!Number.isFinite(rating)) rating = 0;
+
+  if (items.length) {
+    count = items.length;
+    rating = items.reduce(function (sum, row) { return sum + row.rating; }, 0) / count;
+  } else if (count <= 0) {
+    rating = 0;
+  }
+
+  rating = Math.round(Math.max(0, Math.min(5, rating)) * 10) / 10;
+  return { rating: rating, count: count, items: items };
+}
+
+function emirateFormatReviewStars(rating) {
+  var value = Math.max(0, Math.min(5, Number(rating) || 0));
+  var full = Math.floor(value);
+  var half = value - full >= 0.5 ? 1 : 0;
+  return "\u2605".repeat(full) + (half ? "\u00BD" : "");
+}
+
+function emirateReviewsCountLabel(count, lang) {
+  var n = Math.max(0, Number(count) || 0);
+  if (lang === "uz") return n + " sharh";
+  var mod10 = n % 10;
+  var mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) return n + " \u043e\u0442\u0437\u044b\u0432\u043e\u0432";
+  if (mod10 === 1) return n + " \u043e\u0442\u0437\u044b\u0432";
+  if (mod10 >= 2 && mod10 <= 4) return n + " \u043e\u0442\u0437\u044b\u0432\u0430";
+  return n + " \u043e\u0442\u0437\u044b\u0432\u043e\u0432";
+}
+
+function emirateFormatReviewDate(value) {
+  if (!value) return "";
+  var parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+  return String(value).trim();
+}
+
+function emirateProductRatingHtml(product, lang) {
+  var reviewData = emirateResolveProductReviews(product || {});
+  if (reviewData.count <= 0) return "";
+  return (
+    '<span class="product-stars">' + emirateFormatReviewStars(reviewData.rating) + "</span>" +
+    '<span class="product-rating-num">' + reviewData.rating.toFixed(1) + "</span>" +
+    '<span class="product-reviews">(' + reviewData.count + ")</span>"
+  );
+}
+
+function emirateProductRatingChipHtml(product, lang) {
+  var reviewData = emirateResolveProductReviews(product || {});
+  if (reviewData.count <= 0) return "";
+  var label = emirateReviewsCountLabel(reviewData.count, lang);
+  return (
+    '<svg width="14" height="14" fill="#f59e0b" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ' +
+    reviewData.rating.toFixed(1) +
+    ' <span class="reviews-count">(' + label + ")</span>"
+  );
+}
+
 function emirateProductInstallmentHtml(product, installmentValue) {
   if (product && product.installmentStatus === "inactive") {
     return `<div class="product-installment product-installment--muted">Без рассрочки</div>`;
@@ -429,6 +513,12 @@ window.emirateProductPriceHtml = emirateProductPriceHtml;
 window.emirateProductInstallmentHtml = emirateProductInstallmentHtml;
 window.emirateProductActionsHtml = emirateProductActionsHtml;
 window.emirateParsePriceValue = emirateParsePriceValue;
+window.emirateResolveProductReviews = emirateResolveProductReviews;
+window.emirateFormatReviewStars = emirateFormatReviewStars;
+window.emirateReviewsCountLabel = emirateReviewsCountLabel;
+window.emirateFormatReviewDate = emirateFormatReviewDate;
+window.emirateProductRatingHtml = emirateProductRatingHtml;
+window.emirateProductRatingChipHtml = emirateProductRatingChipHtml;
 
 function escapeQuickBuyHtml(value) {
   return String(value ?? "")
@@ -771,6 +861,94 @@ function applyTranslations() {
 /* Apply on page load (in case user previously chose UZ) */
 applyTranslations();
 
+/* ══════════════════════════════════════════
+   ══  Theme (light / dark)             ══
+   ══════════════════════════════════════════ */
+
+const THEME_KEY = "emirate_theme";
+
+function getStoredTheme() {
+  try {
+    return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
+  } catch (_) {
+    return "light";
+  }
+}
+
+function syncThemeMeta(theme) {
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", theme === "dark" ? "#0b0f17" : "#0f172a");
+}
+
+function syncThemeStatusBar(theme) {
+  var Capacitor = window.Capacitor;
+  if (!Capacitor || typeof Capacitor.isNativePlatform !== "function" || !Capacitor.isNativePlatform()) {
+    return;
+  }
+  var StatusBar = typeof Capacitor.registerPlugin === "function"
+    ? Capacitor.registerPlugin("StatusBar")
+    : Capacitor.Plugins && Capacitor.Plugins.StatusBar;
+  if (!StatusBar) return;
+  if (StatusBar.setStyle) {
+    void StatusBar.setStyle({ style: theme === "dark" ? "DARK" : "LIGHT" });
+  }
+  if (StatusBar.setBackgroundColor) {
+    void StatusBar.setBackgroundColor({ color: theme === "dark" ? "#0b0f17" : "#ffffff" });
+  }
+}
+
+function syncThemeLogos(theme) {
+  var darkSrc = "images/emirate-logo-dark.svg";
+  var lightSrc = "images/emirate-logo.svg";
+  document.querySelectorAll(".logo-img").forEach(function (img) {
+    if (!img.dataset.logoDefault) {
+      img.dataset.logoDefault = img.getAttribute("src") || lightSrc;
+    }
+    img.setAttribute("src", theme === "dark" ? darkSrc : img.dataset.logoDefault);
+  });
+}
+
+function syncThemeUi(theme) {
+  document.querySelectorAll(".theme-switch").forEach(function (btn) {
+    btn.classList.toggle("is-dark", theme === "dark");
+    btn.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
+  });
+  document.querySelectorAll("[data-theme-state]").forEach(function (el) {
+    el.textContent = theme === "dark"
+      ? (t("profile.themeOn") || "Включена")
+      : (t("profile.themeOff") || "Выключена");
+  });
+  syncThemeLogos(theme);
+}
+
+function applyTheme(theme, options) {
+  var opts = options || {};
+  var next = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", next);
+  if (opts.persist) {
+    try {
+      localStorage.setItem(THEME_KEY, next);
+    } catch (_) {}
+  }
+  syncThemeMeta(next);
+  syncThemeStatusBar(next);
+  syncThemeUi(next);
+}
+
+function toggleTheme() {
+  applyTheme(getStoredTheme() === "dark" ? "light" : "dark", { persist: true });
+}
+
+applyTheme(getStoredTheme(), { persist: false });
+
+document.querySelectorAll("#themeSwitch, #profileThemeSwitch").forEach(function (btn) {
+  btn.addEventListener("click", toggleTheme);
+});
+
+window.emirateTheme = getStoredTheme;
+window.emirateApplyTheme = applyTheme;
+window.emirateToggleTheme = toggleTheme;
+
 /* Language switch button */
 const langSwitch = document.getElementById("langSwitch");
 if (langSwitch) {
@@ -778,9 +956,516 @@ if (langSwitch) {
     currentLang = currentLang === "ru" ? "uz" : "ru";
     localStorage.setItem("emirate_lang", currentLang);
     applyTranslations();
+    syncThemeUi(getStoredTheme());
   });
 }
 
 /* Expose for other scripts */
 window.emirateLang = () => currentLang;
 window.emirateT = t;
+
+/* ===== Desktop auth modal (web) vs profile page (app / mobile) ===== */
+function isNativeApp() {
+  return document.documentElement.classList.contains("capacitor-app");
+}
+
+function shouldUseDesktopAuthModal() {
+  if (isNativeApp()) return false;
+  if (document.body && document.body.classList.contains("profile-page")) return false;
+  return window.matchMedia("(min-width: 681px)").matches;
+}
+
+function formatUzPhone(value) {
+  var raw = String(value || "");
+  if (raw.indexOf("@") !== -1) return raw.trim();
+  var digits = raw.replace(/\D/g, "");
+  if (digits.indexOf("998") === 0) digits = digits.slice(3);
+  digits = digits.slice(0, 9);
+  var out = "+998";
+  if (!digits.length) return out;
+  out += " (" + digits.slice(0, 2);
+  if (digits.length <= 2) return out;
+  out += ") " + digits.slice(2, 5);
+  if (digits.length <= 5) return out;
+  out += "-" + digits.slice(5, 7);
+  if (digits.length <= 7) return out;
+  out += "-" + digits.slice(7, 9);
+  return out;
+}
+
+var AUTH_ADMIN_SECRET_PHONE = "998508868844";
+var AUTH_ADMIN_SECRET_EMAILS = ["admin@emirate.co", "office@emirateco.uz"];
+
+function isAdminSecretPhone(value) {
+  var digits = String(value || "").replace(/\D/g, "");
+  return digits === AUTH_ADMIN_SECRET_PHONE || digits === "508868844";
+}
+
+function isAdminSecretEmail(value) {
+  var email = String(value || "").trim().toLowerCase();
+  return AUTH_ADMIN_SECRET_EMAILS.indexOf(email) !== -1;
+}
+
+function setAuthAdminMode(modal, seedValue) {
+  if (!modal) return;
+  modal.classList.add("is-admin-auth");
+  var emailPanel = modal.querySelector("#authEmailPanel");
+  if (emailPanel) emailPanel.removeAttribute("hidden");
+  var emailInput = modal.querySelector("#authEmail");
+  var seed = String(seedValue || "").trim();
+  if (emailInput && seed.indexOf("@") !== -1) {
+    emailInput.value = seed;
+  }
+  showAuthMessage("");
+  if (emailInput) emailInput.focus();
+  else modal.querySelector("#authPass")?.focus();
+}
+
+function resetAuthCustomerMode(modal) {
+  if (!modal) return;
+  modal.classList.remove("is-admin-auth");
+  var emailPanel = modal.querySelector("#authEmailPanel");
+  if (emailPanel) emailPanel.setAttribute("hidden", "");
+  var phoneInput = modal.querySelector("#authPhone");
+  var emailInput = modal.querySelector("#authEmail");
+  var passInput = modal.querySelector("#authPass");
+  if (phoneInput) phoneInput.value = "";
+  if (emailInput) emailInput.value = "";
+  if (passInput) passInput.value = "";
+}
+
+function tryOpenAdminAuthFromInput(modal, rawValue) {
+  var value = String(rawValue || "").trim();
+  if (!isAdminSecretPhone(value) && !isAdminSecretEmail(value)) return false;
+  setAuthAdminMode(modal, isAdminSecretEmail(value) ? value : "");
+  return true;
+}
+
+function ensureAuthModal() {
+  if (document.getElementById("authModal")) return document.getElementById("authModal");
+
+  var modal = document.createElement("div");
+  modal.id = "authModal";
+  modal.className = "auth-modal";
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+  modal.innerHTML =
+    '<div class="auth-modal-dialog" role="dialog" aria-labelledby="authModalTitle">' +
+      '<button type="button" class="auth-modal-close" id="authModalClose" aria-label="Закрыть">&times;</button>' +
+      '<div class="auth-modal-grid">' +
+        '<div class="auth-modal-form">' +
+          '<h2 class="auth-modal-title" id="authModalTitle" data-i18n="auth.title">Войти или создать личный кабинет</h2>' +
+          '<form id="authForm" class="auth-customer-block" novalidate>' +
+            '<label class="auth-field-label" for="authPhone" data-i18n="auth.phone">Телефон</label>' +
+            '<input class="auth-phone-input" type="tel" id="authPhone" inputmode="tel" autocomplete="tel" data-i18n-placeholder="auth.phonePlaceholder" placeholder="+998 (__) ___-__-__">' +
+            '<button type="submit" class="auth-primary-btn" id="authPhoneSubmit" data-i18n="auth.getCode">Получить код активации</button>' +
+          '</form>' +
+          '<div class="auth-customer-block auth-divider"><span data-i18n="auth.or">Или</span></div>' +
+          '<div class="auth-customer-block auth-social-row">' +
+            '<button type="button" class="auth-social-btn" id="authGoogleBtn" aria-label="Google">G</button>' +
+            '<button type="button" class="auth-social-btn" id="authFacebookBtn" aria-label="Facebook">f</button>' +
+          '</div>' +
+          '<div class="auth-email-panel" id="authEmailPanel" hidden>' +
+            '<label class="auth-field-label" for="authEmail" data-i18n="auth.emailLabel">Email или логин</label>' +
+            '<input class="auth-phone-input" type="text" id="authEmail" autocomplete="username">' +
+            '<label class="auth-field-label" for="authPass" data-i18n="auth.passLabel">Пароль</label>' +
+            '<input class="auth-phone-input" type="password" id="authPass" autocomplete="current-password">' +
+            '<button type="button" class="auth-primary-btn" id="authEmailSubmit" data-i18n="header.login">Войти</button>' +
+          '</div>' +
+          '<p class="auth-error" id="authError" aria-live="polite"></p>' +
+        '</div>' +
+        '<aside class="auth-modal-benefits">' +
+          '<div class="auth-benefit">' +
+            '<div class="auth-benefit-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg></div>' +
+            '<div><p class="auth-benefit-title" data-i18n="auth.benefit1Title">Не нужно ходить на базар</p><p class="auth-benefit-text" data-i18n="auth.benefit1Text">У нас удобные цены и доставка на дом</p></div>' +
+          '</div>' +
+          '<div class="auth-benefit">' +
+            '<div class="auth-benefit-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8zM5 19a2 2 0 104 0 2 2 0 00-4 0M15 19a2 2 0 104 0 2 2 0 00-4 0"/></svg></div>' +
+            '<div><p class="auth-benefit-title" data-i18n="auth.benefit2Title">Быстрая доставка</p><p class="auth-benefit-text" data-i18n="auth.benefit2Text">Наш сервис вас приятно удивит</p></div>' +
+          '</div>' +
+          '<div class="auth-benefit">' +
+            '<div class="auth-benefit-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>' +
+            '<div><p class="auth-benefit-title" data-i18n="auth.benefit3Title">Удобства для вас</p><p class="auth-benefit-text" data-i18n="auth.benefit3Text">Быстрое оформление и гарантия возврата</p></div>' +
+          '</div>' +
+          '<div class="auth-benefit">' +
+            '<div class="auth-benefit-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>' +
+            '<div><p class="auth-benefit-title" data-i18n="auth.benefit4Title">Рассрочка</p><p class="auth-benefit-text" data-i18n="auth.benefit4Text">Без предоплаты</p></div>' +
+          '</div>' +
+        '</aside>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+  applyTranslations();
+
+  var phoneInput = modal.querySelector("#authPhone");
+  phoneInput.addEventListener("input", function () {
+    phoneInput.value = formatUzPhone(phoneInput.value);
+  });
+
+  modal.querySelector("#authModalClose").addEventListener("click", closeAuthModal);
+  modal.addEventListener("click", function (e) {
+    if (e.target === modal) closeAuthModal();
+  });
+
+  modal.querySelector("#authGoogleBtn").addEventListener("click", function () {
+    showAuthMessage(t("auth.socialSoon") || "Скоро будет доступно");
+  });
+  modal.querySelector("#authFacebookBtn").addEventListener("click", function () {
+    showAuthMessage(t("auth.socialSoon") || "Скоро будет доступно");
+  });
+
+  modal.querySelector("#authForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (modal.classList.contains("is-admin-auth")) {
+      submitAuthEmailLogin();
+      return;
+    }
+    var rawPhone = phoneInput.value;
+    if (tryOpenAdminAuthFromInput(modal, rawPhone)) return;
+    var phone = rawPhone.replace(/\D/g, "");
+    if (phone.length >= 12) {
+      showAuthMessage(t("auth.codeSoon") || "Вход по СМС скоро будет доступен");
+      return;
+    }
+    showAuthMessage(t("auth.phonePlaceholder") || "+998");
+  });
+
+  modal.querySelector("#authEmailSubmit").addEventListener("click", function () {
+    submitAuthEmailLogin();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && modal && !modal.hidden) closeAuthModal();
+  });
+
+  return modal;
+}
+
+function showAuthMessage(message) {
+  var err = document.getElementById("authError");
+  if (!err) return;
+  err.textContent = message || "";
+}
+
+async function submitAuthEmailLogin() {
+  var loginEl = document.getElementById("authEmail");
+  var passEl = document.getElementById("authPass");
+  if (!loginEl || !passEl) return;
+
+  var login = loginEl.value.trim();
+  var pass = passEl.value;
+  if (!login || !pass) {
+    showAuthMessage(t("auth.passLabel") + "?");
+    return;
+  }
+
+  if (window.emirateSupabaseApi && window.emirateSupabaseApi.isConfigured()) {
+    var sb = window.emirateSupabase;
+    var res = await sb.auth.signInWithPassword({ email: login, password: pass });
+    if (res.error) {
+      showAuthMessage(res.error.message || "Ошибка входа");
+      return;
+    }
+    var em = (res.data.user && res.data.user.email) || login;
+    localStorage.setItem("emirate_admin", JSON.stringify({ user: em, role: "admin", ts: Date.now() }));
+    window.location.href = "admin.html";
+    return;
+  }
+
+  if (login === "admin" && pass === "admin123") {
+    localStorage.setItem("emirate_admin", JSON.stringify({ user: "admin", role: "admin", ts: Date.now() }));
+    window.location.href = "admin.html";
+    return;
+  }
+
+  showAuthMessage("Неверный логин или пароль");
+}
+
+function openAuthModal(options) {
+  var opts = options || {};
+  if (!shouldUseDesktopAuthModal()) {
+    window.location.href = opts.admin ? "login.html?admin=1" : "login.html";
+    return;
+  }
+  var modal = ensureAuthModal();
+  showAuthMessage("");
+  resetAuthCustomerMode(modal);
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("auth-modal-open");
+  if (opts.admin) {
+    setAuthAdminMode(modal, "");
+  } else {
+    var phone = modal.querySelector("#authPhone");
+    if (phone) phone.focus();
+  }
+}
+
+function closeAuthModal() {
+  var modal = document.getElementById("authModal");
+  if (!modal) return;
+  resetAuthCustomerMode(modal);
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("auth-modal-open");
+  if (window.history && window.history.replaceState) {
+    var url = new URL(window.location.href);
+    if (url.searchParams.has("auth")) {
+      url.searchParams.delete("auth");
+      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    }
+  }
+}
+
+function initAuthLinks() {
+  document.addEventListener("click", function (e) {
+    var link = e.target.closest('a[href="login.html"], a[href="./login.html"]');
+    if (!link || !shouldUseDesktopAuthModal()) return;
+    e.preventDefault();
+    openAuthModal();
+  });
+}
+
+initAuthLinks();
+
+if (shouldUseDesktopAuthModal()) {
+  try {
+    var authParam = new URLSearchParams(window.location.search).get("auth");
+    if (authParam === "admin") {
+      openAuthModal({ admin: true });
+    } else if (authParam === "1" || authParam === "open") {
+      openAuthModal();
+    }
+  } catch (_) {}
+}
+
+window.emirateOpenAuthModal = openAuthModal;
+window.emirateCloseAuthModal = closeAuthModal;
+window.emirateShouldUseDesktopAuthModal = shouldUseDesktopAuthModal;
+
+/* ===== Photo search (visual) ===== */
+function loadScriptOnce(src) {
+  return new Promise(function (resolve, reject) {
+    if (document.querySelector('script[src="' + src + '"]')) {
+      resolve();
+      return;
+    }
+    var s = document.createElement("script");
+    s.src = src;
+    s.onload = function () {
+      resolve();
+    };
+    s.onerror = function () {
+      reject(new Error("script_load_failed"));
+    };
+    document.body.appendChild(s);
+  });
+}
+
+async function ensureImageSearchApi() {
+  if (window.emirateImageSearch) return window.emirateImageSearch;
+  await loadScriptOnce("emirate-image-search.js");
+  return window.emirateImageSearch;
+}
+
+function ensurePhotoSearchModal() {
+  if (document.getElementById("photoSearchModal")) return document.getElementById("photoSearchModal");
+
+  var modal = document.createElement("div");
+  modal.id = "photoSearchModal";
+  modal.className = "photo-search-modal";
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+  modal.innerHTML =
+    '<div class="photo-search-dialog" role="dialog" aria-labelledby="photoSearchTitle">' +
+      '<button type="button" class="photo-search-close" id="photoSearchClose" aria-label="Закрыть">&times;</button>' +
+      '<h2 class="photo-search-title" id="photoSearchTitle" data-i18n="photo.title">Поиск по фото</h2>' +
+      '<p class="photo-search-subtitle" data-i18n="photo.subtitle">Сделайте фото или загрузите изображение — мы найдём похожие товары</p>' +
+      '<div class="photo-search-drop" id="photoSearchDrop">' +
+        '<img class="photo-search-preview" id="photoSearchPreview" alt="" hidden>' +
+        '<div class="photo-search-drop-empty" id="photoSearchDropEmpty">' +
+          '<svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>' +
+          '<span data-i18n="photo.dropHint">Перетащите фото сюда или выберите файл</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="photo-search-actions">' +
+        '<label class="photo-search-secondary-btn">' +
+          '<span data-i18n="photo.take">Сделать фото</span>' +
+          '<input type="file" id="photoSearchCamera" accept="image/*" capture="environment" hidden>' +
+        '</label>' +
+        '<label class="photo-search-secondary-btn">' +
+          '<span data-i18n="photo.upload">Загрузить</span>' +
+          '<input type="file" id="photoSearchFile" accept="image/*" hidden>' +
+        '</label>' +
+      '</div>' +
+      '<button type="button" class="photo-search-primary-btn" id="photoSearchSubmit" data-i18n="photo.findBtn">Найти похожие</button>' +
+      '<p class="photo-search-status" id="photoSearchStatus" aria-live="polite"></p>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+  applyTranslations();
+
+  var preview = modal.querySelector("#photoSearchPreview");
+  var dropEmpty = modal.querySelector("#photoSearchDropEmpty");
+  var statusEl = modal.querySelector("#photoSearchStatus");
+  var pendingFile = null;
+
+  function setPreviewFromFile(file) {
+    if (!file || !file.type || file.type.indexOf("image/") !== 0) return;
+    pendingFile = file;
+    var url = URL.createObjectURL(file);
+    preview.onload = function () {
+      URL.revokeObjectURL(url);
+    };
+    preview.src = url;
+    preview.hidden = false;
+    dropEmpty.hidden = true;
+    statusEl.textContent = "";
+    modal.querySelector("#photoSearchSubmit").disabled = false;
+  }
+
+  modal._photoSearchSetFile = setPreviewFromFile;
+
+  function wireFileInput(input) {
+    input.addEventListener("change", function () {
+      if (input.files && input.files[0]) setPreviewFromFile(input.files[0]);
+      input.value = "";
+    });
+  }
+
+  wireFileInput(modal.querySelector("#photoSearchCamera"));
+  wireFileInput(modal.querySelector("#photoSearchFile"));
+
+  modal.querySelector("#photoSearchDrop").addEventListener("dragover", function (e) {
+    e.preventDefault();
+    modal.querySelector("#photoSearchDrop").classList.add("is-dragover");
+  });
+  modal.querySelector("#photoSearchDrop").addEventListener("dragleave", function () {
+    modal.querySelector("#photoSearchDrop").classList.remove("is-dragover");
+  });
+  modal.querySelector("#photoSearchDrop").addEventListener("drop", function (e) {
+    e.preventDefault();
+    modal.querySelector("#photoSearchDrop").classList.remove("is-dragover");
+    var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) setPreviewFromFile(file);
+  });
+
+  modal.querySelector("#photoSearchClose").addEventListener("click", closePhotoSearchModal);
+  modal.addEventListener("click", function (e) {
+    if (e.target === modal) closePhotoSearchModal();
+  });
+
+  modal.querySelector("#photoSearchSubmit").addEventListener("click", async function () {
+    if (!pendingFile) {
+      statusEl.textContent = t("photo.noImage") || "Выберите изображение";
+      return;
+    }
+    var btn = modal.querySelector("#photoSearchSubmit");
+    btn.disabled = true;
+    statusEl.textContent = t("photo.searching") || "Ищем…";
+    try {
+      var api = await ensureImageSearchApi();
+      var img = await api.loadImageFromFile(pendingFile);
+      var dataUrl = await api.compressToDataUrl(img);
+      api.saveQueryImage(dataUrl);
+      window.location.href = "catalog.html?photo=1";
+    } catch (_) {
+      statusEl.textContent = t("photo.noImage") || "Ошибка загрузки";
+      btn.disabled = false;
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && modal && !modal.hidden) closePhotoSearchModal();
+  });
+
+  return modal;
+}
+
+function openPhotoSearchModal(options) {
+  var opts = options || {};
+  var modal = ensurePhotoSearchModal();
+  if (opts.file && modal._photoSearchSetFile) {
+    modal._photoSearchSetFile(opts.file);
+  }
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("photo-search-open");
+  applyTranslations();
+}
+
+function openPhotoSearchModalWithFile(file) {
+  openPhotoSearchModal({ file: file });
+}
+
+function closePhotoSearchModal() {
+  var modal = document.getElementById("photoSearchModal");
+  if (!modal) return;
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("photo-search-open");
+}
+
+function initPhotoSearchUI() {
+  document.querySelectorAll(".search-bar").forEach(function (bar) {
+    var input = bar.querySelector('input[type="search"]');
+    if (!input || bar.querySelector(".search-photo-btn")) return;
+
+    var field = input.closest(".search-bar-field");
+    if (!field) {
+      field = document.createElement("div");
+      field.className = "search-bar-field";
+      input.parentNode.insertBefore(field, input);
+      field.appendChild(input);
+    }
+
+    var pickInput = document.createElement("input");
+    pickInput.type = "file";
+    pickInput.accept = "image/*";
+    pickInput.setAttribute("capture", "environment");
+    pickInput.hidden = true;
+    bar.appendChild(pickInput);
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "search-photo-btn";
+    btn.setAttribute("aria-label", t("header.photoSearch") || "Поиск по фото");
+    btn.setAttribute("title", t("header.photoSearch") || "Поиск по фото");
+    btn.innerHTML =
+      '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
+        '<path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>' +
+        '<circle cx="12" cy="13" r="4"/>' +
+      "</svg>";
+    field.appendChild(btn);
+
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      pickInput.click();
+    });
+
+    pickInput.addEventListener("change", function () {
+      var file = pickInput.files && pickInput.files[0];
+      pickInput.value = "";
+      if (file) openPhotoSearchModalWithFile(file);
+    });
+  });
+}
+
+function initHeaderSearchForms() {
+  document.querySelectorAll(".search-bar").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var input = form.querySelector('input[type="search"]');
+      var q = (input && input.value ? input.value : "").trim();
+      if (!q) return;
+      window.location.href = "catalog.html?q=" + encodeURIComponent(q);
+    });
+  });
+}
+
+initPhotoSearchUI();
+initHeaderSearchForms();
+window.emirateOpenPhotoSearchModal = openPhotoSearchModal;
+window.emirateOpenPhotoSearchModalWithFile = openPhotoSearchModalWithFile;
