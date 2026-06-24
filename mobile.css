@@ -256,6 +256,43 @@ html[data-theme="dark"] .profile-menu-state {
   display: block;
 }
 
+.profile-auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.profile-auth-divider::before,
+.profile-auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.profile-google-btn {
+  width: 100%;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-google-btn:active {
+  background: #f8fafc;
+}
+
 .profile-toast {
   position: fixed;
   left: 16px;

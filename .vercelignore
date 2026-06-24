@@ -3,6 +3,7 @@
 !.gitignore
 !robots.txt
 !emirate-seo.js
+!emirate-auth.js
 !*.html
 !*.css
 !*.js

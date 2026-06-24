@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const www = path.join(root, "www");
 
-const HTML_PAGES = ["index.html", "catalog.html", "product.html", "checkout.html", "login.html"];
+const HTML_PAGES = ["index.html", "catalog.html", "product.html", "checkout.html", "login.html", "auth-callback.html"];
 
 const JS_FILES = [
   "app.js",
@@ -25,6 +25,8 @@ const JS_FILES = [
   "emirate-supabase-api.js",
   "emirate-image-search.js",
   "emirate-seo.js",
+  "emirate-seo-config.js",
+  "emirate-auth.js",
   "supabase-config.prod.js",
 ];
 

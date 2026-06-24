@@ -29,6 +29,10 @@
       "destination": "/login.html"
     },
     {
+      "source": "/auth-callback",
+      "destination": "/auth-callback.html"
+    },
+    {
       "source": "/admin",
       "destination": "/admin.html"
     }

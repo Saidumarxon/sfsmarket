@@ -33,6 +33,7 @@ const isFavoritesMode = new URLSearchParams(window.location.search).get("favorit
 const isCartMode = new URLSearchParams(window.location.search).get("cart") === "1";
 const isPhotoSearchMode = new URLSearchParams(window.location.search).get("photo") === "1";
 const textSearchQuery = (new URLSearchParams(window.location.search).get("q") || "").trim().toLowerCase();
+const categoryFilter = (new URLSearchParams(window.location.search).get("category") || "").trim();
 let photoSearchList = null;
 let photoSearchLoading = false;
 
@@ -627,6 +628,16 @@ function updateCartItemCard(productId) {
   renderViewedProducts();
 }
 
+function applyCategoryFilterFromUrl() {
+  if (!categoryFilter) return;
+  document.querySelectorAll(".filter-category").forEach((item) => {
+    item.checked = item.value === categoryFilter;
+  });
+  if (pageTitleEl) {
+    pageTitleEl.textContent = categoryFilter;
+  }
+}
+
 function resetFilters() {
   document.querySelectorAll(".filter-category, .filter-brand, .filter-rating").forEach(item => {
     item.checked = false;
@@ -657,7 +668,7 @@ if (isPhotoSearchMode) {
     pageTitleEl.textContent = window.emirateT?.("photo.pageTitle") || "Результаты поиска по фото";
   }
 }
-if (textSearchQuery && pageTitleEl && !isPhotoSearchMode && !isCartMode && !isFavoritesMode) {
+if (textSearchQuery && pageTitleEl && !categoryFilter && !isPhotoSearchMode && !isCartMode && !isFavoritesMode) {
   pageTitleEl.textContent = "Поиск: " + textSearchQuery;
   const searchInput = document.querySelector('.search-bar input[type="search"]');
   if (searchInput) searchInput.value = textSearchQuery;
@@ -672,9 +683,11 @@ if (isPhotoSearchMode) {
   })();
 } else {
   syncCatalogSeoMeta();
+  applyCategoryFilterFromUrl();
   applyFiltersAndSort();
   void (async () => {
     await refreshCatalogFromRemote();
+    applyCategoryFilterFromUrl();
     applyFiltersAndSort();
     updateSeoCatalogLinks(sourceProducts);
   })();

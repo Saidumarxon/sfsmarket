@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Вход — Emirate Co</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-warm, #f8fafc);
+      font-family: Inter, sans-serif;
+    }
+    .auth-callback-card {
+      text-align: center;
+      padding: 32px 24px;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+      max-width: 360px;
+    }
+    .auth-callback-spinner {
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 16px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #0284c7;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="auth-callback-card">
+    <div class="auth-callback-spinner" aria-hidden="true"></div>
+    <p id="authCallbackText">Завершаем вход через Google…</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="supabase-config.prod.js"></script>
+  <script src="emirate-auth.js"></script>
+  <script>
+    (function () {
+      var textEl = document.getElementById("authCallbackText");
+      var params = new URLSearchParams(window.location.search);
+      var next = params.get("next") || "index.html";
+
+      function fail(message) {
+        if (textEl) textEl.textContent = message || "Не удалось войти";
+        setTimeout(function () {
+          window.location.href = "login.html?auth_error=google";
+        }, 1800);
+      }
+
+      void (async function () {
+        if (!window.emirateAuth) {
+          fail("Ошибка загрузки");
+          return;
+        }
+        var result = await window.emirateAuth.completeOAuthFromUrl();
+        if (!result.ok) {
+          fail("Вход через Google не удался");
+          return;
+        }
+        if (result.isAdmin) {
+          window.location.href = "admin.html";
+          return;
+        }
+        window.location.href = next;
+      })();
+    })();
+  </script>
+</body>
+</html>

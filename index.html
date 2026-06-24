@@ -9,6 +9,7 @@
   <title>Emirate Co — интернет-магазин электроники</title>
   <meta name="description" content="Emirate Co — интернет-магазин электроники, бытовой техники и аксессуаров. Доставка по Узбекистану, рассрочка.">
   <meta name="robots" content="index, follow">
+  <meta name="google-site-verification" content="1R9ySaY1AMzYDkzPywAHZrFxNOd68Dm_Vb--HPJbMu0">
   <link rel="canonical" href="https://www.emirateco.uz/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Emirate Co">
@@ -29,6 +30,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="mobile.css">
   <!-- Optional: <script src="emirate-seo-config.js"></script> for Google/Yandex verification -->
+  <script src="emirate-seo-config.js"></script>
   <script src="emirate-seo.js"></script>
   <script src="theme.js"></script>
 </head>
@@ -85,35 +87,36 @@
   </header>
 
   <!-- ===== CATALOG DROPDOWN ===== -->
+  <div class="catalog-dropdown-backdrop" id="catalogDropdownBackdrop" hidden></div>
   <div class="catalog-dropdown" id="catalogDropdown">
     <div class="container catalog-dropdown-inner">
       <div class="catalog-col">
-        <h4 data-i18n="dropdown.phones">Смартфоны и гаджеты</h4>
-        <a href="#" data-i18n="dropdown.smartphones">Смартфоны</a>
-        <a href="#" data-i18n="dropdown.smartwatches">Умные часы</a>
-        <a href="#" data-i18n="dropdown.fitbands">Фитнес-браслеты</a>
-        <a href="#" data-i18n="dropdown.accessories">Аксессуары</a>
+        <h4 data-i18n="dropdown.phones">📱 Смартфоны и гаджеты</h4>
+        <a href="catalog.html?category=Смартфоны" data-i18n="dropdown.smartphones">Смартфоны</a>
+        <a href="catalog.html?category=Смартфоны" data-i18n="dropdown.smartwatches">Умные часы</a>
+        <a href="catalog.html?category=Смартфоны" data-i18n="dropdown.fitbands">Фитнес-браслеты</a>
+        <a href="catalog.html?category=Смартфоны" data-i18n="dropdown.accessories">Аксессуары</a>
       </div>
       <div class="catalog-col">
-        <h4 data-i18n="dropdown.laptops">Ноутбуки и ПК</h4>
-        <a href="#" data-i18n="dropdown.laptop">Ноутбуки</a>
-        <a href="#" data-i18n="dropdown.monitors">Мониторы</a>
-        <a href="#" data-i18n="dropdown.components">Комплектующие</a>
-        <a href="#" data-i18n="dropdown.periphery">Периферия</a>
+        <h4 data-i18n="dropdown.laptops">💻 Ноутбуки и ПК</h4>
+        <a href="catalog.html?category=Ноутбуки" data-i18n="dropdown.laptop">Ноутбуки</a>
+        <a href="catalog.html?category=Ноутбуки" data-i18n="dropdown.monitors">Мониторы</a>
+        <a href="catalog.html?category=Ноутбуки" data-i18n="dropdown.components">Комплектующие</a>
+        <a href="catalog.html?category=Ноутбуки" data-i18n="dropdown.periphery">Периферия</a>
       </div>
       <div class="catalog-col">
-        <h4 data-i18n="dropdown.tv">ТВ и аудио</h4>
-        <a href="#" data-i18n="dropdown.tvs">Телевизоры</a>
-        <a href="#" data-i18n="dropdown.soundbars">Саундбары</a>
-        <a href="#" data-i18n="dropdown.headphones">Наушники</a>
-        <a href="#" data-i18n="dropdown.speakers">Колонки</a>
+        <h4 data-i18n="dropdown.tv">📺 ТВ и аудио</h4>
+        <a href="catalog.html?category=ТВ" data-i18n="dropdown.tvs">Телевизоры</a>
+        <a href="catalog.html?category=Аудио" data-i18n="dropdown.soundbars">Саундбары</a>
+        <a href="catalog.html?category=Аудио" data-i18n="dropdown.headphones">Наушники</a>
+        <a href="catalog.html?category=Аудио" data-i18n="dropdown.speakers">Колонки</a>
       </div>
       <div class="catalog-col">
-        <h4 data-i18n="dropdown.home">Для дома</h4>
-        <a href="#" data-i18n="dropdown.vacuum">Пылесосы</a>
-        <a href="#" data-i18n="dropdown.climate">Климат</a>
-        <a href="#" data-i18n="dropdown.kitchen">Кухонная техника</a>
-        <a href="#" data-i18n="dropdown.beauty">Красота и здоровье</a>
+        <h4 data-i18n="dropdown.home">🏠 Для дома</h4>
+        <a href="catalog.html?category=Техника" data-i18n="dropdown.vacuum">Пылесосы</a>
+        <a href="catalog.html?category=Техника" data-i18n="dropdown.climate">Климат</a>
+        <a href="catalog.html?category=Техника" data-i18n="dropdown.kitchen">Кухонная техника</a>
+        <a href="catalog.html?category=Техника" data-i18n="dropdown.beauty">Красота и здоровье</a>
       </div>
     </div>
   </div>
@@ -332,6 +335,7 @@
   <script src="supabase-config.prod.js"></script>
   <script src="emirate-exchange.js"></script>
   <script src="emirate-supabase-api.js"></script>
+  <script src="emirate-auth.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
