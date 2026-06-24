@@ -215,13 +215,17 @@
           <div class="table-card-header">
             <h3>Клиенты</h3>
             <div class="table-toolbar">
-              <button class="filter-btn" id="clientsFilterBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Фильтр</button>
-              <button class="btn-add" id="addClientBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Добавить</button>
+              <input type="search" class="admin-inline-search" id="clientsSearch" placeholder="Поиск: имя, email, телефон">
+              <button class="filter-btn" id="clientsRefreshBtn" type="button" title="Обновить список">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                Обновить
+              </button>
             </div>
           </div>
+          <p class="table-card-note" id="clientsLoadNote">Загрузка клиентов…</p>
           <table class="admin-table">
             <thead>
-              <tr><th>ID</th><th>Имя</th><th>Телефон</th><th>Email</th><th>Заказов</th><th>Сумма покупок</th><th>Дата регистрации</th><th>Действия</th></tr>
+              <tr><th>ID</th><th>Имя</th><th>Телефон</th><th>Email</th><th>Вход</th><th>Заказов</th><th>Регистрация</th><th>Последний визит</th><th></th></tr>
             </thead>
             <tbody id="clientsBody"></tbody>
           </table>
@@ -1055,6 +1059,7 @@
   <script src="supabase-config.prod.js"></script>
   <script src="emirate-exchange.js"></script>
   <script src="emirate-supabase-api.js"></script>
+  <script src="emirate-auth.js"></script>
   <script>
     (async function emirateAdminEntry() {
       function hasSupabase() {
@@ -1064,6 +1069,13 @@
         var sb = window.emirateSupabase;
         var sessionRes = await sb.auth.getSession();
         if (!sessionRes.data || !sessionRes.data.session) {
+          window.location.href = "index.html?auth=admin";
+          return;
+        }
+        var userId = sessionRes.data.session.user && sessionRes.data.session.user.id;
+        var isAdmin = window.emirateAuth && (await window.emirateAuth.isAdminUser(userId));
+        if (!isAdmin) {
+          await window.emirateAuth.signOutCustomer();
           window.location.href = "index.html?auth=admin";
           return;
         }

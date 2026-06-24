@@ -61,6 +61,10 @@ function switchPage(pageName) {
     void loadOrdersFromSupabase();
   }
 
+  if (pageName === 'clients') {
+    void loadClientsFromSupabase();
+  }
+
   // Scroll to top
   window.scrollTo(0, 0);
 }
@@ -338,37 +342,133 @@ function applyOrdersStatusFilter() {
   renderOrders(getFilteredOrdersByStatus());
 }
 
-// --- Clients ---
-let clientsData = [
-  { id: 1, name: 'Алишер Каримов', phone: '+998 90 123 45 67', email: 'alisher@mail.uz', orders: 5, total: '45 200 000 сум', date: '15.01.2026' },
-  { id: 2, name: 'Дилноза Рахимова', phone: '+998 91 234 56 78', email: 'dilnoza@mail.uz', orders: 3, total: '12 800 000 сум', date: '22.02.2026' },
-  { id: 3, name: 'Бехзод Усмонов', phone: '+998 93 345 67 89', email: 'behzod@gmail.com', orders: 8, total: '78 500 000 сум', date: '10.11.2025' },
-  { id: 4, name: 'Малика Назарова', phone: '+998 94 456 78 90', email: 'malika@mail.uz', orders: 2, total: '9 350 000 сум', date: '05.03.2026' },
-  { id: 5, name: 'Шахзод Мирзаев', phone: '+998 97 567 89 01', email: 'shahzod@gmail.com', orders: 1, total: '3 200 000 сум', date: '01.04.2026' },
-  { id: 6, name: 'Азиза Турсунова', phone: '+998 90 678 90 12', email: 'aziza@mail.uz', orders: 4, total: '32 100 000 сум', date: '28.12.2025' },
-  { id: 7, name: 'Жавохир Холматов', phone: '+998 99 789 01 23', email: 'javohir@inbox.uz', orders: 6, total: '55 400 000 сум', date: '14.09.2025' },
-  { id: 8, name: 'Нодира Эргашева', phone: '+998 95 890 12 34', email: 'nodira@mail.uz', orders: 2, total: '14 600 000 сум', date: '20.03.2026' },
-  { id: 9, name: 'Фаррух Исмаилов', phone: '+998 93 901 23 45', email: 'farrukh@gmail.com', orders: 10, total: '125 000 000 сум', date: '03.06.2025' },
-  { id: 10, name: 'Зарина Мухаммедова', phone: '+998 91 012 34 56', email: 'zarina@mail.uz', orders: 7, total: '89 200 000 сум', date: '18.08.2025' },
-];
+// --- Clients (Supabase customer_profiles) ---
+let clientsData = [];
+let clientsLoading = false;
+
+function formatClientShortId(userId) {
+  if (!userId) return '—';
+  var n = 0;
+  for (var i = 0; i < userId.length; i++) n = (n * 31 + userId.charCodeAt(i)) >>> 0;
+  return 'E' + String(n % 1000000).padStart(6, '0');
+}
+
+function formatClientDate(value) {
+  if (!value) return '—';
+  var date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function formatClientProvider(value) {
+  var key = String(value || '').toLowerCase();
+  if (key === 'google') return 'Google';
+  if (key === 'email') return 'Email';
+  if (!key) return '—';
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+function mapCustomerProfileRow(row) {
+  return {
+    id: formatClientShortId(row.user_id),
+    userId: row.user_id,
+    name: String(row.full_name || row.email || '—').trim() || '—',
+    phone: String(row.phone || '—').trim() || '—',
+    email: String(row.email || '—').trim() || '—',
+    provider: formatClientProvider(row.provider),
+    orders: Number(row.orders_count) || 0,
+    total: Number(row.orders_total) || 0,
+    date: formatClientDate(row.registered_at),
+    lastSeen: formatClientDate(row.last_seen_at),
+    avatar: String(row.avatar_url || '').trim(),
+    raw: row
+  };
+}
+
+function setClientsLoadNote(message, isError) {
+  const note = document.getElementById('clientsLoadNote');
+  if (!note) return;
+  note.textContent = message || '';
+  note.hidden = !message;
+  note.classList.toggle('is-error', !!isError);
+}
+
+async function loadClientsFromSupabase() {
+  const sb = window.emirateSupabase;
+  if (!sb || clientsLoading) return false;
+  clientsLoading = true;
+  setClientsLoadNote('Загрузка клиентов…', false);
+
+  try {
+    const res = await sb
+      .from('customer_profiles')
+      .select('*')
+      .order('last_seen_at', { ascending: false });
+
+    if (res.error) {
+      setClientsLoadNote(
+        'Не удалось загрузить клиентов. Выполните SQL: supabase/customer-profiles-migration.sql',
+        true
+      );
+      clientsData = [];
+      renderClients([]);
+      return false;
+    }
+
+    clientsData = (res.data || []).map(mapCustomerProfileRow);
+    setClientsLoadNote(
+      clientsData.length
+        ? `Зарегистрировано через сайт: ${clientsData.length}`
+        : 'Пока нет клиентов. Они появятся после входа через Google.',
+      false
+    );
+    renderClients(clientsData);
+    return true;
+  } catch (_) {
+    setClientsLoadNote('Ошибка загрузки клиентов', true);
+    clientsData = [];
+    renderClients([]);
+    return false;
+  } finally {
+    clientsLoading = false;
+  }
+}
 
 function renderClients(data = clientsData) {
   const tbody = document.getElementById('clientsBody');
   const count = document.getElementById('clientsCount');
+  if (!tbody) return;
+
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="table-empty">Клиенты не найдены</td></tr>';
+    if (count) count.textContent = '0 клиентов';
+    return;
+  }
+
   tbody.innerHTML = data.map(c => `
     <tr>
-      <td>${c.id}</td>
-      <td><strong>${c.name}</strong></td>
-      <td>${c.phone}</td>
-      <td>${c.email}</td>
+      <td><code>${escapeHtml(c.id)}</code></td>
+      <td>
+        <div class="client-name-cell">
+          ${c.avatar ? `<img class="client-avatar" src="${escapeHtml(c.avatar)}" alt="" width="32" height="32" referrerpolicy="no-referrer">` : ''}
+          <strong>${escapeHtml(c.name)}</strong>
+        </div>
+      </td>
+      <td>${escapeHtml(c.phone)}</td>
+      <td>${escapeHtml(c.email)}</td>
+      <td><span class="client-provider-badge">${escapeHtml(c.provider)}</span></td>
       <td>${c.orders}</td>
-      <td>${c.total}</td>
-      <td>${c.date}</td>
+      <td>${escapeHtml(c.date)}</td>
+      <td>${escapeHtml(c.lastSeen)}</td>
       <td>
         <div class="action-btns">
-          <button class="action-btn" title="Просмотр" data-action="view-client" data-client-id="${c.id}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-          <button class="action-btn" title="Редактировать" data-action="edit-client" data-client-id="${c.id}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          <button class="action-btn delete" title="Удалить" data-action="delete-client" data-client-id="${c.id}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+          <button class="action-btn" title="Просмотр" data-action="view-client" data-client-id="${escapeHtml(c.userId || c.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </td>
     </tr>
@@ -1662,57 +1762,25 @@ function setupIntakeFilters() {
   });
 }
 
-function getNextClientId() {
-  const maxId = clientsData.reduce((max, client) => Math.max(max, Number(client.id) || 0), 0);
-  return maxId + 1;
-}
-
-function addClient() {
-  const name = prompt('Имя клиента');
-  if (!name) return;
-  const phone = prompt('Телефон клиента', '+998 ');
-  if (!phone) return;
-  const email = prompt('Email клиента', '');
-  const now = new Date();
-  const date = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
-  clientsData.unshift({
-    id: getNextClientId(),
-    name: name.trim(),
-    phone: phone.trim(),
-    email: (email || '').trim(),
-    orders: 0,
-    total: '0 сум',
-    date
-  });
-  renderClients();
-}
-
-function editClient(clientId) {
-  const client = clientsData.find(item => String(item.id) === String(clientId));
-  if (!client) return;
-  const name = prompt('Изменить имя клиента', client.name);
-  if (!name) return;
-  const phone = prompt('Изменить телефон клиента', client.phone);
-  if (!phone) return;
-  const email = prompt('Изменить email клиента', client.email);
-  client.name = name.trim();
-  client.phone = phone.trim();
-  client.email = (email || '').trim();
-  renderClients();
-}
-
-function deleteClient(clientId) {
-  const client = clientsData.find(item => String(item.id) === String(clientId));
-  if (!client) return;
-  if (!confirm(`Удалить клиента "${client.name}"?`)) return;
-  clientsData = clientsData.filter(item => String(item.id) !== String(clientId));
-  renderClients();
-}
-
 function viewClient(clientId) {
-  const client = clientsData.find(item => String(item.id) === String(clientId));
+  const client = clientsData.find(item => String(item.userId || item.id) === String(clientId));
   if (!client) return;
-  alert(`Клиент: ${client.name}\nТелефон: ${client.phone}\nEmail: ${client.email}\nЗаказов: ${client.orders}\nСумма: ${client.total}`);
+  const raw = client.raw || {};
+  alert(
+    `Клиент: ${client.name}\n` +
+    `ID: ${client.id}\n` +
+    `Email: ${client.email}\n` +
+    `Телефон: ${client.phone}\n` +
+    `Вход: ${client.provider}\n` +
+    `Паспорт: ${raw.passport || '—'}\n` +
+    `Дата рождения: ${raw.birthday || '—'}\n` +
+    `Пол: ${raw.gender || '—'}\n` +
+    `Адрес: ${raw.address || '—'}\n` +
+    `Рабочий адрес: ${raw.work_address || '—'}\n` +
+    `Заказов: ${client.orders}\n` +
+    `Регистрация: ${client.date}\n` +
+    `Последний визит: ${client.lastSeen}`
+  );
 }
 
 function orderDetailRow(label, value) {
@@ -1789,7 +1857,7 @@ async function applyOrderStatusChange(orderId, newStatus, pickerEl) {
 }
 
 // ===== RENDER ALL =====
-renderClients();
+void loadClientsFromSupabase();
 renderSuppliers();
 renderProducts();
 renderBanners();
@@ -1876,7 +1944,6 @@ void (async () => {
   }
 })();
 
-document.getElementById('addClientBtn')?.addEventListener('click', addClient);
 document.getElementById('supplierForm')?.addEventListener('submit', saveSupplier);
 
 document.getElementById('addSupplierBtn')?.addEventListener('click', function() {
@@ -1899,8 +1966,6 @@ document.getElementById('clientsBody')?.addEventListener('click', function(e) {
   if (!clientId) return;
 
   if (action === 'view-client') viewClient(clientId);
-  if (action === 'edit-client') editClient(clientId);
-  if (action === 'delete-client') deleteClient(clientId);
 });
 
 document.getElementById('ordersBody')?.addEventListener('click', function(e) {
@@ -1966,15 +2031,23 @@ document.getElementById('suppliersBody')?.addEventListener('click', function(e) 
   }
 });
 
-document.getElementById('clientsFilterBtn')?.addEventListener('click', function() {
-  const minOrdersRaw = prompt('Показать клиентов с количеством заказов не меньше:', '1');
-  if (minOrdersRaw === null) return;
-  const minOrders = Number(minOrdersRaw);
-  if (!Number.isFinite(minOrders)) {
-    alert('Введите число');
+document.getElementById('clientsRefreshBtn')?.addEventListener('click', function() {
+  void loadClientsFromSupabase();
+});
+
+document.getElementById('clientsSearch')?.addEventListener('input', function() {
+  const query = String(this.value || '').trim().toLowerCase();
+  if (!query) {
+    renderClients(clientsData);
     return;
   }
-  renderClients(clientsData.filter(item => Number(item.orders) >= minOrders));
+  renderClients(clientsData.filter(item =>
+    item.name.toLowerCase().includes(query)
+    || item.phone.toLowerCase().includes(query)
+    || item.email.toLowerCase().includes(query)
+    || item.id.toLowerCase().includes(query)
+    || item.provider.toLowerCase().includes(query)
+  ));
 });
 
 document.getElementById('ordersStatusFilter')?.addEventListener('change', applyOrdersStatusFilter);

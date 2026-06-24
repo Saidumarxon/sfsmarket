@@ -30,13 +30,64 @@
     return url;
   }
 
+  async function syncCustomerProfileToDb(user) {
+    var sb = supabaseClient();
+    if (!sb || !user || !user.id) return { ok: false };
+
+    try {
+      var isAdmin = await isAdminUser(user.id);
+      if (isAdmin) return { ok: true, skipped: "admin" };
+    } catch (_) {}
+
+    var profile = extractProfile(user);
+    if (!profile) return { ok: false };
+
+    var row = {
+      user_id: user.id,
+      email: profile.email || null,
+      full_name: profile.name || null,
+      phone: profile.phone || null,
+      avatar_url: profile.avatar || null,
+      provider: profile.provider || "google",
+      passport: profile.passport || null,
+      birthday: profile.birthday || null,
+      gender: profile.gender || null,
+      address: profile.address || null,
+      work_address: profile.workAddress || null,
+      last_seen_at: new Date().toISOString(),
+    };
+
+    if (user.created_at) {
+      row.registered_at = user.created_at;
+    }
+
+    try {
+      var res = await sb.from("customer_profiles").upsert(row, { onConflict: "user_id" });
+      if (res.error) return { ok: false, error: res.error };
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err };
+    }
+  }
+
   function persistCustomerSession(session) {
     if (!session || !session.user) return null;
     var profile = extractProfile(session.user);
     try {
       localStorage.setItem(CUSTOMER_KEY, JSON.stringify(profile));
     } catch (_) {}
+    void syncCustomerProfileToDb(session.user);
     return profile;
+  }
+
+  function detectProvider(user) {
+    if (!user) return "unknown";
+    var appMeta = user.app_metadata || {};
+    if (appMeta.provider) return String(appMeta.provider);
+    if (Array.isArray(user.identities) && user.identities[0] && user.identities[0].provider) {
+      return String(user.identities[0].provider);
+    }
+    return "email";
   }
 
   function extractProfile(user) {
@@ -47,7 +98,7 @@
       email: String(user.email || "").trim(),
       name: String(meta.full_name || meta.name || meta.user_name || "").trim(),
       avatar: String(meta.avatar_url || meta.picture || "").trim(),
-      provider: String(meta.provider || "google").trim(),
+      provider: detectProvider(user),
       passport: String(meta.passport || "").trim(),
       birthday: String(meta.birthday || meta.birth_date || "").trim(),
       phone: String(meta.phone || meta.phone_number || "").trim(),
@@ -242,6 +293,7 @@
     uploadCustomerAvatar: uploadCustomerAvatar,
     formatGenderLabel: formatGenderLabel,
     syncSessionToCustomerStorage: syncSessionToCustomerStorage,
+    syncCustomerProfileToDb: syncCustomerProfileToDb,
     loadCustomer: loadCustomer,
     clearCustomerSession: clearCustomerSession,
     signOutCustomer: signOutCustomer,

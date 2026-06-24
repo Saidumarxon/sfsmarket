@@ -404,6 +404,65 @@ body {
   gap: 10px;
 }
 
+.admin-inline-search {
+  min-width: 220px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1.5px solid var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.admin-inline-search:focus {
+  outline: none;
+  border-color: var(--admin-accent);
+}
+
+.table-card-note {
+  margin: 0;
+  padding: 10px 22px 0;
+  font-size: 13px;
+  color: var(--admin-muted);
+}
+
+.table-card-note.is-error {
+  color: #dc2626;
+}
+
+.table-empty {
+  text-align: center;
+  color: var(--admin-muted);
+  padding: 28px 16px !important;
+}
+
+.client-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.client-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.client-provider-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .table-toolbar .filter-btn {
   display: flex;
   align-items: center;
