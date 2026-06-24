@@ -80,7 +80,7 @@
       return { ok: false, error: { message: "Supabase не настроен" } };
     }
     var sb = supabaseClient();
-    var next = opts.next || "index.html";
+    var next = opts.next || "login.html";
     var redirectTo = getOAuthRedirectUrl(next);
     var res = await sb.auth.signInWithOAuth({
       provider: "google",
@@ -176,8 +176,10 @@
   window.emiratePersistCustomerSession = persistCustomerSession;
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", syncCustomerAuthUi);
+    document.addEventListener("DOMContentLoaded", function () {
+      syncSessionToCustomerStorage().then(syncCustomerAuthUi);
+    });
   } else {
-    syncCustomerAuthUi();
+    syncSessionToCustomerStorage().then(syncCustomerAuthUi);
   }
 })();

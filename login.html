@@ -20,10 +20,17 @@
 </head>
 <body class="profile-page">
 
-  <main class="profile-screen">
-    <h1 class="profile-guest-title" data-i18n="profile.guestTitle">Войдите, чтобы оформить заказ и смотреть список заказов</h1>
+  <header class="profile-topbar">
+    <a href="index.html" class="profile-topbar-home">
+      <img src="images/emirate-logo.svg" alt="Emirate Co" width="120" height="42">
+    </a>
+  </header>
 
-    <div class="profile-menu-group">
+  <main class="profile-screen">
+    <div id="profileGuestView">
+      <h1 class="profile-guest-title" data-i18n="profile.guestTitle">Войдите, чтобы оформить заказ и смотреть список заказов</h1>
+
+      <div class="profile-menu-group">
       <a href="#" class="profile-menu-item">
         <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
         <span class="profile-menu-label" data-i18n="profile.blog">Блог</span>
@@ -63,11 +70,111 @@
         <svg class="profile-menu-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
+    </div>
+
+    <div id="profileAccountView" hidden>
+      <div class="profile-account-head">
+        <div>
+          <h1 class="profile-account-title" data-i18n="profile.myInfo">Мои данные</h1>
+          <p class="profile-account-subtitle" data-i18n="profile.myInfoSub">Управление профилем и аккаунтом</p>
+        </div>
+        <button type="button" class="profile-edit-btn" id="profileEditBtn">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <span data-i18n="profile.edit">Редактировать профиль</span>
+        </button>
+      </div>
+
+      <section class="profile-account-card">
+        <div class="profile-account-main">
+          <div class="profile-account-identity">
+            <img class="profile-account-avatar" id="profileAvatar" src="" alt="" width="72" height="72" hidden>
+            <div class="profile-account-avatar profile-account-avatar--placeholder" id="profileAvatarPlaceholder" aria-hidden="true">
+              <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div class="profile-account-identity-text">
+              <h2 class="profile-account-name" id="profileName">—</h2>
+              <p class="profile-account-id" id="profileId">ID: —</p>
+              <p class="profile-account-contact" id="profileEmailRow" hidden>
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M22 6l-10 7L2 6"/></svg>
+                <span id="profileEmail">—</span>
+              </p>
+              <p class="profile-account-contact" id="profilePhoneRow" hidden>
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                <span id="profilePhone">—</span>
+              </p>
+            </div>
+          </div>
+          <div class="profile-account-fields">
+            <div class="profile-account-field">
+              <span class="profile-account-field-label" data-i18n="profile.passport">Серия паспорта</span>
+              <strong class="profile-account-field-value" id="profilePassport">—</strong>
+            </div>
+            <div class="profile-account-field">
+              <span class="profile-account-field-label" data-i18n="profile.birthday">Дата рождения</span>
+              <strong class="profile-account-field-value" id="profileBirthday">—</strong>
+            </div>
+            <div class="profile-account-field">
+              <span class="profile-account-field-label" data-i18n="profile.gender">Пол</span>
+              <strong class="profile-account-field-value" id="profileGender">—</strong>
+            </div>
+            <div class="profile-account-field">
+              <span class="profile-account-field-label" data-i18n="profile.address">Адрес</span>
+              <strong class="profile-account-field-value" id="profileAddress">—</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="profile-stats-grid">
+        <article class="profile-stat-card">
+          <div class="profile-stat-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+          <div>
+            <p class="profile-stat-label"><span data-i18n="profile.balance">Баланс:</span> <strong id="profileBalance">0 so'm</strong></p>
+            <a href="#" class="profile-stat-link" id="profileTopUp" data-i18n="profile.topUp">Пополнить счёт →</a>
+          </div>
+        </article>
+        <article class="profile-stat-card">
+          <div class="profile-stat-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg></div>
+          <div>
+            <p class="profile-stat-label"><span data-i18n="profile.bonus">Мои бонусные баллы:</span> <strong id="profileBonus">0</strong></p>
+          </div>
+        </article>
+        <article class="profile-stat-card">
+          <div class="profile-stat-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+          <div>
+            <p class="profile-stat-label"><span data-i18n="profile.myAddresses">Мои адреса:</span> <strong id="profileAddressCount">0</strong></p>
+            <a href="#" class="profile-stat-link" id="profileViewAddresses" data-i18n="profile.viewAll">Посмотреть все →</a>
+          </div>
+        </article>
+      </div>
+
+      <div class="profile-menu-group">
+        <a href="tel:+998508868844" class="profile-menu-item">
+          <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg>
+          <span class="profile-menu-label" data-i18n="profile.contact">Связаться с нами</span>
+          <svg class="profile-menu-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+        <button type="button" class="profile-menu-item" id="profileThemeSwitchLogged">
+          <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          <span class="profile-menu-label" data-i18n="profile.theme">Тёмная тема</span>
+          <span class="profile-menu-state" data-theme-state>Выключена</span>
+        </button>
+        <button type="button" class="profile-menu-item" id="profileLangSwitchLogged">
+          <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          <span class="profile-menu-label" data-i18n="profile.language">Язык приложения</span>
+          <svg class="profile-menu-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
   </main>
 
-  <div class="profile-bottom-actions">
+  <div class="profile-bottom-actions" id="profileGuestActions">
     <button type="button" class="profile-login-btn" id="openLoginBtn" data-i18n="header.login">Войти</button>
     <a href="#" class="profile-register-link" id="openRegisterLink" data-i18n="profile.register">Регистрация</a>
+  </div>
+
+  <div class="profile-bottom-actions profile-bottom-actions--logged" id="profileLoggedActions" hidden>
+    <button type="button" class="profile-login-btn profile-logout-btn" id="profileLogoutBtn" data-i18n="profile.logout">Выйти</button>
   </div>
 
   <nav class="mobile-nav">
@@ -124,15 +231,6 @@
 
   <script src="mobile-config.js"></script>
   <script src="mobile-bridge.js"></script>
-  <script>
-    (function () {
-      var isApp = document.documentElement.classList.contains("capacitor-app");
-      var isAdmin = new URLSearchParams(window.location.search).get("admin") === "1";
-      if (!isApp && window.matchMedia("(min-width: 681px)").matches) {
-        window.location.replace(isAdmin ? "index.html?auth=admin" : "index.html?auth=1");
-      }
-    })();
-  </script>
   <script src="translations.js"></script>
   <script src="common.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -200,7 +298,15 @@
         });
       });
 
+      var isApp = document.documentElement.classList.contains("capacitor-app");
+
       (async function bootLogin() {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get("admin") === "1" && !isApp && window.emirateShouldUseDesktopAuthModal && window.emirateShouldUseDesktopAuthModal()) {
+          window.location.replace("index.html?auth=admin");
+          return;
+        }
+
         if (window.emirateSupabaseApi && window.emirateSupabaseApi.isConfigured()) {
           var sb = window.emirateSupabase;
           var r = await sb.auth.getSession();
@@ -219,30 +325,117 @@
           }
         } else if (localStorage.getItem("emirate_admin")) {
           window.location.href = "admin.html";
+          return;
         }
 
-        if (new URLSearchParams(window.location.search).get("auth_error") === "google") {
+        if (!isApp) {
+          if (params.get("auth_error") === "google") {
+            window.location.replace("index.html?auth_error=google");
+          } else {
+            window.location.replace("index.html?auth=1");
+          }
+          return;
+        }
+
+        if (params.get("auth_error") === "google") {
           showToast((window.emirateT && window.emirateT("auth.googleError")) || "Не удалось войти через Google");
+          openLoginModal();
+        } else if (params.get("login") === "1") {
+          openLoginModal();
         }
       })();
+
+      function formatProfileId(userId) {
+        if (!userId) return "—";
+        var n = 0;
+        for (var i = 0; i < userId.length; i++) n = (n * 31 + userId.charCodeAt(i)) >>> 0;
+        return String(n % 1000000).padStart(6, "0");
+      }
+
+      function dash(value) {
+        var v = String(value || "").trim();
+        return v || "—";
+      }
+
+      function showGuestView() {
+        isLoggedIn = false;
+        document.getElementById("profileGuestView").hidden = false;
+        document.getElementById("profileAccountView").hidden = true;
+        document.getElementById("profileGuestActions").hidden = false;
+        document.getElementById("profileLoggedActions").hidden = true;
+      }
 
       function showLoggedInProfile(session) {
         isLoggedIn = true;
         var user = session.user || {};
         var meta = user.user_metadata || {};
-        var name = meta.full_name || meta.name || user.email || "Профиль";
-        var title = document.querySelector(".profile-guest-title");
-        if (title) title.textContent = "Здравствуйте, " + name.split(" ")[0] + "!";
-        var btn = document.getElementById("openLoginBtn");
-        if (btn) {
-          btn.textContent = "Выйти";
-          btn.addEventListener("click", async function onLogout() {
-            if (!isLoggedIn) return;
-            if (window.emirateAuth) await window.emirateAuth.signOutCustomer();
-            window.location.reload();
-          });
+        var name = dash(meta.full_name || meta.name || user.email);
+        var email = dash(user.email);
+        var phone = dash(meta.phone || meta.phone_number);
+        var avatar = String(meta.avatar_url || meta.picture || "").trim();
+
+        document.getElementById("profileGuestView").hidden = true;
+        document.getElementById("profileAccountView").hidden = false;
+        document.getElementById("profileGuestActions").hidden = true;
+        document.getElementById("profileLoggedActions").hidden = false;
+
+        document.getElementById("profileName").textContent = name;
+        document.getElementById("profileId").textContent = "ID: " + formatProfileId(user.id);
+        document.getElementById("profileEmail").textContent = email;
+        document.getElementById("profilePhone").textContent = phone;
+        document.getElementById("profilePassport").textContent = dash(meta.passport);
+        document.getElementById("profileBirthday").textContent = dash(meta.birthday || meta.birth_date);
+        document.getElementById("profileGender").textContent = dash(meta.gender) === "—"
+          ? ((window.emirateT && window.emirateT("profile.unknown")) || "Не указан")
+          : dash(meta.gender);
+        document.getElementById("profileAddress").textContent = dash(meta.address);
+
+        var emailRow = document.getElementById("profileEmailRow");
+        var phoneRow = document.getElementById("profilePhoneRow");
+        if (emailRow) emailRow.hidden = email === "—";
+        if (phoneRow) phoneRow.hidden = phone === "—";
+
+        var avatarEl = document.getElementById("profileAvatar");
+        var avatarPh = document.getElementById("profileAvatarPlaceholder");
+        if (avatar && avatarEl) {
+          avatarEl.src = avatar;
+          avatarEl.alt = name;
+          avatarEl.hidden = false;
+          if (avatarPh) avatarPh.hidden = true;
+        } else if (avatarEl && avatarPh) {
+          avatarEl.hidden = true;
+          avatarPh.hidden = false;
+        }
+
+        if (window.emirateAuth && window.emirateAuth.syncCustomerAuthUi) {
+          window.emirateAuth.syncCustomerAuthUi();
         }
       }
+
+      document.getElementById("profileLogoutBtn").addEventListener("click", async function () {
+        if (!isLoggedIn) return;
+        if (window.emirateAuth) await window.emirateAuth.signOutCustomer();
+        window.location.href = isApp ? "login.html" : "index.html";
+      });
+
+      document.getElementById("profileEditBtn").addEventListener("click", function () {
+        showToast((window.emirateT && window.emirateT("profile.editSoon")) || "Редактирование скоро будет доступно");
+      });
+
+      document.getElementById("profileTopUp").addEventListener("click", function (e) {
+        e.preventDefault();
+        showToast((window.emirateT && window.emirateT("profile.topUpSoon")) || "Пополнение скоро будет доступно");
+      });
+
+      document.getElementById("profileViewAddresses").addEventListener("click", function (e) {
+        e.preventDefault();
+        showToast((window.emirateT && window.emirateT("profile.addressesSoon")) || "Адреса скоро будут доступны");
+      });
+
+      document.getElementById("profileLangSwitchLogged").addEventListener("click", function () {
+        var langBtn = document.getElementById("langSwitch");
+        if (langBtn) langBtn.click();
+      });
 
       document.getElementById("profileGoogleBtn")?.addEventListener("click", async function () {
         if (!window.emirateAuth || !window.emirateAuth.isConfigured()) {

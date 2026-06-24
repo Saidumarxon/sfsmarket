@@ -49,7 +49,7 @@
     (function () {
       var textEl = document.getElementById("authCallbackText");
       var params = new URLSearchParams(window.location.search);
-      var next = params.get("next") || "index.html";
+      var next = params.get("next") || "login.html";
 
       function fail(message) {
         if (textEl) textEl.textContent = message || "Не удалось войти";
