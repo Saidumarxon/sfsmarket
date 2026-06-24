@@ -32,20 +32,89 @@
 
   function persistCustomerSession(session) {
     if (!session || !session.user) return null;
-    var user = session.user;
+    var profile = extractProfile(session.user);
+    try {
+      localStorage.setItem(CUSTOMER_KEY, JSON.stringify(profile));
+    } catch (_) {}
+    return profile;
+  }
+
+  function extractProfile(user) {
+    if (!user) return null;
     var meta = user.user_metadata || {};
-    var customer = {
+    return {
       id: user.id,
       email: String(user.email || "").trim(),
       name: String(meta.full_name || meta.name || meta.user_name || "").trim(),
       avatar: String(meta.avatar_url || meta.picture || "").trim(),
       provider: String(meta.provider || "google").trim(),
+      passport: String(meta.passport || "").trim(),
+      birthday: String(meta.birthday || meta.birth_date || "").trim(),
+      phone: String(meta.phone || meta.phone_number || "").trim(),
+      address: String(meta.address || "").trim(),
+      workAddress: String(meta.work_address || "").trim(),
+      gender: String(meta.gender || "").trim(),
       ts: Date.now(),
     };
+  }
+
+  function formatGenderLabel(gender, lang) {
+    var key = String(gender || "").toLowerCase();
+    var ru = { male: "Мужской", female: "Женский", unknown: "Не указан" };
+    var uz = { male: "Erkak", female: "Ayol", unknown: "Noma'lum" };
+    var table = lang === "uz" ? uz : ru;
+    return table[key] || table.unknown;
+  }
+
+  async function updateCustomerProfile(fields) {
+    var sb = supabaseClient();
+    if (!sb) return { ok: false, error: { message: "Supabase не настроен" } };
+
+    var payload = {
+      full_name: String(fields.fullName || "").trim(),
+      passport: String(fields.passport || "").trim(),
+      birthday: String(fields.birthday || "").trim(),
+      birth_date: String(fields.birthday || "").trim(),
+      phone: String(fields.phone || "").trim(),
+      phone_number: String(fields.phone || "").trim(),
+      address: String(fields.address || "").trim(),
+      work_address: String(fields.workAddress || "").trim(),
+      gender: String(fields.gender || "unknown").trim(),
+    };
+
+    if (fields.avatarUrl) {
+      payload.avatar_url = String(fields.avatarUrl).trim();
+      payload.picture = String(fields.avatarUrl).trim();
+    }
+
+    var res = await sb.auth.updateUser({ data: payload });
+    if (res.error) return { ok: false, error: res.error };
+
+    var sessionRes = await sb.auth.getSession();
+    var session = sessionRes.data && sessionRes.data.session;
+    if (session) persistCustomerSession(session);
+    return { ok: true, user: res.data.user, session: session };
+  }
+
+  async function uploadCustomerAvatar(file, userId) {
+    var sb = supabaseClient();
+    if (!sb || !file || !userId) return { ok: false, error: { message: "no_file" } };
+
+    var ext = String(file.name || "").split(".").pop().toLowerCase();
+    if (["jpg", "jpeg", "png", "webp"].indexOf(ext) === -1) ext = "jpg";
+    var path = userId + "/avatar." + ext;
+
     try {
-      localStorage.setItem(CUSTOMER_KEY, JSON.stringify(customer));
-    } catch (_) {}
-    return customer;
+      var uploaded = await sb.storage.from("avatars").upload(path, file, {
+        upsert: true,
+        contentType: file.type || "image/jpeg",
+      });
+      if (uploaded.error) return { ok: false, error: uploaded.error };
+      var publicUrl = sb.storage.from("avatars").getPublicUrl(path);
+      return { ok: true, url: publicUrl.data && publicUrl.data.publicUrl };
+    } catch (err) {
+      return { ok: false, error: err };
+    }
   }
 
   function loadCustomer() {
@@ -163,6 +232,10 @@
     signInWithGoogle: signInWithGoogle,
     completeOAuthFromUrl: completeOAuthFromUrl,
     persistCustomerSession: persistCustomerSession,
+    extractProfile: extractProfile,
+    updateCustomerProfile: updateCustomerProfile,
+    uploadCustomerAvatar: uploadCustomerAvatar,
+    formatGenderLabel: formatGenderLabel,
     syncSessionToCustomerStorage: syncSessionToCustomerStorage,
     loadCustomer: loadCustomer,
     clearCustomerSession: clearCustomerSession,

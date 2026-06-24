@@ -121,6 +121,10 @@
               <span class="profile-account-field-label" data-i18n="profile.address">Адрес</span>
               <strong class="profile-account-field-value" id="profileAddress">—</strong>
             </div>
+            <div class="profile-account-field">
+              <span class="profile-account-field-label" data-i18n="profile.workAddress">Рабочий адрес</span>
+              <strong class="profile-account-field-value" id="profileWorkAddress">—</strong>
+            </div>
           </div>
         </div>
       </section>
@@ -165,6 +169,67 @@
           <svg class="profile-menu-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
         </button>
       </div>
+    </div>
+
+    <div id="profileEditView" hidden>
+      <h1 class="profile-edit-title" data-i18n="profile.personalInfo">Личные данные</h1>
+
+      <div class="profile-edit-avatar-wrap">
+        <img class="profile-edit-avatar" id="editAvatarImg" src="" alt="" width="96" height="96" hidden>
+        <div class="profile-edit-avatar profile-edit-avatar--placeholder" id="editAvatarPlaceholder" aria-hidden="true">
+          <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <button type="button" class="profile-edit-avatar-btn" id="editAvatarBtn" aria-label="Изменить фото">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <input type="file" id="editAvatarInput" accept="image/jpeg,image/png,image/webp" hidden>
+      </div>
+
+      <form id="profileEditForm" class="profile-edit-form" novalidate>
+        <div class="profile-edit-grid">
+          <label class="profile-edit-field">
+            <span data-i18n="profile.passport">Серия паспорта</span>
+            <input type="text" id="editPassport" autocomplete="off">
+          </label>
+          <label class="profile-edit-field">
+            <span data-i18n="profile.birthday">Дата рождения</span>
+            <input type="text" id="editBirthday" placeholder="ДД.ММ.ГГГГ" autocomplete="bday">
+          </label>
+          <label class="profile-edit-field">
+            <span data-i18n="profile.fullName">Имя</span>
+            <input type="text" id="editFullName" autocomplete="name">
+          </label>
+          <label class="profile-edit-field">
+            <span data-i18n="profile.email">Email</span>
+            <input type="email" id="editEmail" readonly>
+          </label>
+          <label class="profile-edit-field">
+            <span data-i18n="profile.phone">Телефон</span>
+            <input type="tel" id="editPhone" inputmode="tel" autocomplete="tel">
+          </label>
+          <label class="profile-edit-field">
+            <span data-i18n="profile.gender">Пол</span>
+            <select id="editGender">
+              <option value="unknown" data-i18n="profile.unknown">Не указан</option>
+              <option value="male" data-i18n="profile.genderMale">Мужской</option>
+              <option value="female" data-i18n="profile.genderFemale">Женский</option>
+            </select>
+          </label>
+          <label class="profile-edit-field profile-edit-field--wide">
+            <span data-i18n="profile.address">Адрес</span>
+            <input type="text" id="editAddress" autocomplete="street-address">
+          </label>
+          <label class="profile-edit-field profile-edit-field--wide">
+            <span data-i18n="profile.workAddress">Рабочий адрес</span>
+            <input type="text" id="editWorkAddress" autocomplete="off">
+          </label>
+        </div>
+        <p class="profile-edit-error" id="profileEditError" aria-live="polite"></p>
+        <div class="profile-edit-actions">
+          <button type="button" class="profile-edit-cancel" id="profileEditCancel" data-i18n="profile.cancel">Отмена</button>
+          <button type="submit" class="profile-edit-save" id="profileEditSave" data-i18n="profile.save">Сохранить изменения</button>
+        </div>
+      </form>
     </div>
   </main>
 
@@ -265,6 +330,32 @@
       }
 
       var isLoggedIn = false;
+      var currentSession = null;
+      var pendingAvatarFile = null;
+
+      function formatUzPhone(value) {
+        var raw = String(value || "");
+        var digits = raw.replace(/\D/g, "");
+        if (digits.indexOf("998") === 0) digits = digits.slice(3);
+        digits = digits.slice(0, 9);
+        var out = "+998";
+        if (!digits.length) return out;
+        out += " (" + digits.slice(0, 2);
+        if (digits.length <= 2) return out;
+        out += ") " + digits.slice(2, 5);
+        if (digits.length <= 5) return out;
+        out += "-" + digits.slice(5, 7);
+        if (digits.length <= 7) return out;
+        out += "-" + digits.slice(7, 9);
+        return out;
+      }
+
+      function genderLabel(gender) {
+        if (window.emirateAuth && window.emirateAuth.formatGenderLabel) {
+          return window.emirateAuth.formatGenderLabel(gender, window.emirateLang && window.emirateLang());
+        }
+        return gender || "—";
+      }
 
       document.getElementById("openLoginBtn").addEventListener("click", function () {
         if (isLoggedIn) return;
@@ -366,16 +457,22 @@
       }
 
       function showLoggedInProfile(session) {
+        currentSession = session;
         isLoggedIn = true;
         var user = session.user || {};
         var meta = user.user_metadata || {};
-        var name = dash(meta.full_name || meta.name || user.email);
+        var profile = window.emirateAuth && window.emirateAuth.extractProfile
+          ? window.emirateAuth.extractProfile(user)
+          : null;
+        var name = dash(profile ? profile.name : (meta.full_name || meta.name || user.email));
         var email = dash(user.email);
-        var phone = dash(meta.phone || meta.phone_number);
-        var avatar = String(meta.avatar_url || meta.picture || "").trim();
+        var phoneRaw = profile ? profile.phone : (meta.phone || meta.phone_number);
+        var phone = phoneRaw ? formatUzPhone(phoneRaw) : "—";
+        var avatar = String(profile ? profile.avatar : (meta.avatar_url || meta.picture || "")).trim();
 
         document.getElementById("profileGuestView").hidden = true;
         document.getElementById("profileAccountView").hidden = false;
+        document.getElementById("profileEditView").hidden = true;
         document.getElementById("profileGuestActions").hidden = true;
         document.getElementById("profileLoggedActions").hidden = false;
 
@@ -383,12 +480,11 @@
         document.getElementById("profileId").textContent = "ID: " + formatProfileId(user.id);
         document.getElementById("profileEmail").textContent = email;
         document.getElementById("profilePhone").textContent = phone;
-        document.getElementById("profilePassport").textContent = dash(meta.passport);
-        document.getElementById("profileBirthday").textContent = dash(meta.birthday || meta.birth_date);
-        document.getElementById("profileGender").textContent = dash(meta.gender) === "—"
-          ? ((window.emirateT && window.emirateT("profile.unknown")) || "Не указан")
-          : dash(meta.gender);
-        document.getElementById("profileAddress").textContent = dash(meta.address);
+        document.getElementById("profilePassport").textContent = dash(profile ? profile.passport : meta.passport);
+        document.getElementById("profileBirthday").textContent = dash(profile ? profile.birthday : (meta.birthday || meta.birth_date));
+        document.getElementById("profileGender").textContent = genderLabel(profile ? profile.gender : meta.gender);
+        document.getElementById("profileAddress").textContent = dash(profile ? profile.address : meta.address);
+        document.getElementById("profileWorkAddress").textContent = dash(profile ? profile.workAddress : meta.work_address);
 
         var emailRow = document.getElementById("profileEmailRow");
         var phoneRow = document.getElementById("profilePhoneRow");
@@ -412,14 +508,126 @@
         }
       }
 
+      function setEditAvatarPreview(url) {
+        var img = document.getElementById("editAvatarImg");
+        var ph = document.getElementById("editAvatarPlaceholder");
+        if (url && img) {
+          img.src = url;
+          img.hidden = false;
+          if (ph) ph.hidden = true;
+        } else if (img && ph) {
+          img.hidden = true;
+          ph.hidden = false;
+        }
+      }
+
+      function openProfileEdit() {
+        if (!currentSession || !currentSession.user) return;
+        var user = currentSession.user;
+        var meta = user.user_metadata || {};
+        var profile = window.emirateAuth.extractProfile(user);
+
+        document.getElementById("editPassport").value = profile.passport || "";
+        document.getElementById("editBirthday").value = profile.birthday || "";
+        document.getElementById("editFullName").value = profile.name || "";
+        document.getElementById("editEmail").value = profile.email || "";
+        document.getElementById("editPhone").value = profile.phone ? formatUzPhone(profile.phone) : "+998";
+        document.getElementById("editAddress").value = profile.address || "";
+        document.getElementById("editWorkAddress").value = profile.workAddress || "";
+        document.getElementById("editGender").value = profile.gender || "unknown";
+        document.getElementById("profileEditError").textContent = "";
+        pendingAvatarFile = null;
+        setEditAvatarPreview(profile.avatar);
+
+        document.getElementById("profileAccountView").hidden = true;
+        document.getElementById("profileEditView").hidden = false;
+        document.getElementById("profileLoggedActions").hidden = true;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function closeProfileEdit() {
+        document.getElementById("profileEditView").hidden = true;
+        document.getElementById("profileAccountView").hidden = false;
+        document.getElementById("profileLoggedActions").hidden = false;
+        pendingAvatarFile = null;
+      }
+
       document.getElementById("profileLogoutBtn").addEventListener("click", async function () {
         if (!isLoggedIn) return;
         if (window.emirateAuth) await window.emirateAuth.signOutCustomer();
         window.location.href = isApp ? "login.html" : "index.html";
       });
 
-      document.getElementById("profileEditBtn").addEventListener("click", function () {
-        showToast((window.emirateT && window.emirateT("profile.editSoon")) || "Редактирование скоро будет доступно");
+      document.getElementById("profileEditBtn").addEventListener("click", openProfileEdit);
+      document.getElementById("profileEditCancel").addEventListener("click", closeProfileEdit);
+
+      document.getElementById("editPhone").addEventListener("input", function () {
+        this.value = formatUzPhone(this.value);
+      });
+
+      document.getElementById("editAvatarBtn").addEventListener("click", function () {
+        document.getElementById("editAvatarInput").click();
+      });
+
+      document.getElementById("editAvatarInput").addEventListener("change", function () {
+        var file = this.files && this.files[0];
+        if (!file) return;
+        pendingAvatarFile = file;
+        var reader = new FileReader();
+        reader.onload = function () {
+          setEditAvatarPreview(String(reader.result || ""));
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.getElementById("profileEditForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        if (!currentSession || !window.emirateAuth) return;
+
+        var errEl = document.getElementById("profileEditError");
+        var saveBtn = document.getElementById("profileEditSave");
+        errEl.textContent = "";
+        saveBtn.disabled = true;
+
+        var fields = {
+          fullName: document.getElementById("editFullName").value.trim(),
+          passport: document.getElementById("editPassport").value.trim(),
+          birthday: document.getElementById("editBirthday").value.trim(),
+          phone: document.getElementById("editPhone").value.replace(/\D/g, ""),
+          address: document.getElementById("editAddress").value.trim(),
+          workAddress: document.getElementById("editWorkAddress").value.trim(),
+          gender: document.getElementById("editGender").value,
+        };
+
+        if (pendingAvatarFile && currentSession.user.id) {
+          var uploaded = await window.emirateAuth.uploadCustomerAvatar(pendingAvatarFile, currentSession.user.id);
+          if (uploaded.ok && uploaded.url) {
+            fields.avatarUrl = uploaded.url;
+          } else {
+            showToast((window.emirateT && window.emirateT("profile.avatarError")) || "Фото не загружено, остальные данные будут сохранены");
+          }
+        }
+
+        var res = await window.emirateAuth.updateCustomerProfile(fields);
+        saveBtn.disabled = false;
+        if (!res.ok) {
+          errEl.textContent = (res.error && res.error.message) || "Ошибка сохранения";
+          return;
+        }
+
+        if (res.session) {
+          currentSession = res.session;
+          showLoggedInProfile(res.session);
+        } else if (window.emirateSupabase) {
+          var sessionRes = await window.emirateSupabase.auth.getSession();
+          if (sessionRes.data && sessionRes.data.session) {
+            currentSession = sessionRes.data.session;
+            showLoggedInProfile(sessionRes.data.session);
+          }
+        }
+
+        showToast((window.emirateT && window.emirateT("profile.saved")) || "Изменения сохранены");
+        closeProfileEdit();
       });
 
       document.getElementById("profileTopUp").addEventListener("click", function (e) {
