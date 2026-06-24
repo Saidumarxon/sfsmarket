@@ -527,7 +527,7 @@
       (async function bootLogin() {
         var params = new URLSearchParams(window.location.search);
         if (params.get("admin") === "1" && !isApp && window.emirateShouldUseDesktopAuthModal && window.emirateShouldUseDesktopAuthModal()) {
-          window.location.replace("index.html?auth=admin");
+          window.location.replace("index.html");
           return;
         }
 
@@ -836,6 +836,19 @@
           var res = await sb.auth.signInWithPassword({ email: login, password: pass });
           if (res.error) {
             err.textContent = res.error.message || "Ошибка входа";
+            err.classList.add("visible");
+            setTimeout(function () { err.classList.remove("visible"); }, 5000);
+            return;
+          }
+          var userId = res.data.user && res.data.user.id;
+          var isAdmin = window.emirateAuth && userId && (await window.emirateAuth.isAdminUser(userId));
+          if (!isAdmin) {
+            if (window.emirateAuth && window.emirateAuth.signOutCustomer) {
+              await window.emirateAuth.signOutCustomer();
+            } else {
+              await sb.auth.signOut();
+            }
+            err.textContent = "Неверный логин или пароль";
             err.classList.add("visible");
             setTimeout(function () { err.classList.remove("visible"); }, 5000);
             return;

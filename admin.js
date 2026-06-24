@@ -16,7 +16,7 @@ function parseAdminSession() {
 
 const adminSession = parseAdminSession();
 if (!adminSession) {
-  window.location.href = 'login.html';
+  window.location.href = 'index.html';
 }
 
 const adminIdentity = String(adminSession?.role || adminSession?.user || '').toLowerCase();
@@ -86,7 +86,7 @@ document.getElementById('logoutBtn').addEventListener('click', async function() 
     }
   }
   localStorage.removeItem('emirate_admin');
-  window.location.href = 'login.html';
+  window.location.href = 'index.html';
 });
 
 // ===== DEMO DATA =====
@@ -422,12 +422,7 @@ async function loadClientsFromSupabase() {
     }
 
     clientsData = (res.data || []).map(mapCustomerProfileRow);
-    setClientsLoadNote(
-      clientsData.length
-        ? `Зарегистрировано через сайт: ${clientsData.length}`
-        : 'Пока нет клиентов. Они появятся после входа через Google.',
-      false
-    );
+    setClientsLoadNote('');
     renderClients(clientsData);
     return true;
   } catch (_) {
@@ -1037,7 +1032,7 @@ async function loadAdminProductsFromSupabase() {
     const sess = await sb.auth.getSession();
     if (!sess.data?.session) {
       localStorage.removeItem('emirate_admin');
-      window.location.href = 'login.html';
+      window.location.href = 'index.html';
       return;
     }
 

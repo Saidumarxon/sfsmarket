@@ -4954,6 +4954,30 @@ body.auth-modal-open {
   display: none !important;
 }
 
+.auth-modal.is-admin-auth .auth-modal-benefits {
+  display: none !important;
+}
+
+.auth-modal.is-admin-auth .auth-modal-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.auth-modal.is-admin-auth .auth-modal-dialog {
+  max-width: 440px;
+}
+
+.auth-admin-hint {
+  display: none;
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.auth-modal.is-admin-auth .auth-admin-hint {
+  display: block;
+}
+
 .auth-modal.is-admin-auth .auth-email-panel {
   display: block !important;
   margin-top: 0;

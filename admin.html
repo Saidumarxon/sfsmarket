@@ -10,8 +10,44 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="admin.css">
+  <style>
+    body.admin-auth-pending { overflow: hidden; }
+    body.admin-auth-pending .admin-sidebar,
+    body.admin-auth-pending .admin-main { visibility: hidden; }
+    .admin-auth-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: #f1f5f9;
+      font-family: Inter, sans-serif;
+      color: #334155;
+      font-size: 15px;
+    }
+    body.admin-auth-pending .admin-auth-gate { display: flex; }
+    .admin-auth-gate-inner { text-align: center; }
+    .admin-auth-gate-spinner {
+      width: 36px;
+      height: 36px;
+      margin: 0 auto 12px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: admin-auth-spin 0.8s linear infinite;
+    }
+    @keyframes admin-auth-spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
-<body>
+<body class="admin-auth-pending">
+
+  <div class="admin-auth-gate" id="adminAuthGate" aria-live="polite">
+    <div class="admin-auth-gate-inner">
+      <div class="admin-auth-gate-spinner" aria-hidden="true"></div>
+      <p>Проверка доступа…</p>
+    </div>
+  </div>
 
   <!-- ===== SIDEBAR ===== -->
   <aside class="admin-sidebar" id="sidebar">
@@ -183,7 +219,10 @@
           <div class="table-card-header">
             <h3>Все заказы</h3>
             <div class="table-toolbar">
-              <button type="button" class="btn-filter-reset" id="refreshOrdersBtn">Обновить</button>
+              <button type="button" class="filter-btn" id="refreshOrdersBtn" title="Обновить список заказов">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                Обновить
+              </button>
               <label class="orders-status-filter">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
                 <select id="ordersStatusFilter">
@@ -222,7 +261,7 @@
               </button>
             </div>
           </div>
-          <p class="table-card-note" id="clientsLoadNote">Загрузка клиентов…</p>
+          <p class="table-card-note" id="clientsLoadNote" hidden></p>
           <table class="admin-table">
             <thead>
               <tr><th>ID</th><th>Имя</th><th>Телефон</th><th>Email</th><th>Вход</th><th>Заказов</th><th>Регистрация</th><th>Последний визит</th><th></th></tr>
@@ -1062,32 +1101,48 @@
   <script src="emirate-auth.js"></script>
   <script>
     (async function emirateAdminEntry() {
+      function denyAdminAccess() {
+        window.location.replace("index.html");
+      }
+
+      function allowAdminAccess() {
+        document.body.classList.remove("admin-auth-pending");
+        var gate = document.getElementById("adminAuthGate");
+        if (gate) gate.remove();
+        var tag = document.createElement("script");
+        tag.src = "admin.js";
+        document.body.appendChild(tag);
+      }
+
       function hasSupabase() {
         return !!(window.emirateSupabase && window.emirateSupabaseApi && window.emirateSupabaseApi.isConfigured());
       }
+
       if (hasSupabase()) {
         var sb = window.emirateSupabase;
         var sessionRes = await sb.auth.getSession();
         if (!sessionRes.data || !sessionRes.data.session) {
-          window.location.href = "index.html?auth=admin";
+          denyAdminAccess();
           return;
         }
         var userId = sessionRes.data.session.user && sessionRes.data.session.user.id;
         var isAdmin = window.emirateAuth && (await window.emirateAuth.isAdminUser(userId));
         if (!isAdmin) {
-          await window.emirateAuth.signOutCustomer();
-          window.location.href = "index.html?auth=admin";
+          denyAdminAccess();
           return;
         }
         var email = (sessionRes.data.session.user && sessionRes.data.session.user.email) || "admin";
         localStorage.setItem("emirate_admin", JSON.stringify({ user: email, role: "admin", ts: Date.now() }));
-      } else if (!localStorage.getItem("emirate_admin")) {
-        window.location.href = "index.html?auth=admin";
+        allowAdminAccess();
         return;
       }
-      var tag = document.createElement("script");
-      tag.src = "admin.js";
-      document.body.appendChild(tag);
+
+      if (!localStorage.getItem("emirate_admin")) {
+        denyAdminAccess();
+        return;
+      }
+
+      allowAdminAccess();
     })();
   </script>
 </body>

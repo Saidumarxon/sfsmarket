@@ -1046,6 +1046,11 @@ function isAdminSecretEmail(value) {
 function setAuthAdminMode(modal, seedValue) {
   if (!modal) return;
   modal.classList.add("is-admin-auth");
+  var title = modal.querySelector("#authModalTitle");
+  if (title) {
+    title.removeAttribute("data-i18n");
+    title.textContent = t("auth.emailLogin") || "Вход в админ-панель";
+  }
   var emailPanel = modal.querySelector("#authEmailPanel");
   if (emailPanel) emailPanel.removeAttribute("hidden");
   var emailInput = modal.querySelector("#authEmail");
@@ -1061,6 +1066,11 @@ function setAuthAdminMode(modal, seedValue) {
 function resetAuthCustomerMode(modal) {
   if (!modal) return;
   modal.classList.remove("is-admin-auth");
+  var title = modal.querySelector("#authModalTitle");
+  if (title) {
+    title.setAttribute("data-i18n", "auth.title");
+    title.textContent = t("auth.title") || title.textContent;
+  }
   var emailPanel = modal.querySelector("#authEmailPanel");
   if (emailPanel) emailPanel.setAttribute("hidden", "");
   var phoneInput = modal.querySelector("#authPhone");
@@ -1105,6 +1115,7 @@ function ensureAuthModal() {
             '</button>' +
           '</div>' +
           '<div class="auth-email-panel" id="authEmailPanel" hidden>' +
+            '<p class="auth-admin-hint" data-i18n="auth.adminHint">Только для сотрудников. Email и пароль из Supabase.</p>' +
             '<label class="auth-field-label" for="authEmail" data-i18n="auth.emailLabel">Email или логин</label>' +
             '<input class="auth-phone-input" type="text" id="authEmail" autocomplete="username">' +
             '<label class="auth-field-label" for="authPass" data-i18n="auth.passLabel">Пароль</label>' +
@@ -1183,6 +1194,8 @@ function ensureAuthModal() {
   });
 
   modal.querySelector("#authEmailSubmit").addEventListener("click", function () {
+    var modalEl = document.getElementById("authModal");
+    if (modalEl && !modalEl.classList.contains("is-admin-auth")) return;
     submitAuthEmailLogin();
   });
 
@@ -1218,6 +1231,22 @@ async function submitAuthEmailLogin() {
       showAuthMessage(res.error.message || "Ошибка входа");
       return;
     }
+
+    var userId = res.data.user && res.data.user.id;
+    if (!window.emirateAuth) {
+      await loadScriptOnce("emirate-auth.js");
+    }
+    var isAdmin = window.emirateAuth && userId && (await window.emirateAuth.isAdminUser(userId));
+    if (!isAdmin) {
+      if (window.emirateAuth && window.emirateAuth.signOutCustomer) {
+        await window.emirateAuth.signOutCustomer();
+      } else {
+        await sb.auth.signOut();
+      }
+      showAuthMessage("Неверный логин или пароль");
+      return;
+    }
+
     var em = (res.data.user && res.data.user.email) || login;
     localStorage.setItem("emirate_admin", JSON.stringify({ user: em, role: "admin", ts: Date.now() }));
     window.location.href = "admin.html";
@@ -1523,9 +1552,7 @@ if (shouldUseDesktopAuthModal()) {
   try {
     var authParams = new URLSearchParams(window.location.search);
     var authParam = authParams.get("auth");
-    if (authParam === "admin") {
-      openAuthModal({ admin: true });
-    } else if (authParam === "1" || authParam === "open") {
+    if (authParam === "1" || authParam === "open") {
       openAuthModal();
     } else if (authParams.get("auth_error") === "google") {
       openAuthModal();
