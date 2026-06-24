@@ -11,6 +11,71 @@ const WEBHOOK_SECRET = String(process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
 const PHONE = String(process.env.EMIRATE_CONTACT_PHONE || "+998508868844").trim();
 const MARKUP = 1.2;
 const CACHE_MS = 5 * 60 * 1000;
+const OG_IMAGE = SITE + "/images/og-emirate.png?v=3";
+
+/** Русские/узбекские запросы → латиница в каталоге */
+const SEARCH_SYNONYMS = {
+  айфон: "iphone",
+  айпад: "ipad",
+  аймак: "imac",
+  макбук: "macbook",
+  эпл: "apple",
+  apple: "apple",
+  самсунг: "samsung",
+  сеймсунг: "samsung",
+  galaxy: "galaxy",
+  хуавей: "huawei",
+  huavey: "huawei",
+  сяоми: "xiaomi",
+  ксиоми: "xiaomi",
+  redmi: "redmi",
+  редми: "redmi",
+  honor: "honor",
+  хонор: "honor",
+  oppo: "oppo",
+  оппо: "oppo",
+  vivo: "vivo",
+  виво: "vivo",
+  noutbuk: "noutbuk",
+  ноутбук: "noutbuk",
+  телевизор: "tv",
+  телек: "tv",
+  наушники: "audio",
+  smartfon: "smartfon",
+  смартфон: "smartfon",
+};
+
+function expandSearchKeys(query) {
+  const key = normalizeKey(query);
+  if (!key) return [];
+  const keys = [key];
+  Object.keys(SEARCH_SYNONYMS).forEach(function (ru) {
+    if (key.includes(ru)) {
+      const en = normalizeKey(SEARCH_SYNONYMS[ru]);
+      if (en && keys.indexOf(en) === -1) keys.push(en);
+    }
+  });
+  if (SEARCH_SYNONYMS[key]) {
+    const en = normalizeKey(SEARCH_SYNONYMS[key]);
+    if (en && keys.indexOf(en) === -1) keys.push(en);
+  }
+  return keys;
+}
+
+function scoreProductMatch(product, keys) {
+  const hay = productSearchHay(product);
+  let best = 0;
+  keys.forEach(function (key) {
+    if (!key || key.length < 2 || !hay.includes(key)) return;
+    let score = 1;
+    if (normalizeKey(product.title).includes(key)) score += 3;
+    if (normalizeKey(product.brand).includes(key)) score += 3;
+    if (normalizeKey(product.model).includes(key)) score += 2;
+    if (hay.startsWith(key)) score += 2;
+    if (score > best) best = score;
+  });
+  return best;
+}
 
 let productsCache = { at: 0, items: [] };
 
@@ -94,20 +159,15 @@ function productSearchHay(product) {
 
 function searchProducts(query, limit) {
   const max = limit || 5;
-  const key = normalizeKey(query);
-  if (!key || key.length < 2) return [];
+  const keys = expandSearchKeys(query);
+  if (!keys.length || keys[0].length < 2) return [];
   const items = productsCache.items.length ? productsCache.items : [];
   const scored = [];
   for (let i = 0; i < items.length; i++) {
     const p = items[i];
-    const hay = productSearchHay(p);
-    if (!hay.includes(key)) continue;
-    let score = 0;
-    if (normalizeKey(p.title).includes(key)) score += 3;
-    if (normalizeKey(p.brand).includes(key)) score += 3;
-    if (normalizeKey(p.model).includes(key)) score += 2;
-    if (hay.startsWith(key)) score += 2;
-    scored.push({ product: p, score });
+    const score = scoreProductMatch(p, keys);
+    if (!score) continue;
+    scored.push({ product: p, score: score });
   }
   scored.sort(function (a, b) {
     return b.score - a.score || a.product.title.localeCompare(b.product.title, "ru");
@@ -137,6 +197,32 @@ async function sendMessage(chatId, text, extra) {
   return tgApi("sendMessage", Object.assign({ chat_id: chatId, text: text }, extra || {}));
 }
 
+async function sendPhoto(chatId, photo, extra) {
+  return tgApi("sendPhoto", Object.assign({ chat_id: chatId, photo: photo }, extra || {}));
+}
+
+async function sendCatalogCard(chatId) {
+  await sendPhoto(chatId, OG_IMAGE, {
+    caption:
+      "<b>Каталог Emirate Co</b>\n\n" +
+      "Смартфоны, ноутбуки, ТВ и бытовая техника с доставкой по Узбекистану.",
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: [[{ text: "📱 Открыть каталог", url: SITE + "/catalog" }]],
+    },
+  });
+}
+
+async function sendSiteCard(chatId) {
+  await sendPhoto(chatId, OG_IMAGE, {
+    caption: "<b>Emirate Co</b>\n\n" + SITE,
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: [[{ text: "🌐 Открыть сайт", url: SITE }]],
+    },
+  });
+}
+
 function escapeHtml(text) {
   return String(text || "")
     .replace(/&/g, "&amp;")
@@ -148,7 +234,7 @@ function welcomeText() {
   return (
     "Добро пожаловать в <b>Emirate Co</b>!\n\n" +
     "Я помогу найти товары в нашем каталоге.\n\n" +
-    "• Напишите название — <i>iPhone</i>, <i>Samsung</i>, <i>MacBook</i>\n" +
+    "• Напишите название — <i>айфон</i>, <i>Samsung</i>, <i>MacBook</i>\n" +
     "• /catalog — каталог на сайте\n" +
     "• /contact — телефон и адрес\n" +
     "• /help — подсказки"
@@ -178,8 +264,12 @@ function mainKeyboard() {
 function buildSearchReply(products) {
   if (!products.length) {
     return {
-      text:
-        "Ничего не найдено.\n\nПопробуйте другое название или откройте каталог:\n" + SITE + "/catalog",
+      text: "Ничего не найдено.\n\nПопробуйте другое название.",
+      extra: {
+        reply_markup: {
+          inline_keyboard: [[{ text: "📱 Открыть каталог", url: SITE + "/catalog" }]],
+        },
+      },
     };
   }
   let text = "Найдено: <b>" + products.length + "</b>\n\n";
@@ -193,13 +283,15 @@ function buildSearchReply(products) {
     text += "\n\n";
     keyboard.push([{ text: "🛒 " + truncate(p.title, 28), url: p.url }]);
   });
-  text += '<a href="' + SITE + '/catalog">Открыть весь каталог</a>';
+  text += "Откройте весь каталог на сайте.";
   return {
     text: text,
     extra: {
       parse_mode: "HTML",
       disable_web_page_preview: true,
-      reply_markup: { inline_keyboard: keyboard },
+      reply_markup: {
+        inline_keyboard: keyboard.concat([[{ text: "📱 Весь каталог", url: SITE + "/catalog" }]]),
+      },
     },
   };
 }
@@ -220,15 +312,11 @@ async function handleCommand(chatId, command, args) {
     return;
   }
   if (cmd === "catalog") {
-    await sendMessage(chatId, "Каталог на сайте:\n" + SITE + "/catalog", {
-      reply_markup: {
-        inline_keyboard: [[{ text: "📱 Открыть каталог", url: SITE + "/catalog" }]],
-      },
-    });
+    await sendCatalogCard(chatId);
     return;
   }
   if (cmd === "contact") {
-    await sendMessage(chatId, contactText(), { parse_mode: "HTML" });
+    await sendMessage(chatId, contactText(), { parse_mode: "HTML", disable_web_page_preview: true });
     return;
   }
   if (cmd === "search") {
@@ -246,10 +334,9 @@ async function handleCommand(chatId, command, args) {
 async function runSearch(chatId, query) {
   const items = await fetchProducts();
   if (!items.length) {
-    await sendMessage(
-      chatId,
-      "Каталог временно недоступен.\n\nОткройте сайт:\n" + SITE + "/catalog"
-    );
+    await sendMessage(chatId, "Каталог временно недоступен. Попробуйте позже.", {
+      disable_web_page_preview: true,
+    });
     return;
   }
   const products = searchProducts(query, 5);
@@ -261,7 +348,7 @@ async function handleText(chatId, text) {
   const raw = String(text || "").trim();
   if (!raw) return;
   if (raw === "🔍 Поиск товара") {
-    await sendMessage(chatId, "Напишите название товара, например: iPhone 17 или Samsung S26");
+    await sendMessage(chatId, "Напишите название товара, например: айфон, iPhone 17 или Samsung S26");
     return;
   }
   if (raw === "📱 Каталог") {
@@ -273,9 +360,7 @@ async function handleText(chatId, text) {
     return;
   }
   if (raw === "🌐 Сайт") {
-    await sendMessage(chatId, "🌐 " + SITE, {
-      reply_markup: { inline_keyboard: [[{ text: "Открыть сайт", url: SITE }]] },
-    });
+    await sendSiteCard(chatId);
     return;
   }
   if (raw.startsWith("/")) {
