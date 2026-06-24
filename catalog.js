@@ -579,35 +579,35 @@ async function runPhotoSearch() {
     return;
   }
 
-  const searchableCount = sourceProducts.filter(
-    (product) => (api.collectProductImageUrls?.(product) || []).length > 0
-  ).length;
-
-  if (!searchableCount) {
+  if (!sourceProducts.length) {
     photoSearchLoading = false;
-    photoSearchError =
-      window.emirateT?.("photo.noCatalogPhotos") ||
-      "В каталоге нет товаров с фото для визуального поиска";
+    photoSearchError = window.emirateT?.("photo.empty") || "Каталог пуст";
     photoSearchList = [];
     applyFiltersAndSort();
     return;
   }
 
   try {
-    await api.getModel();
-    const img = await api.loadImageFromDataUrl(queryData);
     const progressEl = document.getElementById("photoSearchProgress");
-    const results = await api.searchSimilar(img, sourceProducts, {
+    if (progressEl) {
+      progressEl.textContent = window.emirateT?.("photo.aiAnalyzing") || "AI анализирует фото…";
+    }
+    const results = await api.searchProducts(queryData, sourceProducts, {
       onProgress(done, total) {
         if (progressEl) {
-          progressEl.textContent =
-            (window.emirateT?.("photo.progress") || "Анализ каталога") + ": " + done + " / " + total;
+          if (total <= 1) {
+            progressEl.textContent = window.emirateT?.("photo.aiAnalyzing") || "AI анализирует фото…";
+          } else {
+            progressEl.textContent =
+              (window.emirateT?.("photo.progress") || "Анализ каталога") + ": " + done + " / " + total;
+          }
         }
       }
     });
     photoSearchList = results.map((entry) => ({
       ...entry.product,
-      _matchScore: entry.score
+      _matchScore: entry.score,
+      _matchSource: entry.source || "local"
     }));
     if (!photoSearchList.length) {
       photoSearchError = window.emirateT?.("photo.empty") || "Похожие товары не найдены";

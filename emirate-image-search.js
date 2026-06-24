@@ -1,5 +1,5 @@
 /**
- * Visual product search — MobileNet embeddings in the browser.
+ * Visual product search — Gemini Flash AI (server) + MobileNet fallback (browser).
  */
 (function () {
   var EMB_CACHE_KEY = "emirate_img_embeddings_v1";
@@ -331,6 +331,90 @@
     return canvas.toDataURL("image/jpeg", 0.85);
   }
 
+  async function searchWithAi(dataUrl, products, options) {
+    var opts = options || {};
+    if (typeof opts.onProgress === "function") {
+      opts.onProgress(0, 1);
+    }
+
+    var res = await fetch("/api/photo-search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image: dataUrl,
+        products: (products || []).slice(0, 200).map(function (p) {
+          return {
+            title: p.title,
+            brand: p.brand,
+            category: p.category,
+            sku: p.sku,
+          };
+        }),
+      }),
+    });
+
+    var json = await res.json();
+    if (!res.ok || !json.ok) {
+      var errCode = (json && json.error) || "ai_search_failed";
+      if (errCode === "ai_not_configured") {
+        throw new Error("ai_not_configured");
+      }
+      throw new Error(errCode);
+    }
+
+    if (typeof opts.onProgress === "function") {
+      opts.onProgress(1, 1);
+    }
+
+    var byTitle = {};
+    (products || []).forEach(function (p) {
+      if (p && p.title) byTitle[p.title] = p;
+    });
+
+    return (json.matches || [])
+      .map(function (match) {
+        var product = byTitle[match.title];
+        if (!product) return null;
+        var score = Number(match.score) || 0.5;
+        if (score < 0.35) return null;
+        return {
+          product: product,
+          score: score,
+          source: "gemini",
+        };
+      })
+      .filter(Boolean);
+  }
+
+  async function searchProducts(querySourceOrDataUrl, products, options) {
+    var opts = options || {};
+    var dataUrl =
+      typeof querySourceOrDataUrl === "string" && querySourceOrDataUrl.indexOf("data:") === 0
+        ? querySourceOrDataUrl
+        : null;
+
+    if (dataUrl) {
+      try {
+        var aiResults = await searchWithAi(dataUrl, products, opts);
+        if (aiResults.length) return aiResults;
+      } catch (err) {
+        if (String(err && err.message) !== "ai_not_configured") {
+          console.warn("[photo-search] AI failed, using local fallback", err);
+        }
+      }
+    }
+
+    var img = querySourceOrDataUrl;
+    if (dataUrl) {
+      img = await loadImageFromDataUrl(dataUrl);
+    }
+    var local = await searchSimilar(img, products, opts);
+    return local.map(function (item) {
+      item.source = item.source || "local";
+      return item;
+    });
+  }
+
   async function startPhotoSearchFromFile(file) {
     var img = await loadImageFromFile(file);
     var dataUrl = await compressToDataUrl(img);
@@ -342,6 +426,8 @@
     getModel: getModel,
     extractEmbedding: extractEmbedding,
     searchSimilar: searchSimilar,
+    searchWithAi: searchWithAi,
+    searchProducts: searchProducts,
     saveQueryImage: saveQueryImage,
     loadQueryImage: loadQueryImage,
     clearQueryImage: clearQueryImage,
