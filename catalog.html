@@ -34,9 +34,12 @@
     (function () {
       var params = new URLSearchParams(location.search);
       var root = document.documentElement;
-      if (params.get("cart") === "1") root.classList.add("catalog-mode-cart");
-      if (params.get("favorites") === "1") root.classList.add("catalog-mode-favorites");
+      var isCart = params.get("cart") === "1";
+      var isFavorites = params.get("favorites") === "1";
+      if (isCart) root.classList.add("catalog-mode-cart");
+      if (isFavorites) root.classList.add("catalog-mode-favorites");
       if (params.get("photo") === "1") root.classList.add("catalog-mode-photo");
+      root.classList.add("catalog-shell-loading");
     })();
   </script>
   <style>
@@ -284,7 +287,7 @@
           </div>
         </div>
         <div class="products-grid catalog-products-grid" id="catalogProductsGrid"></div>
-        <nav class="seo-catalog-links" id="seoCatalogLinks" aria-label="Товары каталога"></nav>
+        <nav class="seo-catalog-links" id="seoCatalogLinks" aria-label="Товары каталога" aria-hidden="true"></nav>
         <noscript>
           <p class="seo-noscript">Каталог загружается через JavaScript. Полный список товаров: <a href="https://www.emirateco.uz/sitemap.xml">карта сайта</a>.</p>
         </noscript>
@@ -328,11 +331,11 @@
       </div>
       <div class="footer-col">
         <h4 data-i18n="footer.buyers">Покупателям</h4>
-        <a href="#" data-i18n="footer.deliveryLink">Доставка</a>
+        <a href="delivery.html" data-i18n="footer.deliveryLink">Доставка</a>
         <a href="#" data-i18n="footer.paymentLink">Оплата</a>
         <a href="#" data-i18n="footer.installmentLink">Рассрочка</a>
         <a href="#" data-i18n="footer.warrantyLink">Гарантия и возврат</a>
-        <a href="#" data-i18n="footer.faq">FAQ</a>
+        <a href="faq.html" data-i18n="footer.faq">FAQ</a>
       </div>
       <div class="footer-col">
         <h4 data-i18n="footer.company">Компания</h4>

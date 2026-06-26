@@ -2088,3 +2088,20 @@ function initTelegramWidget() {
 }
 
 initTelegramWidget();
+
+function finishInfoShellMode() {
+  var root = document.documentElement;
+  if (!root.classList.contains("info-shell-loading")) return;
+  root.classList.add("info-shell-ready");
+  window.setTimeout(function () {
+    root.classList.remove("info-shell-loading", "info-shell-ready");
+  }, 260);
+}
+
+function initInfoPageShell() {
+  if (!document.documentElement.classList.contains("info-shell-loading")) return;
+  finishInfoShellMode();
+}
+
+initInfoPageShell();
+window.setTimeout(finishInfoShellMode, 3500);

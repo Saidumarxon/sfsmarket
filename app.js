@@ -694,6 +694,7 @@ async function initHomeStorefront() {
     renderHeroBanners();
     renderInitialCarousels();
     updateCategorySectionsVisibility();
+    finishHomeShellMode();
     return;
   }
 
@@ -730,8 +731,20 @@ async function initHomeStorefront() {
     if (typeof translatePage === "function") {
       translatePage();
     }
+    finishHomeShellMode();
   }
 }
+
+function finishHomeShellMode() {
+  const root = document.documentElement;
+  if (!root.classList.contains("home-shell-loading")) return;
+  root.classList.add("home-shell-ready");
+  window.setTimeout(function () {
+    root.classList.remove("home-shell-loading", "home-shell-ready");
+  }, 260);
+}
+
+window.setTimeout(finishHomeShellMode, 3500);
 
 void initHomeStorefront();
 

@@ -11,6 +11,8 @@ const SUPABASE_ANON = String(
 const STATIC_PAGES = [
   { path: "/", changefreq: "daily", priority: "1.0" },
   { path: "/catalog", changefreq: "daily", priority: "0.9" },
+  { path: "/delivery", changefreq: "monthly", priority: "0.6" },
+  { path: "/faq", changefreq: "monthly", priority: "0.6" },
 ];
 
 const CATALOG_CATEGORIES = [

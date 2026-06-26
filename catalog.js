@@ -749,6 +749,17 @@ function resetFilters() {
   applyFiltersAndSort();
 }
 
+function finishCatalogShellMode() {
+  const root = document.documentElement;
+  if (!root.classList.contains("catalog-shell-loading")) return;
+  root.classList.add("catalog-shell-ready");
+  window.setTimeout(function () {
+    root.classList.remove("catalog-shell-loading", "catalog-shell-ready");
+  }, 260);
+}
+
+window.setTimeout(finishCatalogShellMode, 3500);
+
 // Init
 if (isFavoritesMode || isCartMode || isPhotoSearchMode) {
   if (filtersCardEl) filtersCardEl.hidden = true;
@@ -772,29 +783,46 @@ if (textSearchQuery && !categoryFilter && !isPhotoSearchMode && !isCartMode && !
 
 if (isPhotoSearchMode) {
   void (async () => {
-    syncCatalogSeoMeta();
-    await refreshCatalogFromRemote();
-    await runPhotoSearch();
+    try {
+      syncCatalogSeoMeta();
+      await refreshCatalogFromRemote();
+      await runPhotoSearch();
+    } finally {
+      finishCatalogShellMode();
+    }
   })();
 } else if (isCartMode || isFavoritesMode) {
   syncCatalogSeoMeta();
   if (isFavoritesMode && window.emirateSupabaseApi?.isConfigured?.()) {
     void (async () => {
-      await refreshCatalogFromRemote();
-      applyFiltersAndSort();
+      try {
+        await refreshCatalogFromRemote();
+        applyFiltersAndSort();
+      } finally {
+        finishCatalogShellMode();
+      }
     })();
   } else {
     applyFiltersAndSort();
+    finishCatalogShellMode();
   }
 } else {
   syncCatalogSeoMeta();
   applyCategoryFilterFromUrl();
-  applyFiltersAndSort();
-  void (async () => {
-    await refreshCatalogFromRemote();
-    applyCategoryFilterFromUrl();
+  if (window.emirateSupabaseApi?.isConfigured?.()) {
+    void (async () => {
+      try {
+        await refreshCatalogFromRemote();
+        applyCategoryFilterFromUrl();
+        applyFiltersAndSort();
+      } finally {
+        finishCatalogShellMode();
+      }
+    })();
+  } else {
     applyFiltersAndSort();
-  })();
+    finishCatalogShellMode();
+  }
 }
 
 // Events

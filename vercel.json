@@ -24,6 +24,16 @@
       "source": "/product.html",
       "destination": "/product",
       "permanent": true
+    },
+    {
+      "source": "/delivery.html",
+      "destination": "/delivery",
+      "permanent": true
+    },
+    {
+      "source": "/faq.html",
+      "destination": "/faq",
+      "permanent": true
     }
   ],
   "rewrites": [
@@ -58,6 +68,14 @@
     {
       "source": "/admin",
       "destination": "/admin.html"
+    },
+    {
+      "source": "/delivery",
+      "destination": "/delivery.html"
+    },
+    {
+      "source": "/faq",
+      "destination": "/faq.html"
     }
   ]
 }
