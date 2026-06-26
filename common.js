@@ -1836,9 +1836,7 @@ async function syncPhotoSearchQuotaUi(modal) {
   if (submitBtn) {
     submitBtn.disabled = !!quota.blocked || (submitBtn.dataset.loading === "1");
   }
-  if (quota.blocked && statusEl) {
-    statusEl.textContent = formatPhotoSearchQuotaMessage(quota, api);
-  } else if (statusEl && statusEl.dataset.locked !== "1") {
+  if (statusEl && submitBtn && submitBtn.dataset.loading !== "1" && quota.blocked) {
     statusEl.textContent = "";
   }
 }
@@ -1948,24 +1946,16 @@ function ensurePhotoSearchModal() {
     try {
       api.assertPhotoSearchAllowed();
     } catch (err) {
-      statusEl.dataset.locked = "1";
-      statusEl.textContent = formatPhotoSearchQuotaMessage(
-        api.getPhotoSearchQuota(),
-        api
-      );
       void syncPhotoSearchQuotaUi(modal);
       return;
     }
     btn.disabled = true;
     btn.dataset.loading = "1";
-    statusEl.dataset.locked = "0";
     statusEl.textContent = t("photo.searching") || "Ищем…";
     try {
       await api.startPhotoSearchFromFile(pendingFile);
     } catch (err) {
       if (String(err && err.message) === "rate_limit_exceeded") {
-        statusEl.dataset.locked = "1";
-        statusEl.textContent = formatPhotoSearchQuotaMessage(api.getPhotoSearchQuota(), api);
         void syncPhotoSearchQuotaUi(modal);
       } else {
         statusEl.textContent = t("photo.engineError") || "Ошибка загрузки";
@@ -2009,7 +1999,6 @@ function closePhotoSearchModal() {
   clearPhotoSearchQuotaTimer();
   var statusEl = modal.querySelector("#photoSearchStatus");
   if (statusEl) {
-    statusEl.dataset.locked = "0";
     statusEl.textContent = "";
   }
   var submitBtn = modal.querySelector("#photoSearchSubmit");
@@ -2031,13 +2020,6 @@ function initPhotoSearchUI() {
       field.appendChild(input);
     }
 
-    var pickInput = document.createElement("input");
-    pickInput.type = "file";
-    pickInput.accept = "image/*";
-    pickInput.setAttribute("capture", "environment");
-    pickInput.hidden = true;
-    bar.appendChild(pickInput);
-
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "search-photo-btn";
@@ -2053,26 +2035,7 @@ function initPhotoSearchUI() {
     btn.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
-      pickInput.click();
-    });
-
-    pickInput.addEventListener("change", function () {
-      var file = pickInput.files && pickInput.files[0];
-      pickInput.value = "";
-      if (!file) return;
-      void (async function () {
-        try {
-          var api = await ensureImageSearchApi();
-          api.assertPhotoSearchAllowed();
-          await api.startPhotoSearchFromFile(file);
-        } catch (err) {
-          if (String(err && err.message) === "rate_limit_exceeded") {
-            openPhotoSearchModalWithFile(file);
-            return;
-          }
-          openPhotoSearchModalWithFile(file);
-        }
-      })();
+      openPhotoSearchModal();
     });
   });
 }
