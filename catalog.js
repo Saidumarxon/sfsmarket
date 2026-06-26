@@ -776,6 +776,16 @@ if (isPhotoSearchMode) {
     await refreshCatalogFromRemote();
     await runPhotoSearch();
   })();
+} else if (isCartMode || isFavoritesMode) {
+  syncCatalogSeoMeta();
+  if (isFavoritesMode && window.emirateSupabaseApi?.isConfigured?.()) {
+    void (async () => {
+      await refreshCatalogFromRemote();
+      applyFiltersAndSort();
+    })();
+  } else {
+    applyFiltersAndSort();
+  }
 } else {
   syncCatalogSeoMeta();
   applyCategoryFilterFromUrl();

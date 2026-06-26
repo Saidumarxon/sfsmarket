@@ -30,6 +30,34 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="mobile.css">
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var root = document.documentElement;
+      if (params.get("cart") === "1") root.classList.add("catalog-mode-cart");
+      if (params.get("favorites") === "1") root.classList.add("catalog-mode-favorites");
+      if (params.get("photo") === "1") root.classList.add("catalog-mode-photo");
+    })();
+  </script>
+  <style>
+    html.catalog-mode-cart .filters-card,
+    html.catalog-mode-favorites .filters-card,
+    html.catalog-mode-photo .filters-card,
+    html.catalog-mode-cart .catalog-toolbar,
+    html.catalog-mode-favorites .catalog-toolbar,
+    html.catalog-mode-photo .catalog-toolbar,
+    html.catalog-mode-cart #viewedSection,
+    html.catalog-mode-favorites #viewedSection,
+    html.catalog-mode-photo #viewedSection {
+      display: none !important;
+    }
+
+    html.catalog-mode-cart .catalog-layout,
+    html.catalog-mode-favorites .catalog-layout,
+    html.catalog-mode-photo .catalog-layout {
+      grid-template-columns: 1fr;
+    }
+  </style>
   <script src="emirate-seo.js"></script>
   <script src="theme.js"></script>
 </head>
@@ -62,12 +90,12 @@
           <svg class="theme-icon theme-icon-sun" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
           <span data-i18n="header.theme">Тема</span>
         </button>
-        <a href="#" class="header-action-btn cart-action" title="Корзина">
+        <a href="catalog.html?cart=1" class="header-action-btn cart-action" title="Корзина">
           <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
           <span data-i18n="header.cart">Корзина</span>
           <i class="cart-badge" id="cartCount" hidden></i>
         </a>
-        <a href="#" class="header-action-btn" title="Избранное">
+        <a href="catalog.html?favorites=1" class="header-action-btn" title="Избранное">
           <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
           <span data-i18n="header.favorites">Избранное</span>
         </a>
@@ -136,6 +164,33 @@
       <h1 data-i18n="catalog.pageTitle">Каталог товаров</h1>
       <p><span data-i18n="catalog.foundLabel">Найдено</span> <strong id="totalProducts">0</strong> <span data-i18n="catalog.found">товаров</span></p>
     </section>
+    <script>
+      (function () {
+        var params = new URLSearchParams(location.search);
+        var isCart = params.get("cart") === "1";
+        var isFavorites = params.get("favorites") === "1";
+        if (!isCart && !isFavorites) return;
+        var lang = "ru";
+        try {
+          lang = localStorage.getItem("emirate_lang") || "ru";
+        } catch (_) {}
+        var head = document.currentScript.previousElementSibling;
+        var titleEl = head && head.querySelector("h1");
+        var breadEl = document.querySelector('.breadcrumbs [data-i18n="catalog.breadCatalog"]');
+        if (titleEl) {
+          titleEl.removeAttribute("data-i18n");
+          titleEl.textContent = isCart
+            ? (lang === "uz" ? "Savat" : "Корзина")
+            : (lang === "uz" ? "Sevimlilar" : "Избранное");
+        }
+        if (breadEl) {
+          breadEl.removeAttribute("data-i18n");
+          breadEl.textContent = isCart
+            ? (lang === "uz" ? "Savat" : "Корзина")
+            : (lang === "uz" ? "Sevimlilar" : "Избранное");
+        }
+      })();
+    </script>
 
     <!-- Layout: Filters + Grid -->
     <section class="catalog-layout">
@@ -309,9 +364,13 @@
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
       <span data-i18n="mobnav.home">Главная</span>
     </a>
-    <a href="catalog.html" class="mobile-nav-item active">
+    <a href="catalog.html" class="mobile-nav-item">
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       <span data-i18n="mobnav.catalog">Каталог</span>
+    </a>
+    <a href="catalog.html?favorites=1" class="mobile-nav-item">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      <span data-i18n="mobnav.favorites">Избранное</span>
     </a>
     <a href="catalog.html?cart=1" class="mobile-nav-item">
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
@@ -322,6 +381,19 @@
       <span data-i18n="mobnav.profile">Профиль</span>
     </a>
   </nav>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var isCart = params.get("cart") === "1";
+      var isFavorites = params.get("favorites") === "1";
+      if (!isCart && !isFavorites) return;
+      document.querySelectorAll(".mobile-nav .mobile-nav-item").forEach(function (item) {
+        var href = item.getAttribute("href") || "";
+        var active = isCart ? href.indexOf("cart=1") !== -1 : href.indexOf("favorites=1") !== -1;
+        item.classList.toggle("active", active);
+      });
+    })();
+  </script>
 
   <!-- ===== SCROLL TOP ===== -->
   <button class="scroll-top" id="scrollTop" title="Наверх">
