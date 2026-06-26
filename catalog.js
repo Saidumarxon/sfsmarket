@@ -15,8 +15,9 @@ const minPriceEl = document.getElementById("minPrice");
 const maxPriceEl = document.getElementById("maxPrice");
 const pageTitleEl = document.querySelector(".catalog-head h1");
 const pageStatsEl = document.querySelector(".catalog-head p");
-const foundPrefixEl = pageStatsEl?.querySelector("[data-i18n='catalog.found']");
-const foundSuffixEl = pageStatsEl?.querySelectorAll("[data-i18n='catalog.found']")?.[1] || null;
+const foundLabelEl = pageStatsEl?.querySelector("[data-i18n='catalog.foundLabel']");
+const foundSuffixEl = pageStatsEl?.querySelector("[data-i18n='catalog.found']");
+const breadCatalogEl = document.querySelector(".breadcrumbs [data-i18n='catalog.breadCatalog']");
 const filtersCardEl = document.querySelector(".filters-card");
 const toolbarEl = document.querySelector(".catalog-toolbar");
 const catalogLayoutEl = document.querySelector(".catalog-layout");
@@ -271,12 +272,57 @@ function renderProduct(product, options = {}) {
 }
 
 function productWord(count) {
+  if (document.documentElement.lang === "uz") {
+    return window.emirateT?.("catalog.productWordUz") || "ta mahsulot";
+  }
   const n = Math.abs(count) % 100;
   const n1 = n % 10;
   if (n > 10 && n < 20) return "товаров";
   if (n1 > 1 && n1 < 5) return "товара";
   if (n1 === 1) return "товар";
   return "товаров";
+}
+
+function syncCatalogPageLabels() {
+  if (isFavoritesMode) {
+    if (pageTitleEl) {
+      pageTitleEl.removeAttribute("data-i18n");
+      pageTitleEl.textContent = window.emirateT?.("catalog.favoritesTitle") || "Избранное";
+    }
+    if (breadCatalogEl) {
+      breadCatalogEl.removeAttribute("data-i18n");
+      breadCatalogEl.textContent = window.emirateT?.("catalog.breadFavorites") || "Избранное";
+    }
+    return;
+  }
+  if (isCartMode) {
+    if (pageTitleEl) {
+      pageTitleEl.removeAttribute("data-i18n");
+      pageTitleEl.textContent = window.emirateT?.("cart.title") || "Корзина";
+    }
+    if (breadCatalogEl) {
+      breadCatalogEl.removeAttribute("data-i18n");
+      breadCatalogEl.textContent = window.emirateT?.("catalog.breadCart") || "Корзина";
+    }
+    return;
+  }
+  if (isPhotoSearchMode) {
+    if (pageTitleEl) {
+      pageTitleEl.removeAttribute("data-i18n");
+      pageTitleEl.textContent = window.emirateT?.("photo.pageTitle") || "Результаты поиска по фото";
+    }
+    return;
+  }
+  if (textSearchQuery && pageTitleEl && !categoryFilter) {
+    pageTitleEl.removeAttribute("data-i18n");
+    pageTitleEl.textContent =
+      (window.emirateT?.("catalog.searchTitle") || "Поиск") + ": " + textSearchQuery;
+    return;
+  }
+  if (categoryFilter && pageTitleEl) {
+    pageTitleEl.removeAttribute("data-i18n");
+    pageTitleEl.textContent = categoryFilter;
+  }
 }
 
 function buildFallbackProductFromCard(card) {
@@ -297,25 +343,24 @@ function buildFallbackProductFromCard(card) {
 function updateCatalogHeadCount(count) {
   if (!totalProductsEl) return;
   totalProductsEl.textContent = String(count);
+  if (!foundLabelEl || !foundSuffixEl) return;
   if (isFavoritesMode) {
-    if (foundPrefixEl) foundPrefixEl.textContent = "В избранном";
-    if (foundSuffixEl) foundSuffixEl.textContent = productWord(count);
+    foundLabelEl.textContent = window.emirateT?.("catalog.favoritesIn") || "В избранном";
+    foundSuffixEl.textContent = productWord(count);
     return;
   }
   if (isCartMode) {
-    if (foundPrefixEl) foundPrefixEl.textContent = "В корзине";
-    if (foundSuffixEl) foundSuffixEl.textContent = productWord(count);
+    foundLabelEl.textContent = window.emirateT?.("catalog.cartIn") || "В корзине";
+    foundSuffixEl.textContent = productWord(count);
     return;
   }
   if (isPhotoSearchMode) {
-    if (foundPrefixEl) {
-      foundPrefixEl.textContent = window.emirateT?.("photo.foundPrefix") || "Найдено";
-    }
-    if (foundSuffixEl) {
-      foundSuffixEl.textContent = window.emirateT?.("photo.foundSuffix") || "похожих";
-    }
+    foundLabelEl.textContent = window.emirateT?.("photo.foundPrefix") || "Найдено";
+    foundSuffixEl.textContent = window.emirateT?.("photo.foundSuffix") || "похожих";
     return;
   }
+  foundLabelEl.textContent = window.emirateT?.("catalog.foundLabel") || "Найдено";
+  foundSuffixEl.textContent = productWord(count);
 }
 
 function renderViewedProducts() {
@@ -439,25 +484,25 @@ function applyFiltersAndSort() {
             isPhotoSearchMode
               ? photoSearchError || (window.emirateT?.("photo.empty") || "Похожие товары не найдены")
               : isFavoritesMode
-                ? "В избранном пока пусто"
+                ? (window.emirateT?.("catalog.favoritesEmpty") || "В избранном пока пусто")
                 : isCartMode
-                  ? "Корзина пока пуста"
+                  ? (window.emirateT?.("catalog.cartEmpty") || "Корзина пока пуста")
                   : textSearchQuery
-                    ? "Ничего не найдено"
-                    : "Товары не найдены"
+                    ? (window.emirateT?.("catalog.searchNotFound") || "Ничего не найдено")
+                    : (window.emirateT?.("catalog.notFound") || "Товары не найдены")
           }</p>
           <span>${
             isPhotoSearchMode
               ? (window.emirateT?.("photo.emptyHint") || "Попробуйте другое фото")
               : isFavoritesMode
-                ? "Добавьте товары, нажимая на сердечко"
+                ? (window.emirateT?.("catalog.favoritesEmptyHint") || "Добавьте товары, нажимая на сердечко")
                 : isCartMode
-                  ? "Начните с основ или найдите продукт с помощью функции поиска."
+                  ? (window.emirateT?.("catalog.cartEmptyHint") || "Добавьте товары из каталога")
                   : textSearchQuery
-                    ? "Измените запрос или сбросьте фильтры"
-                    : "Попробуйте изменить фильтры"
+                    ? (window.emirateT?.("catalog.searchNotFoundHint") || "Измените запрос или сбросьте фильтры")
+                    : (window.emirateT?.("catalog.notFoundHint") || "Попробуйте изменить фильтры")
           }</span>
-          ${isCartMode ? '<a class="btn-primary cart-empty-home-btn" href="index.html">Главное меню</a>' : ""}
+          ${isCartMode ? '<a class="btn-primary cart-empty-home-btn" href="catalog.html">' + (window.emirateT?.("cart.goShopping") || "Перейти в каталог") + "</a>" : ""}
           ${isPhotoSearchMode ? '<button type="button" class="btn-primary photo-empty-retry-btn" id="photoSearchRetry">' + (window.emirateT?.("photo.change") || "Другое фото") + "</button>" : ""}
         </div>`;
     window.emirateSyncFavoritesUI?.(productsGridEl);
@@ -599,6 +644,9 @@ async function runPhotoSearch() {
   }
 
   try {
+    if (api.assertPhotoSearchAllowed) {
+      api.assertPhotoSearchAllowed();
+    }
     const progressEl = document.getElementById("photoSearchProgress");
     if (progressEl) {
       progressEl.textContent = window.emirateT?.("photo.aiAnalyzing") || "AI анализирует фото…";
@@ -626,9 +674,18 @@ async function runPhotoSearch() {
   } catch (err) {
     console.warn("[photo-search]", err);
     photoSearchList = [];
-    photoSearchError =
-      window.emirateT?.("photo.engineError") ||
-      "Не удалось запустить поиск по фото. Проверьте интернет и попробуйте снова.";
+    if (String(err && err.message) === "rate_limit_exceeded") {
+      const quota = api.getPhotoSearchQuota?.() || { retryAfterSec: 0 };
+      const time = api.formatPhotoSearchRetry
+        ? api.formatPhotoSearchRetry(quota.retryAfterSec)
+        : String(quota.retryAfterSec || 0);
+      photoSearchError =
+        (window.emirateT?.("photo.quotaWait") || "Лимит исчерпан. Попробуйте через {time}").replace("{time}", time);
+    } else {
+      photoSearchError =
+        window.emirateT?.("photo.engineError") ||
+        "Не удалось запустить поиск по фото. Проверьте интернет и попробуйте снова.";
+    }
   } finally {
     photoSearchLoading = false;
     applyFiltersAndSort();
@@ -700,20 +757,15 @@ if (isFavoritesMode || isCartMode || isPhotoSearchMode) {
 }
 if (isFavoritesMode) {
   document.body.classList.add("favorites-mode");
-  if (pageTitleEl) pageTitleEl.textContent = "Избранные товары";
 }
 if (isCartMode) {
   document.body.classList.add("cart-mode");
-  if (pageTitleEl) pageTitleEl.textContent = "Корзина";
 }
 if (isPhotoSearchMode) {
   document.body.classList.add("photo-search-mode");
-  if (pageTitleEl) {
-    pageTitleEl.textContent = window.emirateT?.("photo.pageTitle") || "Результаты поиска по фото";
-  }
 }
-if (textSearchQuery && pageTitleEl && !categoryFilter && !isPhotoSearchMode && !isCartMode && !isFavoritesMode) {
-  pageTitleEl.textContent = "Поиск: " + textSearchQuery;
+syncCatalogPageLabels();
+if (textSearchQuery && !categoryFilter && !isPhotoSearchMode && !isCartMode && !isFavoritesMode) {
   const searchInput = document.querySelector('.search-bar input[type="search"]');
   if (searchInput) searchInput.value = textSearchQuery;
 }
@@ -873,3 +925,6 @@ document.querySelectorAll(".view-btn").forEach(btn => {
     btn.classList.add("active");
   });
 });
+
+window.emirateSyncCatalogPageLabels = syncCatalogPageLabels;
+window.emirateRefreshCatalogView = applyFiltersAndSort;

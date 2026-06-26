@@ -44,7 +44,13 @@ function syncCartLinks() {
 
 function syncCartCount() {
   if (cartCountEl) {
-    cartCountEl.textContent = String(cartCount);
+    if (cartCount > 0) {
+      cartCountEl.textContent = String(cartCount);
+      cartCountEl.hidden = false;
+    } else {
+      cartCountEl.textContent = "";
+      cartCountEl.hidden = true;
+    }
   }
   syncCartLinks();
 }
@@ -635,7 +641,6 @@ function ensureQuickBuyModal() {
         </div>
       </div>
       <form id="quickBuyForm" class="quick-buy-form">
-        <p id="quickBuyAccountHint" class="quick-buy-account-hint" hidden></p>
         <label class="quick-buy-field">
           <span class="quick-buy-label">Номер телефона</span>
           <div class="quick-buy-phone-row">
@@ -761,18 +766,7 @@ async function emiratePlaceOrderDirect(orderRow) {
 function prefillQuickBuyCustomer(customer) {
   const phoneEl = document.getElementById("quickBuyPhone");
   const nameEl = document.getElementById("quickBuyName");
-  const hintEl = document.getElementById("quickBuyAccountHint");
   const c = customer || window.emirateAuth?.loadCustomer?.();
-  if (hintEl) {
-    if (c && (c.name || c.email)) {
-      hintEl.hidden = false;
-      hintEl.textContent =
-        "Вы вошли как " + (c.name || c.email) + ". Данные подставлены из профиля.";
-    } else {
-      hintEl.hidden = true;
-      hintEl.textContent = "";
-    }
-  }
   if (!c) return;
   if (phoneEl && c.phone) {
     const digits = String(c.phone).replace(/\D/g, "");
@@ -1112,25 +1106,50 @@ function syncThemeUi(theme) {
   syncThemeLogos(theme);
 }
 
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function finishThemeTransition() {
+  document.documentElement.classList.remove("theme-transition");
+}
+
 function applyTheme(theme, options) {
   var opts = options || {};
   var next = theme === "dark" ? "dark" : "light";
-  document.documentElement.setAttribute("data-theme", next);
-  if (opts.persist) {
-    try {
-      localStorage.setItem(THEME_KEY, next);
-    } catch (_) {}
+
+  function commit() {
+    document.documentElement.setAttribute("data-theme", next);
+    if (opts.persist) {
+      try {
+        localStorage.setItem(THEME_KEY, next);
+      } catch (_) {}
+    }
+    syncThemeMeta(next);
+    syncThemeStatusBar(next);
+    syncThemeUi(next);
   }
-  syncThemeMeta(next);
-  syncThemeStatusBar(next);
-  syncThemeUi(next);
+
+  if (opts.instant || prefersReducedMotion()) {
+    commit();
+    return;
+  }
+
+  if (typeof document.startViewTransition === "function") {
+    document.startViewTransition(commit);
+    return;
+  }
+
+  document.documentElement.classList.add("theme-transition");
+  commit();
+  window.setTimeout(finishThemeTransition, 480);
 }
 
 function toggleTheme() {
   applyTheme(getStoredTheme() === "dark" ? "light" : "dark", { persist: true });
 }
 
-applyTheme(getStoredTheme(), { persist: false });
+applyTheme(getStoredTheme(), { persist: false, instant: true });
 
 document.querySelectorAll("#themeSwitch, #profileThemeSwitch, #profileThemeSwitchLogged").forEach(function (btn) {
   btn.addEventListener("click", toggleTheme);
@@ -1148,6 +1167,12 @@ if (langSwitch) {
     localStorage.setItem("emirate_lang", currentLang);
     applyTranslations();
     syncThemeUi(getStoredTheme());
+    if (typeof window.emirateSyncCatalogPageLabels === "function") {
+      window.emirateSyncCatalogPageLabels();
+    }
+    if (typeof window.emirateRefreshCatalogView === "function") {
+      window.emirateRefreshCatalogView();
+    }
     if (typeof window.emirateUpdateProfileDropdown === "function") {
       window.emirateUpdateProfileDropdown();
     }
@@ -1772,6 +1797,59 @@ async function ensureImageSearchApi() {
   return window.emirateImageSearch;
 }
 
+var photoSearchQuotaTimer = null;
+
+function clearPhotoSearchQuotaTimer() {
+  if (photoSearchQuotaTimer) {
+    window.clearInterval(photoSearchQuotaTimer);
+    photoSearchQuotaTimer = null;
+  }
+}
+
+function formatPhotoSearchQuotaMessage(quota, api) {
+  var q = quota || { remaining: 0, limit: 3, blocked: false, retryAfterSec: 0 };
+  if (q.blocked) {
+    var time = api && api.formatPhotoSearchRetry
+      ? api.formatPhotoSearchRetry(q.retryAfterSec)
+      : String(q.retryAfterSec || 0);
+    return (t("photo.quotaWait") || "Лимит исчерпан. Попробуйте через {time}").replace("{time}", time);
+  }
+  return (t("photo.quotaRemaining") || "Осталось {n} из {limit} поисков")
+    .replace("{n}", String(q.remaining))
+    .replace("{limit}", String(q.limit || 3));
+}
+
+async function syncPhotoSearchQuotaUi(modal) {
+  if (!modal) return;
+  var quotaEl = modal.querySelector("#photoSearchQuota");
+  var statusEl = modal.querySelector("#photoSearchStatus");
+  var submitBtn = modal.querySelector("#photoSearchSubmit");
+  if (!quotaEl) return;
+
+  var api = await ensureImageSearchApi().catch(function () {
+    return null;
+  });
+  var quota = api && api.getPhotoSearchQuota ? api.getPhotoSearchQuota() : { remaining: 3, limit: 3, blocked: false };
+  quotaEl.textContent = formatPhotoSearchQuotaMessage(quota, api);
+  quotaEl.classList.toggle("is-blocked", !!quota.blocked);
+
+  if (submitBtn) {
+    submitBtn.disabled = !!quota.blocked || (submitBtn.dataset.loading === "1");
+  }
+  if (quota.blocked && statusEl) {
+    statusEl.textContent = formatPhotoSearchQuotaMessage(quota, api);
+  } else if (statusEl && statusEl.dataset.locked !== "1") {
+    statusEl.textContent = "";
+  }
+}
+
+function startPhotoSearchQuotaTimer(modal) {
+  clearPhotoSearchQuotaTimer();
+  photoSearchQuotaTimer = window.setInterval(function () {
+    void syncPhotoSearchQuotaUi(modal);
+  }, 1000);
+}
+
 function ensurePhotoSearchModal() {
   if (document.getElementById("photoSearchModal")) return document.getElementById("photoSearchModal");
 
@@ -1803,6 +1881,7 @@ function ensurePhotoSearchModal() {
         '</label>' +
       '</div>' +
       '<button type="button" class="photo-search-primary-btn" id="photoSearchSubmit" data-i18n="photo.findBtn">Найти похожие</button>' +
+      '<p class="photo-search-quota" id="photoSearchQuota" data-i18n="photo.quotaHint">3 поиска за 5 минут</p>' +
       '<p class="photo-search-status" id="photoSearchStatus" aria-live="polite"></p>' +
     '</div>';
 
@@ -1865,14 +1944,34 @@ function ensurePhotoSearchModal() {
       return;
     }
     var btn = modal.querySelector("#photoSearchSubmit");
+    var api = await ensureImageSearchApi();
+    try {
+      api.assertPhotoSearchAllowed();
+    } catch (err) {
+      statusEl.dataset.locked = "1";
+      statusEl.textContent = formatPhotoSearchQuotaMessage(
+        api.getPhotoSearchQuota(),
+        api
+      );
+      void syncPhotoSearchQuotaUi(modal);
+      return;
+    }
     btn.disabled = true;
+    btn.dataset.loading = "1";
+    statusEl.dataset.locked = "0";
     statusEl.textContent = t("photo.searching") || "Ищем…";
     try {
-      var api = await ensureImageSearchApi();
       await api.startPhotoSearchFromFile(pendingFile);
-    } catch (_) {
-      statusEl.textContent = t("photo.engineError") || "Ошибка загрузки";
+    } catch (err) {
+      if (String(err && err.message) === "rate_limit_exceeded") {
+        statusEl.dataset.locked = "1";
+        statusEl.textContent = formatPhotoSearchQuotaMessage(api.getPhotoSearchQuota(), api);
+        void syncPhotoSearchQuotaUi(modal);
+      } else {
+        statusEl.textContent = t("photo.engineError") || "Ошибка загрузки";
+      }
       btn.disabled = false;
+      btn.dataset.loading = "0";
     }
   });
 
@@ -1893,6 +1992,8 @@ function openPhotoSearchModal(options) {
   modal.setAttribute("aria-hidden", "false");
   document.body.classList.add("photo-search-open");
   applyTranslations();
+  void syncPhotoSearchQuotaUi(modal);
+  startPhotoSearchQuotaTimer(modal);
 }
 
 function openPhotoSearchModalWithFile(file) {
@@ -1905,6 +2006,16 @@ function closePhotoSearchModal() {
   modal.hidden = true;
   modal.setAttribute("aria-hidden", "true");
   document.body.classList.remove("photo-search-open");
+  clearPhotoSearchQuotaTimer();
+  var statusEl = modal.querySelector("#photoSearchStatus");
+  if (statusEl) {
+    statusEl.dataset.locked = "0";
+    statusEl.textContent = "";
+  }
+  var submitBtn = modal.querySelector("#photoSearchSubmit");
+  if (submitBtn) {
+    submitBtn.dataset.loading = "0";
+  }
 }
 
 function initPhotoSearchUI() {
@@ -1952,8 +2063,13 @@ function initPhotoSearchUI() {
       void (async function () {
         try {
           var api = await ensureImageSearchApi();
+          api.assertPhotoSearchAllowed();
           await api.startPhotoSearchFromFile(file);
-        } catch (_) {
+        } catch (err) {
+          if (String(err && err.message) === "rate_limit_exceeded") {
+            openPhotoSearchModalWithFile(file);
+            return;
+          }
           openPhotoSearchModalWithFile(file);
         }
       })();

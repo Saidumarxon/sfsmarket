@@ -3,6 +3,72 @@
    Premium E-Commerce UI — Modern & Clean
    ======================================== */
 
+@property --bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f0f2f5;
+}
+
+@property --bg-warm {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f7f8fa;
+}
+
+@property --bg-card {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+
+@property --text {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #111827;
+}
+
+@property --text-secondary {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #4b5563;
+}
+
+@property --text-muted {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #9ca3af;
+}
+
+@property --white {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+
+@property --border {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #e5e7eb;
+}
+
+@property --border-light {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f3f4f6;
+}
+
+@property --accent-light {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #e0f2fe;
+}
+
+@property --bg-secondary {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f1f5f9;
+}
+
 :root {
   /* --- Backgrounds --- */
   --bg: #f0f2f5;
@@ -52,6 +118,7 @@
   /* --- Motion --- */
   --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --theme-morph: 0.48s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* --- Profile / card aliases --- */
   --card-bg: var(--bg-card);
@@ -82,6 +149,50 @@ html[data-theme="dark"] {
   --card-bg: var(--bg-card);
   --text-primary: var(--text);
   --bg-secondary: #0b0f17;
+}
+
+html.theme-transition {
+  transition:
+    --bg var(--theme-morph),
+    --bg-warm var(--theme-morph),
+    --bg-card var(--theme-morph),
+    --text var(--theme-morph),
+    --text-secondary var(--theme-morph),
+    --text-muted var(--theme-morph),
+    --white var(--theme-morph),
+    --border var(--theme-morph),
+    --border-light var(--theme-morph),
+    --accent-light var(--theme-morph),
+    --bg-secondary var(--theme-morph);
+}
+
+html.theme-transition .header {
+  transition: background-color var(--theme-morph), box-shadow var(--theme-morph);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-group(root) {
+  animation-duration: 0.48s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transition {
+    transition: none !important;
+  }
+
+  html.theme-transition .header {
+    transition: none !important;
+  }
+
+  ::view-transition-group(root) {
+    animation-duration: 0.01ms !important;
+  }
 }
 
 html[data-theme="dark"] .header {
@@ -569,6 +680,17 @@ img { max-width: 100%; display: block; }
   font-size: 13px;
   color: var(--text-muted);
   text-align: center;
+}
+
+.photo-search-quota {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.photo-search-quota.is-blocked {
+  color: var(--warning);
 }
 
 body.photo-search-open {
@@ -1206,12 +1328,21 @@ html[data-theme="dark"] .badge-match {
 }
 
 /* Language switch button */
-.lang-switch {
+.lang-switch,
+.theme-switch {
   border: none;
   background: none;
   cursor: pointer;
   color: inherit;
   font-family: inherit;
+  outline: none;
+  box-shadow: none;
+}
+
+.theme-switch:focus,
+.theme-switch:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .cart-action { position: relative; }
@@ -1235,6 +1366,10 @@ html[data-theme="dark"] .badge-match {
   border: 2px solid var(--white);
   transition: transform var(--transition);
   box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+}
+
+.cart-badge[hidden] {
+  display: none !important;
 }
 
 .cart-badge.bump {
@@ -3408,20 +3543,37 @@ body.home-storefront-loading .carousel-track {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 60px 20px;
+  gap: 16px;
+  padding: 60px 24px;
   text-align: center;
+  min-height: 320px;
+}
+
+.catalog-empty svg {
+  width: 64px;
+  height: 64px;
 }
 
 .catalog-empty p {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.2;
   color: var(--text);
+  margin: 0;
 }
 
 .catalog-empty span {
-  font-size: 14px;
+  font-size: 18px;
+  line-height: 1.5;
   color: var(--text-muted);
+  max-width: 420px;
+}
+
+.catalog-empty-home-btn,
+.cart-empty-home-btn {
+  margin-top: 8px;
+  min-width: 240px;
+  justify-content: center;
 }
 
 .catalog-products-grid {
@@ -3526,34 +3678,7 @@ body.cart-mode #catalogProductsGrid .product-title {
 }
 
 body.cart-mode.cart-empty-mode .catalog-content {
-  min-height: 240px;
-}
-
-body.cart-mode.cart-empty-mode .catalog-empty {
-  min-height: 200px;
-  justify-content: flex-start;
-  gap: 16px;
-  padding: 16px 20px 12px;
-}
-
-body.cart-mode.cart-empty-mode .catalog-empty svg {
-  width: 64px;
-  height: 64px;
-}
-
-body.cart-mode.cart-empty-mode .catalog-empty p {
-  font-size: 34px;
-  font-weight: 800;
-}
-
-body.cart-mode.cart-empty-mode .catalog-empty span {
-  font-size: 18px;
-}
-
-.cart-empty-home-btn {
-  margin-top: 10px;
-  min-width: 220px;
-  justify-content: center;
+  min-height: 320px;
 }
 
 .cart-summary-card h3 {
@@ -4522,6 +4647,19 @@ body.cart-mode.cart-empty-mode .catalog-empty span {
     grid-template-columns: 1fr;
   }
 
+  .catalog-empty {
+    min-height: 260px;
+    padding: 40px 16px;
+  }
+
+  .catalog-empty p {
+    font-size: 26px;
+  }
+
+  .catalog-empty span {
+    font-size: 16px;
+  }
+
   .product-detail-title {
     font-size: 28px;
   }
@@ -4752,21 +4890,6 @@ body.quick-buy-modal-open {
 
 .quick-buy-form {
   padding: 18px 20px 20px;
-}
-
-.quick-buy-account-hint {
-  margin: 0 0 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(22, 163, 74, 0.1);
-  color: var(--text-muted, #64748b);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-html[data-theme="dark"] .quick-buy-account-hint {
-  background: rgba(22, 163, 74, 0.15);
-  color: var(--text-muted, #94a3b8);
 }
 
 .quick-buy-field {

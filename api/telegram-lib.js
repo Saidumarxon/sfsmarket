@@ -335,6 +335,22 @@ async function fetchOrderById(orderId) {
   return normalizeOrder(rows[0]);
 }
 
+async function resolveOrderId(ref) {
+  const token = String(ref || "").trim();
+  if (!token) return null;
+  if (token.length > 12) {
+    const direct = await fetchOrderById(token);
+    return direct ? direct.id : token;
+  }
+  const shortRef = token.replace(/-/g, "").slice(0, 8).toUpperCase();
+  const orders = await fetchRecentOrders(100);
+  const found =
+    orders.find(function (item) {
+      return shortOrderId(item.id) === shortRef;
+    }) || null;
+  return found ? found.id : null;
+}
+
 async function fetchRecentOrders(limit) {
   const max = limit || 10;
   if (!SUPABASE_SERVICE) return [];
@@ -468,7 +484,7 @@ function formatOrderMessage(order, options) {
 }
 
 function orderActionKeyboard(orderId) {
-  const id = String(orderId || "").trim();
+  const id = shortOrderId(orderId);
   if (!id) return undefined;
   return {
     inline_keyboard: [
@@ -578,31 +594,64 @@ function adminHelpText() {
 async function handleCallbackQuery(query) {
   const chatId = query.message && query.message.chat && query.message.chat.id;
   const userId = query.from && query.from.id;
-  if (!isAdmin(chatId, userId)) {
-    await tgApi("answerCallbackQuery", {
-      callback_query_id: query.id,
-      text: "Нет доступа",
-      show_alert: true,
-    });
-    return;
-  }
-  const data = String(query.data || "");
-  await tgApi("answerCallbackQuery", { callback_query_id: query.id }).catch(function () {});
+  const queryId = query.id;
 
-  if (data === "cmd:orders") {
-    await sendOrdersList(chatId);
-    return;
-  }
-  if (data.indexOf("ost:") === 0) {
-    const parts = data.split(":");
-    const orderId = parts[1];
-    const status = parts[2];
-    const ok = await updateOrderStatus(orderId, status);
-    if (!ok) {
-      await sendMessage(chatId, "Не удалось обновить статус. Проверьте SUPABASE_SERVICE_ROLE_KEY.");
+  try {
+    if (!isAdmin(chatId, userId)) {
+      await tgApi("answerCallbackQuery", {
+        callback_query_id: queryId,
+        text: "Нет доступа. Отправьте боту /myid и добавьте chat_id в TELEGRAM_ADMIN_CHAT_ID (Vercel).",
+        show_alert: true,
+      });
       return;
     }
+
+    const data = String(query.data || "");
+    if (data === "cmd:orders") {
+      await tgApi("answerCallbackQuery", { callback_query_id: queryId, text: "Загрузка…" }).catch(function () {});
+      await sendOrdersList(chatId);
+      return;
+    }
+
+    if (data.indexOf("ost:") !== 0) {
+      await tgApi("answerCallbackQuery", {
+        callback_query_id: queryId,
+        text: "Неизвестная команда",
+        show_alert: true,
+      });
+      return;
+    }
+
+    const parts = data.split(":");
+    const orderRef = parts[1];
+    const status = parts[2];
+    const orderId = await resolveOrderId(orderRef);
+    if (!orderId) {
+      await tgApi("answerCallbackQuery", {
+        callback_query_id: queryId,
+        text: "Заказ не найден",
+        show_alert: true,
+      });
+      return;
+    }
+
+    const ok = await updateOrderStatus(orderId, status);
+    if (!ok) {
+      await tgApi("answerCallbackQuery", {
+        callback_query_id: queryId,
+        text: "Не удалось обновить статус. Проверьте SUPABASE_SERVICE_ROLE_KEY и колонку status в orders.",
+        show_alert: true,
+      });
+      return;
+    }
+
     const order = await fetchOrderById(orderId);
+    const statusLabel = ORDER_STATUS_LABELS[normalizeOrderStatus(status)] || status;
+    await tgApi("answerCallbackQuery", {
+      callback_query_id: queryId,
+      text: "Статус: " + statusLabel,
+    }).catch(function () {});
+
     if (order && query.message) {
       await tgApi("editMessageText", {
         chat_id: chatId,
@@ -619,6 +668,13 @@ async function handleCallbackQuery(query) {
         });
       });
     }
+  } catch (err) {
+    console.error("[telegram-lib] handleCallbackQuery", err);
+    await tgApi("answerCallbackQuery", {
+      callback_query_id: queryId,
+      text: "Ошибка сервера. Перерегистрируйте webhook: /api/telegram-set-webhook",
+      show_alert: true,
+    }).catch(function () {});
   }
 }
 

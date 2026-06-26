@@ -3,6 +3,8 @@
  *
  * Env: GEMINI_API_KEY — https://aistudio.google.com/apikey
  */
+const rateLimit = require("./photo-rate-limit");
+
 const GEMINI_MODEL = String(process.env.GEMINI_MODEL || "gemini-2.0-flash-lite");
 const MAX_PRODUCTS = 200;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -29,6 +31,7 @@ module.exports = async function handler(req, res) {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
     const image = parseDataUrl(body.image);
     const products = Array.isArray(body.products) ? body.products : [];
+    const userId = String(body.userId || body.user_id || "").trim();
 
     if (!image) {
       return res.status(400).json({ ok: false, error: "invalid_image" });
@@ -36,6 +39,18 @@ module.exports = async function handler(req, res) {
 
     if (image.byteLength > MAX_IMAGE_BYTES) {
       return res.status(400).json({ ok: false, error: "image_too_large" });
+    }
+
+    const quota = await rateLimit.consumePhotoSearchQuota(req, userId);
+    rateLimit.applyRateLimitHeaders(res, quota);
+    if (!quota.allowed) {
+      return res.status(429).json({
+        ok: false,
+        error: "rate_limit_exceeded",
+        retryAfterSec: quota.retryAfterSec,
+        remaining: 0,
+        limit: quota.limit,
+      });
     }
 
     const catalog = products
@@ -115,6 +130,8 @@ module.exports = async function handler(req, res) {
       matches: matches,
       source: "gemini",
       model: GEMINI_MODEL,
+      remaining: quota.remaining,
+      limit: quota.limit,
     });
   } catch (err) {
     return res.status(500).json({
