@@ -491,6 +491,66 @@ function emirateProductActionsHtml(productHref, safeProductId) {
   `;
 }
 
+function emirateEscapeHtmlAttr(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
+/** Relative product URL — works on Live Server locally and on Vercel in production. */
+function emirateProductHref(title) {
+  return "product.html?product=" + encodeURIComponent(String(title || "").trim());
+}
+
+function emirateRenderProductCard(product) {
+  const productId = product.title;
+  const safeProductId = emirateEscapeHtmlAttr(productId);
+  const isFavorite = window.emirateIsFavorite?.(productId) === true;
+  const lang = typeof window.emirateLang === "function" ? window.emirateLang() : "ru";
+  const ratingHtml = emirateProductRatingHtml(product, lang) || "";
+  const productHref = emirateProductHref(product.title);
+  const discount = Math.round((1 - product.price / product.oldPrice) * 100);
+  const discountText = Number.isFinite(discount) && discount > 0 ? "-" + discount + "%" : "";
+  const badgeHTML = discountText ? '<span class="badge-sale">' + discountText + "</span>" : "";
+  const media = emirateResolveProductMedia(product) || {
+    image: product.image,
+    photos: product.photos || []
+  };
+  const imageHtml = media.image
+    ? '<img class="product-image-real" src="' + emirateEscapeHtmlAttr(media.image) + '" alt="' + emirateEscapeHtmlAttr(product.title) + '" loading="lazy" decoding="async">'
+    : `<div class="product-image-placeholder">
+            <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <path d="M21 15l-5-5L5 21"/>
+            </svg>
+            Фото
+          </div>`;
+  const installment = Math.round((Number(product.price) || 0) / 12);
+
+  return (
+    '<article class="product-card" data-product-id="' + safeProductId + '" data-product-title="' + safeProductId + '">' +
+      '<div class="product-card-top">' +
+        '<div class="product-image">' +
+          '<div class="product-badges">' + badgeHTML + "</div>" +
+          '<button class="wishlist-btn ' + (isFavorite ? "active" : "") + '" type="button" title="В избранное" data-product-id="' + safeProductId + '">' +
+            '<svg width="18" height="18" fill="' + (isFavorite ? "#ef4444" : "none") + '" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
+              '<path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>' +
+            "</svg>" +
+          "</button>" +
+          imageHtml +
+        "</div>" +
+      "</div>" +
+      '<h3 class="product-title"><a class="product-link" href="' + productHref + '">' + product.title + "</a></h3>" +
+      (ratingHtml ? '<div class="product-rating">' + ratingHtml + "</div>" : "") +
+      (emirateProductPriceHtml(product.price, product.oldPrice) || "") +
+      (emirateProductInstallmentHtml(product, installment) || "") +
+      (emirateProductActionsHtml(productHref, safeProductId) || "") +
+    "</article>"
+  );
+}
+
 function emirateResolveProductMedia(product) {
   const item = product || {};
   let photos = Array.isArray(item.photos)
@@ -518,6 +578,9 @@ window.emirateFallbackProductPhotos = emirateFallbackProductPhotos;
 window.emirateProductPriceHtml = emirateProductPriceHtml;
 window.emirateProductInstallmentHtml = emirateProductInstallmentHtml;
 window.emirateProductActionsHtml = emirateProductActionsHtml;
+window.emirateRenderProductCard = emirateRenderProductCard;
+window.emirateEscapeHtmlAttr = emirateEscapeHtmlAttr;
+window.emirateProductHref = emirateProductHref;
 window.emirateParsePriceValue = emirateParsePriceValue;
 window.emirateResolveProductReviews = emirateResolveProductReviews;
 window.emirateFormatReviewStars = emirateFormatReviewStars;

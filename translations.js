@@ -257,6 +257,8 @@ window.TRANSLATIONS = {
   "product.noReviews":      { ru: "\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u043e\u0442\u0437\u044b\u0432\u043e\u0432", uz: "Hozircha sharhlar yo'q" },
   "product.noReviewsHint":  { ru: "\u041e\u0441\u0442\u0430\u0432\u044c\u0442\u0435 \u043e\u0442\u0437\u044b\u0432 \u043f\u043e\u0441\u043b\u0435 \u043f\u043e\u043a\u0443\u043f\u043a\u0438", uz: "Xariddan keyin sharh qoldiring" },
   "product.aboutTitle":     { ru: "\u041e \u0442\u043e\u0432\u0430\u0440\u0435", uz: "Mahsulot haqida" },
+  "product.similarTitle":   { ru: "\u041f\u043e\u0445\u043e\u0436\u0438\u0435 \u0442\u043e\u0432\u0430\u0440\u044b", uz: "O'xshash mahsulotlar" },
+  "product.similarMore":    { ru: "\u0412 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0435 \u2192", uz: "Katalogda \u2192" },
 
   "card.addCart":           { ru: "\u0412 \u043a\u043e\u0440\u0437\u0438\u043d\u0443", uz: "Savatga" },
   "card.quickBuy":          { ru: "\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440", uz: "Tezkor ko'rish" },

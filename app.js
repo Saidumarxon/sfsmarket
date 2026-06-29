@@ -584,7 +584,9 @@ function renderProductCard(product) {
   const lang = typeof window.emirateLang === "function" ? window.emirateLang() : "ru";
   const ratingHtml = window.emirateProductRatingHtml?.(product, lang) || "";
 
-  const productHref = `/product?product=${encodeURIComponent(product.title)}`;
+  const productHref = window.emirateProductHref
+    ? window.emirateProductHref(product.title)
+    : `product.html?product=${encodeURIComponent(product.title)}`;
   const discountText = String(product.discount || "").trim();
   const badgeHTML = discountText ? `<span class="badge-sale">${discountText}</span>` : "";
 

@@ -197,7 +197,9 @@ function escapeHtmlAttr(value) {
 }
 
 function renderProduct(product, options = {}) {
-  const productHref = `/product?product=${encodeURIComponent(product.title)}`;
+  const productHref = window.emirateProductHref
+    ? window.emirateProductHref(product.title)
+    : `product.html?product=${encodeURIComponent(product.title)}`;
   const cartControls = options.cartControls === true;
   const productId = product.title;
   const safeProductId = escapeHtmlAttr(productId);
@@ -527,8 +529,8 @@ function updateSeoCatalogLinks(list) {
     .slice(0, 200)
     .map(
       (product) =>
-        '<a href="/product?product=' +
-        encodeURIComponent(product.title) +
+        '<a href="' +
+        (window.emirateProductHref ? window.emirateProductHref(product.title) : "product.html?product=" + encodeURIComponent(product.title)) +
         '">' +
         escapeHtmlAttr(product.title) +
         "</a>"
