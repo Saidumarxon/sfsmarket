@@ -378,14 +378,13 @@
           <div class="banner-access-note" id="bannerAccessNote" hidden></div>
           <div class="banner-feedback" id="bannerFeedback" hidden></div>
           <div class="banner-editor-content">
-            <div class="banner-preview" id="bannerLivePreview">
-              <div class="banner-preview-tag">🔥 Акция недели</div>
-              <h4>Скидки до 30% на электронику</h4>
-              <p>Рассрочка 0-0-12 месяцев без переплат. Бесплатная доставка по Ташкенту.</p>
-              <div class="banner-preview-buttons">
-                <span>Смотреть предложения</span>
-                <span>Перейти в каталог</span>
-              </div>
+            <div class="banner-preview-toolbar">
+              <span class="banner-preview-toolbar-label">Превью:</span>
+              <button type="button" class="banner-preview-mode is-active" data-banner-preview-mode="desktop">Компьютер</button>
+              <button type="button" class="banner-preview-mode" data-banner-preview-mode="mobile">Телефон</button>
+            </div>
+            <div class="banner-preview banner-preview--image" id="bannerLivePreview">
+              <div class="banner-preview-empty">Загрузите изображение баннера</div>
             </div>
 
             <form class="banner-form" id="bannerForm">
@@ -398,79 +397,54 @@
 
               <div class="banner-lang-panel" data-banner-lang-panel="ru">
                 <h4 class="banner-lang-panel-title">Баннер на русском</h4>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label class="required" for="bannerTag">Метка</label>
-                    <input type="text" id="bannerTag" placeholder="🔥 Акция недели" required>
-                  </div>
+                <div class="form-group">
+                  <label class="required" for="bannerTitle">Название слайда (для админки)</label>
+                  <input type="text" id="bannerTitle" placeholder="Большая распродажа" required>
                 </div>
                 <div class="form-group">
-                  <label class="required" for="bannerTitle">Заголовок</label>
-                  <input type="text" id="bannerTitle" placeholder="Скидки до 30% на электронику" required>
-                </div>
-                <div class="form-group">
-                  <label class="required" for="bannerDesc">Описание</label>
-                  <textarea id="bannerDesc" rows="3" placeholder="Короткий текст для баннера" required></textarea>
-                </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="bannerPrimaryText">Кнопка 1: текст</label>
-                    <input type="text" id="bannerPrimaryText" placeholder="Смотреть предложения">
-                  </div>
-                  <div class="form-group">
-                    <label for="bannerSecondaryText">Кнопка 2: текст</label>
-                    <input type="text" id="bannerSecondaryText" placeholder="Перейти в каталог">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="bannerImageInput">Изображение RU (опционально)</label>
+                  <label class="required" for="bannerImageInput">Изображение для компьютера</label>
                   <input type="file" id="bannerImageInput" accept="image/*">
-                  <span class="form-hint banner-image-hint" id="bannerImageMeta">Изображение не выбрано</span>
+                  <span class="form-hint banner-image-hint" id="bannerImageMeta">Рекомендуется 1200×430 px (широкий баннер)</span>
                 </div>
+                <div class="form-group">
+                  <label for="bannerImageMobileInput">Изображение для телефона</label>
+                  <input type="file" id="bannerImageMobileInput" accept="image/*">
+                  <span class="form-hint banner-image-hint" id="bannerImageMobileMeta">Рекомендуется 750×360 px. Если пусто — на телефоне покажется компьютерная версия.</span>
+                </div>
+                <input type="hidden" id="bannerTag" value="Акция">
+                <input type="hidden" id="bannerDesc" value=" ">
+                <input type="hidden" id="bannerPrimaryText" value="">
+                <input type="hidden" id="bannerSecondaryText" value="">
               </div>
 
               <div class="banner-lang-panel" data-banner-lang-panel="uz" hidden>
                 <h4 class="banner-lang-panel-title">Banner o'zbek tilida</h4>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label class="required" for="bannerTagUz">Yorliq (metka)</label>
-                    <input type="text" id="bannerTagUz" placeholder="🔥 Hafta aksiyasi" required>
-                  </div>
+                <div class="form-group">
+                  <label class="required" for="bannerTitleUz">Slayd nomi (admin uchun)</label>
+                  <input type="text" id="bannerTitleUz" placeholder="Katta chegirma" required>
                 </div>
                 <div class="form-group">
-                  <label class="required" for="bannerTitleUz">Sarlavha</label>
-                  <input type="text" id="bannerTitleUz" placeholder="Elektronikaga 30% gacha chegirma" required>
-                </div>
-                <div class="form-group">
-                  <label class="required" for="bannerDescUz">Tavsif</label>
-                  <textarea id="bannerDescUz" rows="3" placeholder="Banner uchun qisqa matn" required></textarea>
-                </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="bannerPrimaryTextUz">Tugma 1: matn</label>
-                    <input type="text" id="bannerPrimaryTextUz" placeholder="Takliflarni ko'rish">
-                  </div>
-                  <div class="form-group">
-                    <label for="bannerSecondaryTextUz">Tugma 2: matn</label>
-                    <input type="text" id="bannerSecondaryTextUz" placeholder="Katalogga o'tish">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="bannerImageInputUz">Rasm UZ (ixtiyoriy)</label>
+                  <label for="bannerImageInputUz">Kompyuter uchun rasm</label>
                   <input type="file" id="bannerImageInputUz" accept="image/*">
-                  <span class="form-hint banner-image-hint" id="bannerImageMetaUz">Rasm tanlanmagan</span>
+                  <span class="form-hint banner-image-hint" id="bannerImageMetaUz">Tavsiya: 1200×430 px</span>
                 </div>
+                <div class="form-group">
+                  <label for="bannerImageMobileInputUz">Telefon uchun rasm</label>
+                  <input type="file" id="bannerImageMobileInputUz" accept="image/*">
+                  <span class="form-hint banner-image-hint" id="bannerImageMobileMetaUz">Tavsiya: 750×360 px</span>
+                </div>
+                <input type="hidden" id="bannerTagUz" value="Aksiya">
+                <input type="hidden" id="bannerDescUz" value=" ">
+                <input type="hidden" id="bannerPrimaryTextUz" value="">
+                <input type="hidden" id="bannerSecondaryTextUz" value="">
               </div>
 
               <div class="form-row banner-shared-fields">
                 <div class="form-group">
-                  <label for="bannerPrimaryUrl">Кнопка 1: ссылка</label>
-                  <input type="text" id="bannerPrimaryUrl" placeholder="#">
+                  <label for="bannerPrimaryUrl">Ссылка при клике на баннер</label>
+                  <input type="text" id="bannerPrimaryUrl" placeholder="catalog.html">
                 </div>
-                <div class="form-group">
-                  <label for="bannerSecondaryUrl">Кнопка 2: ссылка</label>
-                  <input type="text" id="bannerSecondaryUrl" placeholder="catalog.html">
-                </div>
+                <input type="hidden" id="bannerSecondaryUrl" value="">
               </div>
 
               <div class="form-row">
@@ -513,7 +487,7 @@
             <thead>
               <tr>
                 <th>Слайд</th>
-                <th>Кнопки</th>
+                <th>Изображения</th>
                 <th>Статус</th>
                 <th>Приоритет</th>
                 <th>Действия</th>

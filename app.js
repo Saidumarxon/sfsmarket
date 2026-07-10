@@ -381,12 +381,14 @@ function normalizeHomeBanner(record) {
     secondaryText: String(banner.secondaryText || "").trim() || "",
     secondaryUrl: String(banner.secondaryUrl || "").trim() || "#",
     image: typeof banner.image === "string" ? banner.image : "",
+    imageMobile: typeof banner.imageMobile === "string" ? banner.imageMobile : "",
     tagUz: String(banner.tagUz || "").trim() || "",
     titleUz: String(banner.titleUz || "").trim() || "",
     descUz: String(banner.descUz || "").trim() || "",
     primaryTextUz: String(banner.primaryTextUz || "").trim() || "",
     secondaryTextUz: String(banner.secondaryTextUz || "").trim() || "",
     imageUz: typeof banner.imageUz === "string" ? banner.imageUz : "",
+    imageMobileUz: typeof banner.imageMobileUz === "string" ? banner.imageMobileUz : "",
     isActive: banner.isActive !== false,
     priority: Number.isFinite(priority) ? priority : 100
   };
@@ -402,8 +404,22 @@ function resolveHomeBannerForLang(banner, lang) {
     desc: normalized.descUz || normalized.desc,
     primaryText: normalized.primaryTextUz || normalized.primaryText,
     secondaryText: normalized.secondaryTextUz || normalized.secondaryText,
-    image: normalized.imageUz || normalized.image
+    image: normalized.imageUz || normalized.image,
+    imageMobile: normalized.imageMobileUz || normalized.imageMobile || normalized.imageUz || normalized.image
   };
+}
+
+function buildHeroBannerPictureHtml(banner, index) {
+  const desktopImage = banner.image || "";
+  const mobileImage = banner.imageMobile || desktopImage;
+  const alt = banner.title || "Баннер";
+  const loading = index === 0 ? "eager" : "lazy";
+  const mobileSource =
+    mobileImage && mobileImage !== desktopImage
+      ? `<source media="(max-width: 680px)" srcset="${escapeHtmlAttr(mobileImage)}">`
+      : "";
+  const imgSrc = desktopImage || mobileImage;
+  return `<picture class="hero-banner-picture">${mobileSource}<img class="hero-banner-img" src="${escapeHtmlAttr(imgSrc)}" alt="${escapeHtmlAttr(alt)}" loading="${loading}" decoding="async" width="1200" height="430"></picture>`;
 }
 
 let remoteHomeBannersCache = null;
@@ -489,31 +505,27 @@ function renderHeroBanners() {
   if (!safeBanners.length) return;
 
   const slidesHtml = safeBanners.map((banner, index) => {
-    const hasImage = Boolean(banner.image);
-    const primaryButton = banner.primaryText
-      ? `<a href="${escapeHtmlAttr(banner.primaryUrl || "#")}" class="btn-primary">${escapeHtmlText(banner.primaryText)}</a>`
-      : "";
-    const secondaryButton = banner.secondaryText
-      ? `<a href="${escapeHtmlAttr(banner.secondaryUrl || "#")}" class="btn-outline">${escapeHtmlText(banner.secondaryText)}</a>`
-      : "";
-    const visualHtml = hasImage
-      ? `<div class="hero-slide-visual has-image" aria-hidden="true"><img class="hero-slide-photo" src="${escapeHtmlAttr(banner.image)}" alt="" loading="${index === 0 ? "eager" : "lazy"}" decoding="async"></div>`
-      : `<div class="hero-slide-visual"><div class="hero-device-mockup"><svg width="120" height="120" fill="none" stroke="#4db8e8" stroke-width="1.2" viewBox="0 0 24 24" opacity=".4"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div></div>`;
-    const slideStyle = hasImage
-      ? ` style="background-image: linear-gradient(100deg, rgba(5,10,22,0.88) 0%, rgba(7,24,46,0.78) 45%, rgba(9,37,67,0.30) 74%, rgba(9,37,67,0.12) 100%), url('${escapeHtmlAttr(banner.image)}');"`
-      : "";
+    const desktopImage = banner.image || "";
+    const mobileImage = banner.imageMobile || desktopImage;
+    const hasImage = Boolean(desktopImage || mobileImage);
+    const linkUrl = String(banner.primaryUrl || "").trim();
+
+    if (hasImage) {
+      const pictureHtml = buildHeroBannerPictureHtml(banner, index);
+      const content =
+        linkUrl && linkUrl !== "#"
+          ? `<a href="${escapeHtmlAttr(linkUrl)}" class="hero-banner-link">${pictureHtml}</a>`
+          : pictureHtml;
+      return `<div class="hero-slide hero-slide--banner ${index === 0 ? "active" : ""}">${content}</div>`;
+    }
+
     return `
-      <div class="hero-slide ${index === 0 ? "active" : ""} ${hasImage ? "hero-slide--image" : ""}"${slideStyle}>
+      <div class="hero-slide hero-slide--fallback ${index === 0 ? "active" : ""}">
         <div class="hero-slide-text">
           <span class="hero-tag">${escapeHtmlText(banner.tag)}</span>
           <h1>${escapeHtmlText(banner.title)}</h1>
           <p>${escapeHtmlText(banner.desc)}</p>
-          <div class="hero-btns">
-            ${primaryButton}
-            ${secondaryButton}
-          </div>
         </div>
-        ${visualHtml}
       </div>
     `;
   }).join("");
@@ -527,6 +539,7 @@ function renderHeroBanners() {
        <button class="hero-nav-btn hero-nav-btn--next" type="button" aria-label="Следующий слайд">›</button>`
     : "";
 
+  heroSlider.classList.add("hero-slider--carousel");
   heroSlider.innerHTML = `${slidesHtml}${arrowsHtml}<div class="hero-dots">${dotsHtml}</div>`;
 
   document.querySelectorAll(".hero-dots .dot").forEach((dot) => {

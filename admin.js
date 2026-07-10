@@ -665,6 +665,8 @@ const BANNER_TAG_MAX = 40;
 const BANNER_BTN_MAX = 30;
 const BANNER_IMAGE_RATIO_MIN = 2.2;
 const BANNER_IMAGE_RATIO_MAX = 3.4;
+const BANNER_MOBILE_RATIO_MIN = 1.7;
+const BANNER_MOBILE_RATIO_MAX = 2.6;
 const BANNER_BLOCKED_PHRASES = [
   'всем пока',
   'нету скидок',
@@ -1187,12 +1189,14 @@ function normalizeBannerRecord(record) {
     secondaryText: String(banner.secondaryText || '').trim() || '',
     secondaryUrl: String(banner.secondaryUrl || '').trim() || '#',
     image: typeof banner.image === 'string' ? banner.image : '',
+    imageMobile: typeof banner.imageMobile === 'string' ? banner.imageMobile : '',
     tagUz: String(banner.tagUz || '').trim() || '🔥 Aksiya',
     titleUz: String(banner.titleUz || '').trim() || 'Aksiya banneri',
     descUz: String(banner.descUz || '').trim() || '',
     primaryTextUz: String(banner.primaryTextUz || '').trim() || '',
     secondaryTextUz: String(banner.secondaryTextUz || '').trim() || '',
     imageUz: typeof banner.imageUz === 'string' ? banner.imageUz : '',
+    imageMobileUz: typeof banner.imageMobileUz === 'string' ? banner.imageMobileUz : '',
     isActive: banner.isActive !== false,
     priority: Number.isFinite(priority) ? priority : 100
   };
@@ -1288,7 +1292,9 @@ function getBannerPreviewDataFromForm() {
     primaryTextUz: bannerPrimaryTextUzInput?.value || '',
     secondaryTextUz: bannerSecondaryTextUzInput?.value || '',
     image: bannerFormImage || existing?.image || '',
+    imageMobile: bannerFormImageMobile || existing?.imageMobile || '',
     imageUz: bannerFormImageUz || existing?.imageUz || '',
+    imageMobileUz: bannerFormImageMobileUz || existing?.imageMobileUz || '',
     isActive: bannerActiveSelect?.value !== 'false',
     priority: Number.isFinite(priority) ? priority : 100
   });
@@ -1300,20 +1306,20 @@ function validateBannerLangFields(draft, lang) {
   const tag = String(isUz ? draft.tagUz : draft.tag || '').trim();
   const title = String(isUz ? draft.titleUz : draft.title || '').trim();
   const desc = String(isUz ? draft.descUz : draft.desc || '').trim();
-  const primaryText = String(isUz ? draft.primaryTextUz : draft.primaryText || '').trim();
-  const secondaryText = String(isUz ? draft.secondaryTextUz : draft.secondaryText || '').trim();
+  const image = String(isUz ? (draft.imageUz || draft.image) : draft.image || '').trim();
+  const imageMobile = String(isUz ? (draft.imageMobileUz || draft.imageMobile) : draft.imageMobile || '').trim();
 
+  if (!image && !imageMobile) {
+    return `Загрузите изображение баннера${prefix} (компьютер или телефон).`;
+  }
+  if (title.length < BANNER_TITLE_MIN || title.length > BANNER_TITLE_MAX) {
+    return `Название слайда${prefix} должно быть от ${BANNER_TITLE_MIN} до ${BANNER_TITLE_MAX} символов.`;
+  }
   if (tag.length > BANNER_TAG_MAX) {
     return `Метка${prefix} слишком длинная. Максимум ${BANNER_TAG_MAX} символов.`;
   }
-  if (title.length < BANNER_TITLE_MIN || title.length > BANNER_TITLE_MAX) {
-    return `Заголовок${prefix} должен быть от ${BANNER_TITLE_MIN} до ${BANNER_TITLE_MAX} символов.`;
-  }
-  if (desc.length < BANNER_DESC_MIN || desc.length > BANNER_DESC_MAX) {
-    return `Описание${prefix} должно быть от ${BANNER_DESC_MIN} до ${BANNER_DESC_MAX} символов.`;
-  }
-  if (primaryText.length > BANNER_BTN_MAX || secondaryText.length > BANNER_BTN_MAX) {
-    return `Текст кнопки${prefix} должен быть не длиннее ${BANNER_BTN_MAX} символов.`;
+  if (desc && (desc.length < 2 || desc.length > BANNER_DESC_MAX)) {
+    return `Описание${prefix} должно быть до ${BANNER_DESC_MAX} символов.`;
   }
   if (hasBlockedPhrases(tag, title, desc)) {
     return `Обнаружены запрещенные фразы в тексте баннера${prefix}.`;
@@ -1323,14 +1329,13 @@ function validateBannerLangFields(draft, lang) {
 
 function validateBannerDraft(draft) {
   const primaryUrl = sanitizeBannerUrl(draft.primaryUrl || '#');
-  const secondaryUrl = sanitizeBannerUrl(draft.secondaryUrl || '#');
 
   const ruError = validateBannerLangFields(draft, 'ru');
   if (ruError) return ruError;
   const uzError = validateBannerLangFields(draft, 'uz');
   if (uzError) return uzError;
 
-  if (!isAllowedBannerUrl(primaryUrl) || !isAllowedBannerUrl(secondaryUrl)) {
+  if (!isAllowedBannerUrl(primaryUrl)) {
     return 'Разрешены только внутренние ссылки: #, /path, catalog.html, product.html.';
   }
   if (!draft.isActive && countActiveBanners(draft.id) < 1) {
@@ -1345,26 +1350,20 @@ function renderBannerPreview(data, lang) {
 
   const banner = normalizeBannerRecord(data);
   const isUz = (lang || bannerFormLang) === 'uz';
-  const tag = isUz ? banner.tagUz : banner.tag;
-  const title = isUz ? banner.titleUz : banner.title;
-  const desc = isUz ? banner.descUz : banner.desc;
-  const image = isUz ? (banner.imageUz || banner.image) : banner.image;
-  const firstButton = (isUz ? banner.primaryTextUz : banner.primaryText) || (isUz ? 'Takliflarni ko\'rish' : 'Смотреть предложения');
-  const secondButton = (isUz ? banner.secondaryTextUz : banner.secondaryText) || (isUz ? 'Katalogga o\'tish' : 'Перейти в каталог');
-  const imageStyle = image
-    ? `background-image: linear-gradient(115deg, rgba(11,17,32,0.65), rgba(12,61,107,0.66)), url('${image}'); background-size: cover; background-position: center;`
-    : '';
+  const desktopImage = isUz ? (banner.imageUz || banner.image) : banner.image;
+  const mobileImage = isUz ? (banner.imageMobileUz || banner.imageMobile || banner.imageUz || banner.image) : (banner.imageMobile || banner.image);
+  const image = bannerFormPreviewMode === 'mobile' ? (mobileImage || desktopImage) : (desktopImage || mobileImage);
 
-  preview.setAttribute('style', imageStyle);
-  preview.innerHTML = `
-    <div class="banner-preview-tag">${escapeHtml(tag)}</div>
-    <h4>${escapeHtml(title)}</h4>
-    <p>${escapeHtml(desc)}</p>
-    <div class="banner-preview-buttons">
-      <span>${escapeHtml(firstButton)}</span>
-      <span>${escapeHtml(secondButton)}</span>
-    </div>
-  `;
+  preview.classList.toggle('banner-preview--mobile', bannerFormPreviewMode === 'mobile');
+  preview.classList.toggle('banner-preview--image', true);
+  preview.removeAttribute('style');
+
+  if (!image) {
+    preview.innerHTML = '<div class="banner-preview-empty">Загрузите изображение баннера</div>';
+    return;
+  }
+
+  preview.innerHTML = `<img class="banner-preview-img" src="${escapeHtml(image)}" alt="${escapeHtml(isUz ? banner.titleUz : banner.title)}">`;
 }
 
 function renderBanners() {
@@ -1375,15 +1374,14 @@ function renderBanners() {
   sortBanners();
 
   tbody.innerHTML = bannersData.map((banner) => {
-    const buttonsText = [banner.primaryText, banner.secondaryText].filter(Boolean).length;
+    const imageCount = [banner.image, banner.imageMobile, banner.imageUz, banner.imageMobileUz].filter(Boolean).length;
     return `
       <tr>
         <td>
           <strong>${escapeHtml(banner.title)}</strong>
-          <p>${escapeHtml(banner.tag)}</p>
-          <p class="banner-list-uz">${escapeHtml(banner.titleUz)} · ${escapeHtml(banner.tagUz)}</p>
+          <p class="banner-list-uz">${escapeHtml(banner.titleUz)}</p>
         </td>
-        <td>${buttonsText ? `${buttonsText} кноп.` : '—'}</td>
+        <td>${imageCount ? `${imageCount} шт.` : '—'}</td>
         <td><span class="status-badge ${banner.isActive ? 'active' : 'inactive'}"><span class="status-dot"></span>${banner.isActive ? 'Включен' : 'Отключен'}</span></td>
         <td>${banner.priority}</td>
         <td>
@@ -1401,9 +1399,20 @@ function renderBanners() {
 }
 
 let bannerFormImage = '';
+let bannerFormImageMobile = '';
 let bannerFormImageUz = '';
+let bannerFormImageMobileUz = '';
 let bannerFormLang = 'ru';
+let bannerFormPreviewMode = 'desktop';
 let bannerFeedbackTimer = null;
+
+function setBannerPreviewMode(mode) {
+  bannerFormPreviewMode = mode === 'mobile' ? 'mobile' : 'desktop';
+  document.querySelectorAll('[data-banner-preview-mode]').forEach((btn) => {
+    btn.classList.toggle('is-active', btn.getAttribute('data-banner-preview-mode') === bannerFormPreviewMode);
+  });
+  renderBannerPreview(getBannerPreviewDataFromForm(), bannerFormLang);
+}
 
 function setBannerFormLang(lang) {
   const nextLang = lang === 'uz' ? 'uz' : 'ru';
@@ -1469,7 +1478,7 @@ async function restoreDefaultBanners() {
   for (const item of previous) {
     if (!item?.id || keepIds.has(item.id)) continue;
     await window.emirateSupabaseApi?.deleteAdminBanner?.(item.id);
-    const urls = [item.image, item.imageUz].filter(Boolean);
+    const urls = [item.image, item.imageMobile, item.imageUz, item.imageMobileUz].filter(Boolean);
     if (urls.length) void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.(urls);
   }
   renderBanners();
@@ -1497,20 +1506,31 @@ function resetBannerForm() {
   const bannerActiveSelect = document.getElementById('bannerActive');
   const bannerImageMeta = document.getElementById('bannerImageMeta');
   const bannerImageMetaUz = document.getElementById('bannerImageMetaUz');
+  const bannerImageMobileMeta = document.getElementById('bannerImageMobileMeta');
+  const bannerImageMobileMetaUz = document.getElementById('bannerImageMobileMetaUz');
   const bannerImageInput = document.getElementById('bannerImageInput');
   const bannerImageInputUz = document.getElementById('bannerImageInputUz');
+  const bannerImageMobileInput = document.getElementById('bannerImageMobileInput');
+  const bannerImageMobileInputUz = document.getElementById('bannerImageMobileInputUz');
 
   bannerForm?.reset();
   if (bannerIdInput) bannerIdInput.value = '';
   if (bannerPriorityInput) bannerPriorityInput.value = '100';
   if (bannerActiveSelect) bannerActiveSelect.value = 'true';
-  if (bannerImageMeta) bannerImageMeta.textContent = 'Изображение не выбрано';
-  if (bannerImageMetaUz) bannerImageMetaUz.textContent = 'Rasm tanlanmagan';
+  if (bannerImageMeta) bannerImageMeta.textContent = 'Рекомендуется 1200×430 px (широкий баннер)';
+  if (bannerImageMetaUz) bannerImageMetaUz.textContent = 'Tavsiya: 1200×430 px';
+  if (bannerImageMobileMeta) bannerImageMobileMeta.textContent = 'Рекомендуется 750×360 px. Если пусто — на телефоне покажется компьютерная версия.';
+  if (bannerImageMobileMetaUz) bannerImageMobileMetaUz.textContent = 'Tavsiya: 750×360 px';
   if (bannerImageInput) bannerImageInput.value = '';
   if (bannerImageInputUz) bannerImageInputUz.value = '';
+  if (bannerImageMobileInput) bannerImageMobileInput.value = '';
+  if (bannerImageMobileInputUz) bannerImageMobileInputUz.value = '';
 
   bannerFormImage = '';
+  bannerFormImageMobile = '';
   bannerFormImageUz = '';
+  bannerFormImageMobileUz = '';
+  setBannerPreviewMode('desktop');
   setBannerFormLang('ru');
   renderBannerPreview(defaultBannersData()[0], 'ru');
 }
@@ -1536,6 +1556,8 @@ function fillBannerForm(bannerId) {
   const bannerActiveSelect = document.getElementById('bannerActive');
   const bannerImageMeta = document.getElementById('bannerImageMeta');
   const bannerImageMetaUz = document.getElementById('bannerImageMetaUz');
+  const bannerImageMobileMeta = document.getElementById('bannerImageMobileMeta');
+  const bannerImageMobileMetaUz = document.getElementById('bannerImageMobileMetaUz');
 
   if (bannerIdInput) bannerIdInput.value = banner.id;
   if (bannerTagInput) bannerTagInput.value = banner.tag;
@@ -1552,11 +1574,15 @@ function fillBannerForm(bannerId) {
   if (bannerSecondaryTextUzInput) bannerSecondaryTextUzInput.value = banner.secondaryTextUz;
   if (bannerPriorityInput) bannerPriorityInput.value = String(banner.priority);
   if (bannerActiveSelect) bannerActiveSelect.value = banner.isActive ? 'true' : 'false';
-  if (bannerImageMeta) bannerImageMeta.textContent = banner.image ? 'Текущее изображение загружено' : 'Изображение не выбрано';
-  if (bannerImageMetaUz) bannerImageMetaUz.textContent = banner.imageUz ? 'Joriy rasm yuklangan' : 'Rasm tanlanmagan';
+  if (bannerImageMeta) bannerImageMeta.textContent = banner.image ? 'Компьютерное изображение загружено' : 'Рекомендуется 1200×430 px (широкий баннер)';
+  if (bannerImageMetaUz) bannerImageMetaUz.textContent = banner.imageUz ? 'Kompyuter rasmi yuklangan' : 'Tavsiya: 1200×430 px';
+  if (bannerImageMobileMeta) bannerImageMobileMeta.textContent = banner.imageMobile ? 'Мобильное изображение загружено' : 'Рекомендуется 750×360 px. Если пусто — на телефоне покажется компьютерная версия.';
+  if (bannerImageMobileMetaUz) bannerImageMobileMetaUz.textContent = banner.imageMobileUz ? 'Mobil rasm yuklangan' : 'Tavsiya: 750×360 px';
 
   bannerFormImage = banner.image || '';
+  bannerFormImageMobile = banner.imageMobile || '';
   bannerFormImageUz = banner.imageUz || '';
+  bannerFormImageMobileUz = banner.imageMobileUz || '';
   renderBannerPreview(banner, bannerFormLang);
 }
 
@@ -1600,15 +1626,13 @@ async function deleteBanner(bannerId) {
   }
   if (!confirm(`Удалить слайд "${banner.title}"?`)) return;
 
-  const imageUrl = banner.image || '';
-  const imageUrlUz = banner.imageUz || '';
+  const urls = [banner.image, banner.imageMobile, banner.imageUz, banner.imageMobileUz].filter(Boolean);
   bannersData = bannersData.filter((item) => item.id !== bannerId);
   if (!await persistBannersData()) return;
   const deleteRes = await window.emirateSupabaseApi?.deleteAdminBanner?.(bannerId);
   if (deleteRes && !deleteRes.ok) {
     console.warn('[Supabase] delete banner', deleteRes.error);
   }
-  const urls = [imageUrl, imageUrlUz].filter(Boolean);
   if (urls.length) {
     void window.emirateSupabaseApi?.removeAdminAssetsByUrls?.(urls);
   }
@@ -2157,7 +2181,7 @@ document.querySelectorAll('.banner-lang-tab').forEach((tab) => {
   });
 });
 
-['bannerTag', 'bannerTitle', 'bannerDesc', 'bannerPrimaryText', 'bannerSecondaryText', 'bannerTagUz', 'bannerTitleUz', 'bannerDescUz', 'bannerPrimaryTextUz', 'bannerSecondaryTextUz', 'bannerActive'].forEach((id) => {
+['bannerTitle', 'bannerTitleUz', 'bannerPrimaryUrl', 'bannerActive'].forEach((id) => {
   const el = document.getElementById(id);
   if (!el) return;
   const eventName = id === 'bannerActive' ? 'change' : 'input';
@@ -2167,7 +2191,7 @@ document.querySelectorAll('.banner-lang-tab').forEach((tab) => {
 });
 
 async function handleBannerImageUpload(file, inputEl, options) {
-  const { imageKey, metaEl, emptyMetaText, successPrefix } = options;
+  const { imageKey, metaEl, emptyMetaText, successPrefix, ratioMin, ratioMax, ratioHint } = options;
   if (!file) {
     if (!options.getImage() && metaEl) metaEl.textContent = emptyMetaText;
     showBannerFeedback('Изображение не выбрано.');
@@ -2200,9 +2224,11 @@ async function handleBannerImageUpload(file, inputEl, options) {
       imageSrc = await readFileAsDataUrl(optimized);
     }
     const meta = await getImageMeta(imageSrc);
-    if (meta.ratio < BANNER_IMAGE_RATIO_MIN || meta.ratio > BANNER_IMAGE_RATIO_MAX) {
+    const minRatio = ratioMin ?? BANNER_IMAGE_RATIO_MIN;
+    const maxRatio = ratioMax ?? BANNER_IMAGE_RATIO_MAX;
+    if (meta.ratio < minRatio || meta.ratio > maxRatio) {
       showBannerFeedback('Неверная пропорция изображения для баннера.', 'error', 3800);
-      alert(`Неверная пропорция изображения (${meta.width}x${meta.height}). Используйте горизонтальный баннер примерно 16:6.`);
+      alert(`Неверная пропорция (${meta.width}×${meta.height}). ${ratioHint || 'Используйте горизонтальный баннер.'}`);
       if (metaEl) metaEl.textContent = emptyMetaText;
       return;
     }
@@ -2223,12 +2249,32 @@ document.getElementById('bannerImageInput')?.addEventListener('change', function
   if (!canManageBanners) return;
   const file = this.files?.[0];
   void handleBannerImageUpload(file, this, {
-    imageKey: 'RU',
+    imageKey: 'RU desktop',
     metaEl: document.getElementById('bannerImageMeta'),
-    emptyMetaText: 'Изображение не выбрано',
+    emptyMetaText: 'Рекомендуется 1200×430 px (широкий баннер)',
     successPrefix: 'Загружено',
+    ratioMin: BANNER_IMAGE_RATIO_MIN,
+    ratioMax: BANNER_IMAGE_RATIO_MAX,
+    ratioHint: 'Для компьютера используйте широкий баннер примерно 1200×430 px.',
     getImage: () => bannerFormImage,
     setImage: (url) => { bannerFormImage = url; }
+  });
+  this.value = '';
+});
+
+document.getElementById('bannerImageMobileInput')?.addEventListener('change', function() {
+  if (!canManageBanners) return;
+  const file = this.files?.[0];
+  void handleBannerImageUpload(file, this, {
+    imageKey: 'RU mobile',
+    metaEl: document.getElementById('bannerImageMobileMeta'),
+    emptyMetaText: 'Рекомендуется 750×360 px. Если пусто — на телефоне покажется компьютерная версия.',
+    successPrefix: 'Мобильное загружено',
+    ratioMin: BANNER_MOBILE_RATIO_MIN,
+    ratioMax: BANNER_MOBILE_RATIO_MAX,
+    ratioHint: 'Для телефона используйте баннер примерно 750×360 px.',
+    getImage: () => bannerFormImageMobile,
+    setImage: (url) => { bannerFormImageMobile = url; }
   });
   this.value = '';
 });
@@ -2237,14 +2283,40 @@ document.getElementById('bannerImageInputUz')?.addEventListener('change', functi
   if (!canManageBanners) return;
   const file = this.files?.[0];
   void handleBannerImageUpload(file, this, {
-    imageKey: 'UZ',
+    imageKey: 'UZ desktop',
     metaEl: document.getElementById('bannerImageMetaUz'),
-    emptyMetaText: 'Rasm tanlanmagan',
+    emptyMetaText: 'Tavsiya: 1200×430 px',
     successPrefix: 'Yuklandi',
+    ratioMin: BANNER_IMAGE_RATIO_MIN,
+    ratioMax: BANNER_IMAGE_RATIO_MAX,
+    ratioHint: 'Kompyuter uchun taxminan 1200×430 px.',
     getImage: () => bannerFormImageUz,
     setImage: (url) => { bannerFormImageUz = url; }
   });
   this.value = '';
+});
+
+document.getElementById('bannerImageMobileInputUz')?.addEventListener('change', function() {
+  if (!canManageBanners) return;
+  const file = this.files?.[0];
+  void handleBannerImageUpload(file, this, {
+    imageKey: 'UZ mobile',
+    metaEl: document.getElementById('bannerImageMobileMetaUz'),
+    emptyMetaText: 'Tavsiya: 750×360 px',
+    successPrefix: 'Mobil yuklandi',
+    ratioMin: BANNER_MOBILE_RATIO_MIN,
+    ratioMax: BANNER_MOBILE_RATIO_MAX,
+    ratioHint: 'Telefon uchun taxminan 750×360 px.',
+    getImage: () => bannerFormImageMobileUz,
+    setImage: (url) => { bannerFormImageMobileUz = url; }
+  });
+  this.value = '';
+});
+
+document.querySelectorAll('[data-banner-preview-mode]').forEach((btn) => {
+  btn.addEventListener('click', function() {
+    setBannerPreviewMode(this.getAttribute('data-banner-preview-mode'));
+  });
 });
 
 document.getElementById('bannersBody')?.addEventListener('click', function(e) {

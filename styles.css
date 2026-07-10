@@ -1773,6 +1773,76 @@ body.home-storefront-loading .carousel-track {
   box-shadow: var(--shadow-xl);
 }
 
+.hero-slider--carousel {
+  min-height: 0;
+  aspect-ratio: 1200 / 430;
+  background: #eef2f7;
+}
+
+.hero-slider--carousel::before {
+  display: none;
+}
+
+.hero-slide--banner {
+  display: none;
+  padding: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.hero-slide--banner.active {
+  display: block;
+}
+
+.hero-banner-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  line-height: 0;
+}
+
+.hero-banner-picture,
+.hero-banner-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-slide--fallback {
+  display: none;
+  padding: 40px 44px;
+  min-height: 320px;
+  align-items: center;
+  background: linear-gradient(135deg, #0b1120 0%, #0f2847 40%, #0c3d6b 70%, #134e7a 100%);
+}
+
+.hero-slide--fallback.active {
+  display: flex;
+}
+
+.hero-slider--carousel .hero-dots {
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 14px;
+  justify-content: center;
+}
+
+.hero-slider--carousel .hero-nav-btn {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+}
+
+.hero-slider--carousel .dot {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.hero-slider--carousel .dot.active {
+  background: #fff;
+}
+
 .hero-slider::before {
   content: '';
   position: absolute;
@@ -3083,9 +3153,41 @@ body.home-storefront-loading .carousel-track {
     min-height: 240px;
   }
 
+  .hero-slider--carousel {
+    min-height: 0;
+    aspect-ratio: 750 / 360;
+    border-radius: 0;
+  }
+
+  .hero.hero--full.container {
+    padding-left: 0;
+    padding-right: 0;
+    margin-top: 8px;
+  }
+
+  .hero.hero--full .hero-main {
+    margin-left: calc(-1 * var(--container-padding, 16px));
+    margin-right: calc(-1 * var(--container-padding, 16px));
+  }
+
   .hero-slide {
     padding: 24px 20px;
     min-height: 240px;
+  }
+
+  .hero-slide--banner,
+  .hero-slide--banner.active {
+    padding: 0;
+    min-height: 0;
+  }
+
+  .hero-slide--fallback {
+    padding: 24px 20px;
+    min-height: 240px;
+  }
+
+  .hero-slider--carousel .hero-dots {
+    bottom: 10px;
   }
 
   .hero-slide--image {
