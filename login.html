@@ -25,13 +25,11 @@
       <a class="logo" href="index.html">
         <img class="logo-img" src="images/emirate-logo.svg" alt="Emirate Co" width="160" height="56">
       </a>
-      <div class="catalog-control">
-        <a class="catalog-btn" href="catalog.html">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <div class="catalog-control" id="catalogControl">
+        <button class="catalog-btn" id="catalogBtn" type="button" aria-expanded="false" aria-controls="catalogDropdown">
+          <svg class="catalog-btn-icon catalog-btn-icon-menu" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <svg class="catalog-btn-icon catalog-btn-icon-close" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
           <span data-i18n="header.catalog">Каталог</span>
-        </a>
-        <button class="catalog-toggle" id="catalogToggle" type="button" aria-label="Открыть категории" aria-expanded="false">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
       </div>
       <form class="search-bar" role="search" action="catalog.html" method="get">
@@ -67,29 +65,10 @@
   </header>
 
   <div class="catalog-dropdown-backdrop profile-web-only" id="catalogDropdownBackdrop" hidden></div>
-  <div class="catalog-dropdown profile-web-only" id="catalogDropdown">
-    <div class="container catalog-dropdown-inner">
-      <div class="catalog-col">
-        <h4 data-i18n="dropdown.phones">📱 Смартфоны и гаджеты</h4>
-        <a href="catalog.html?category=Смартфоны" data-i18n="dropdown.smartphones">Смартфоны</a>
-        <a href="catalog.html?category=Смартфоны" data-i18n="dropdown.smartwatches">Умные часы</a>
-        <a href="catalog.html?category=Смартфоны" data-i18n="dropdown.accessories">Аксессуары</a>
-      </div>
-      <div class="catalog-col">
-        <h4 data-i18n="dropdown.laptops">💻 Ноутбуки и ПК</h4>
-        <a href="catalog.html?category=Ноутбуки" data-i18n="dropdown.laptop">Ноутбуки</a>
-        <a href="catalog.html?category=Ноутбуки" data-i18n="dropdown.monitors">Мониторы</a>
-      </div>
-      <div class="catalog-col">
-        <h4 data-i18n="dropdown.tv">📺 ТВ и аудио</h4>
-        <a href="catalog.html?category=ТВ" data-i18n="dropdown.tvs">Телевизоры</a>
-        <a href="catalog.html?category=Аудио" data-i18n="dropdown.headphones">Наушники</a>
-      </div>
-      <div class="catalog-col">
-        <h4 data-i18n="dropdown.home">🏠 Для дома</h4>
-        <a href="catalog.html?category=Техника" data-i18n="dropdown.vacuum">Пылесосы</a>
-        <a href="catalog.html?category=Техника" data-i18n="dropdown.kitchen">Кухонная техника</a>
-      </div>
+  <div class="catalog-dropdown profile-web-only" id="catalogDropdown" role="dialog" aria-label="Каталог" aria-hidden="true">
+    <div class="container catalog-mega">
+      <nav class="catalog-mega-sidebar" id="catalogMegaSidebar" aria-label="Категории"></nav>
+      <div class="catalog-mega-panel" id="catalogMegaPanel"></div>
     </div>
   </div>
 

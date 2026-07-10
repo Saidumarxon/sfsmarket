@@ -1,5 +1,6 @@
 const cartCountEl = document.getElementById("cartCount");
-const catalogToggle = document.getElementById("catalogToggle") || document.getElementById("catalogBtn");
+const catalogBtn = document.getElementById("catalogBtn");
+const catalogControl = document.getElementById("catalogControl");
 const catalogDropdown = document.getElementById("catalogDropdown");
 const headerEl = document.querySelector(".header");
 const scrollTopBtn = document.getElementById("scrollTop");
@@ -1001,8 +1002,328 @@ window.addEventListener("storage", (event) => {
   }
 });
 
-if (catalogToggle && catalogDropdown) {
+const CATALOG_MENU_ICONS = {
+  smartphone:
+    '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>',
+  laptop:
+    '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M2 19h20"/></svg>',
+  tv:
+    '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M8 3l4 3 4-3"/></svg>',
+  appliance:
+    '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2v4M8 6h8M6 10h12v10a2 2 0 01-2 2H8a2 2 0 01-2-2V10z"/></svg>',
+  accessories:
+    '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>',
+  home:
+    '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1v-10.5z"/></svg>',
+  beauty:
+    '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 3c3 4 5 7 5 10a5 5 0 01-10 0c0-3 2-6 5-10z"/></svg>',
+};
+
+const EMIRATE_CATALOG_MENU = [
+  {
+    id: "smartphones",
+    labelKey: "mega.smartphones",
+    category: "Смартфоны",
+    icon: "smartphone",
+    groups: [
+      {
+        titleKey: "mega.group.phones",
+        links: [
+          { labelKey: "dropdown.smartphones", category: "Смартфоны" },
+          { labelKey: "dropdown.smartwatches", category: "Смартфоны", q: "часы" },
+          { labelKey: "dropdown.fitbands", category: "Смартфоны", q: "браслет" },
+          { labelKey: "mega.tablets", category: "Смартфоны", q: "планшет" },
+        ],
+      },
+      {
+        titleKey: "mega.group.phoneAccessories",
+        links: [
+          { labelKey: "mega.cases", category: "Аксессуары", q: "чехол" },
+          { labelKey: "mega.chargers", category: "Аксессуары", q: "заряд" },
+          { labelKey: "mega.cables", category: "Аксессуары", q: "кабель" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "laptops",
+    labelKey: "mega.laptops",
+    category: "Ноутбуки",
+    icon: "laptop",
+    groups: [
+      {
+        titleKey: "mega.group.computers",
+        links: [
+          { labelKey: "dropdown.laptop", category: "Ноутбуки" },
+          { labelKey: "dropdown.monitors", category: "Ноутбуки", q: "монитор" },
+          { labelKey: "mega.monoblocks", category: "Ноутбуки", q: "моноблок" },
+        ],
+      },
+      {
+        titleKey: "dropdown.periphery",
+        links: [
+          { labelKey: "mega.keyboards", category: "Ноутбуки", q: "клавиатура" },
+          { labelKey: "mega.mice", category: "Ноутбуки", q: "мыш" },
+          { labelKey: "mega.webcams", category: "Ноутбуки", q: "веб-камера" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "tv-audio",
+    labelKey: "mega.tvAudio",
+    category: "ТВ и аудио",
+    icon: "tv",
+    groups: [
+      {
+        titleKey: "mega.group.tvs",
+        links: [
+          { labelKey: "dropdown.tvs", category: "ТВ и аудио", q: "телевизор" },
+          { labelKey: "mega.tvLed", category: "ТВ и аудио", q: "LED" },
+          { labelKey: "mega.tvOled", category: "ТВ и аудио", q: "OLED" },
+        ],
+      },
+      {
+        titleKey: "mega.group.audio",
+        links: [
+          { labelKey: "dropdown.headphones", category: "ТВ и аудио", q: "наушник" },
+          { labelKey: "dropdown.speakers", category: "ТВ и аудио", q: "колонк" },
+          { labelKey: "dropdown.soundbars", category: "ТВ и аудио", q: "саундбар" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "appliances",
+    labelKey: "mega.appliances",
+    category: "Бытовая техника",
+    icon: "appliance",
+    groups: [
+      {
+        titleKey: "mega.group.cleaning",
+        links: [
+          { labelKey: "dropdown.vacuum", category: "Бытовая техника", q: "пылесос" },
+          { labelKey: "mega.robotVacuum", category: "Бытовая техника", q: "робот" },
+        ],
+      },
+      {
+        titleKey: "dropdown.climate",
+        links: [
+          { labelKey: "mega.airConditioners", category: "Бытовая техника", q: "кондиционер" },
+          { labelKey: "mega.heaters", category: "Бытовая техника", q: "обогреватель" },
+        ],
+      },
+      {
+        titleKey: "dropdown.kitchen",
+        links: [
+          { labelKey: "mega.microwaves", category: "Бытовая техника", q: "микроволнов" },
+          { labelKey: "mega.kettles", category: "Бытовая техника", q: "чайник" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "accessories",
+    labelKey: "mega.accessories",
+    category: "Аксессуары",
+    icon: "accessories",
+    groups: [
+      {
+        titleKey: "mega.group.forPhones",
+        links: [
+          { labelKey: "mega.cases", category: "Аксессуары", q: "чехол" },
+          { labelKey: "mega.screenProtectors", category: "Аксессуары", q: "стекло" },
+          { labelKey: "mega.powerBanks", category: "Аксессуары", q: "powerbank" },
+        ],
+      },
+      {
+        titleKey: "mega.group.forLaptops",
+        links: [
+          { labelKey: "mega.bags", category: "Аксессуары", q: "сумка" },
+          { labelKey: "mega.docks", category: "Аксессуары", q: "док" },
+        ],
+      },
+      {
+        titleKey: "mega.group.cables",
+        links: [
+          { labelKey: "mega.cables", category: "Аксессуары", q: "кабель" },
+          { labelKey: "mega.adapters", category: "Аксессуары", q: "адаптер" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "home",
+    labelKey: "mega.homeGoods",
+    category: "Товары для дома",
+    icon: "home",
+    groups: [
+      {
+        titleKey: "mega.group.lighting",
+        links: [
+          { labelKey: "mega.lamps", category: "Товары для дома", q: "лампа" },
+          { labelKey: "mega.smartHome", category: "Товары для дома", q: "умный дом" },
+        ],
+      },
+      {
+        titleKey: "mega.group.decor",
+        links: [
+          { labelKey: "mega.textile", category: "Товары для дома", q: "текстиль" },
+          { labelKey: "mega.storage", category: "Товары для дома", q: "хранение" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "beauty",
+    labelKey: "mega.beauty",
+    category: "Красота и здоровье",
+    icon: "beauty",
+    groups: [
+      {
+        titleKey: "mega.group.hairCare",
+        links: [
+          { labelKey: "mega.hairDryers", category: "Красота и здоровье", q: "фен" },
+          { labelKey: "mega.trimmers", category: "Красота и здоровье", q: "триммер" },
+        ],
+      },
+      {
+        titleKey: "mega.group.health",
+        links: [
+          { labelKey: "mega.scales", category: "Красота и здоровье", q: "весы" },
+          { labelKey: "dropdown.beauty", category: "Красота и здоровье" },
+        ],
+      },
+    ],
+  },
+];
+
+let catalogMegaActiveId = EMIRATE_CATALOG_MENU[0]?.id || "";
+
+function catalogMenuLabel(key, fallback) {
+  const translations = window.TRANSLATIONS || {};
+  const lang = localStorage.getItem("emirate_lang") || "ru";
+  const entry = translations[key];
+  if (entry) return entry[lang] || entry.ru || fallback || key;
+  return fallback || key;
+}
+
+function emirateCatalogHref(category, q) {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  if (q) params.set("q", q);
+  const qs = params.toString();
+  return qs ? "catalog.html?" + qs : "catalog.html";
+}
+
+function renderCatalogMegaPanel(menuItem) {
+  const panel = document.getElementById("catalogMegaPanel");
+  if (!panel || !menuItem) return;
+
+  const groupsHtml = (menuItem.groups || [])
+    .map((group) => {
+      const linksHtml = (group.links || [])
+        .map((link) => {
+          const label = catalogMenuLabel(link.labelKey, link.label);
+          const href = emirateCatalogHref(link.category || menuItem.category, link.q);
+          return (
+            '<a class="catalog-mega-link" href="' +
+            href +
+            '" data-i18n="' +
+            (link.labelKey || "") +
+            '">' +
+            label +
+            "</a>"
+          );
+        })
+        .join("");
+      const title = catalogMenuLabel(group.titleKey, group.title);
+      return (
+        '<div class="catalog-mega-group">' +
+        '<div class="catalog-mega-group-title" data-i18n="' +
+        (group.titleKey || "") +
+        '">' +
+        title +
+        "</div>" +
+        linksHtml +
+        "</div>"
+      );
+    })
+    .join("");
+
+  panel.innerHTML =
+    '<div class="catalog-mega-panel-grid">' +
+    groupsHtml +
+    "</div>" +
+    '<div class="catalog-mega-footer">' +
+    '<a class="catalog-mega-all" href="catalog.html" data-i18n="mega.viewAll">' +
+    catalogMenuLabel("mega.viewAll", "Смотреть весь каталог →") +
+    "</a>" +
+    "</div>";
+}
+
+function setCatalogMegaActive(menuId) {
+  const menuItem = EMIRATE_CATALOG_MENU.find((item) => item.id === menuId);
+  if (!menuItem) return;
+  catalogMegaActiveId = menuId;
+  document.querySelectorAll(".catalog-mega-sidebar-item").forEach((node) => {
+    const isActive = node.getAttribute("data-menu-id") === menuId;
+    node.classList.toggle("is-active", isActive);
+    node.setAttribute("aria-current", isActive ? "true" : "false");
+  });
+  renderCatalogMegaPanel(menuItem);
+}
+
+function initCatalogMegaMenu() {
+  const sidebar = document.getElementById("catalogMegaSidebar");
+  if (!sidebar) return;
+
+  sidebar.innerHTML = EMIRATE_CATALOG_MENU.map((item) => {
+    const label = catalogMenuLabel(item.labelKey, item.label);
+    const icon = CATALOG_MENU_ICONS[item.icon] || "";
+    return (
+      '<button type="button" class="catalog-mega-sidebar-item' +
+      (item.id === catalogMegaActiveId ? " is-active" : "") +
+      '" data-menu-id="' +
+      item.id +
+      '" aria-current="' +
+      (item.id === catalogMegaActiveId ? "true" : "false") +
+      '">' +
+      '<span class="catalog-mega-sidebar-icon">' +
+      icon +
+      "</span>" +
+      '<span class="catalog-mega-sidebar-label" data-i18n="' +
+      item.labelKey +
+      '">' +
+      label +
+      "</span>" +
+      '<svg class="catalog-mega-sidebar-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>' +
+      "</button>"
+    );
+  }).join("");
+
+  sidebar.addEventListener("mouseover", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target.closest(".catalog-mega-sidebar-item") : null;
+    if (!target) return;
+    setCatalogMegaActive(target.getAttribute("data-menu-id") || "");
+  });
+
+  sidebar.addEventListener("focusin", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target.closest(".catalog-mega-sidebar-item") : null;
+    if (!target) return;
+    setCatalogMegaActive(target.getAttribute("data-menu-id") || "");
+  });
+
+  setCatalogMegaActive(catalogMegaActiveId);
+}
+
+window.emirateRenderCatalogMegaMenu = function emirateRenderCatalogMegaMenu() {
+  initCatalogMegaMenu();
+};
+
+if (catalogBtn && catalogDropdown) {
   const catalogBackdrop = document.getElementById("catalogDropdownBackdrop");
+  initCatalogMegaMenu();
 
   function syncCatalogDropdownPosition() {
     if (!headerEl) return;
@@ -1014,27 +1335,38 @@ if (catalogToggle && catalogDropdown) {
   function setCatalogDropdownOpen(isOpen) {
     syncCatalogDropdownPosition();
     catalogDropdown.classList.toggle("open", isOpen);
-    catalogToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
-    catalogToggle.classList.toggle("is-open", isOpen);
+    catalogDropdown.setAttribute("aria-hidden", isOpen ? "false" : "true");
+    catalogBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    catalogBtn.classList.toggle("is-open", isOpen);
+    if (catalogControl) catalogControl.classList.toggle("is-open", isOpen);
     if (catalogBackdrop) {
       if (isOpen) catalogBackdrop.removeAttribute("hidden");
       else catalogBackdrop.setAttribute("hidden", "");
     }
     document.body.classList.toggle("catalog-menu-open", isOpen);
+    if (isOpen && !catalogMegaActiveId) setCatalogMegaActive(EMIRATE_CATALOG_MENU[0]?.id || "");
   }
 
-  catalogToggle.addEventListener("click", (event) => {
+  function toggleCatalogDropdown(event) {
     event.preventDefault();
     event.stopPropagation();
     const willOpen = !catalogDropdown.classList.contains("open");
     setCatalogDropdownOpen(willOpen);
-  });
+  }
+
+  catalogBtn.addEventListener("click", toggleCatalogDropdown);
 
   catalogBackdrop?.addEventListener("click", () => setCatalogDropdownOpen(false));
 
+  catalogDropdown.addEventListener("click", (event) => {
+    const link = event.target instanceof HTMLElement ? event.target.closest(".catalog-mega-link, .catalog-mega-all") : null;
+    if (link) setCatalogDropdownOpen(false);
+  });
+
   document.addEventListener("click", (event) => {
     if (!(event.target instanceof HTMLElement)) return;
-    if (!catalogToggle.contains(event.target) && !catalogDropdown.contains(event.target)) {
+    const inControl = catalogControl?.contains(event.target) || catalogBtn.contains(event.target);
+    if (!inControl && !catalogDropdown.contains(event.target)) {
       setCatalogDropdownOpen(false);
     }
   });
@@ -1241,6 +1573,9 @@ if (langSwitch) {
     }
     if (typeof window.emirateRefreshHomeBanners === "function") {
       window.emirateRefreshHomeBanners();
+    }
+    if (typeof window.emirateRenderCatalogMegaMenu === "function") {
+      window.emirateRenderCatalogMegaMenu();
     }
   });
 }
