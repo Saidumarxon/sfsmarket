@@ -252,45 +252,56 @@ function ensureMobileNavFavorites() {
   else catalogItem.insertAdjacentElement("afterend", fav);
 }
 
+function getMobileNavPageSegment() {
+  const segment = window.location.pathname.split("/").filter(Boolean).pop() || "";
+  return segment.replace(/\.html$/i, "") || "index";
+}
+
+function getMobileNavActiveKey() {
+  const params = new URLSearchParams(window.location.search);
+  const page = getMobileNavPageSegment();
+
+  if (page === "index") return "home";
+  if (page === "login") return "profile";
+  if (page === "catalog") {
+    if (params.get("favorites") === "1") return "favorites";
+    if (params.get("cart") === "1") return "cart";
+    return "catalog";
+  }
+  if (page === "product" || page === "checkout") return "catalog";
+  return "";
+}
+
+function getMobileNavItemKey(href) {
+  if (!href || href === "#") return "";
+
+  if (href.includes("favorites=1")) return "favorites";
+  if (href.includes("cart=1")) return "cart";
+
+  try {
+    const url = new URL(href, window.location.href);
+    const page = (url.pathname.split("/").filter(Boolean).pop() || "").replace(/\.html$/i, "") || "index";
+    if (page === "login") return "profile";
+    if (page === "catalog") return "catalog";
+    if (page === "index") return "home";
+  } catch (_) {}
+
+  if (href.includes("login.html") || href.endsWith("/login")) return "profile";
+  if (href.includes("catalog.html") || href.endsWith("/catalog")) return "catalog";
+  if (href.includes("index.html") || href === "/" || href.endsWith("/")) return "home";
+  return "";
+}
+
 function syncMobileNavActive() {
   const items = Array.from(document.querySelectorAll(".mobile-nav .mobile-nav-item"));
   if (!items.length) return;
 
-  const { pathname, search } = window.location;
-  const currentPath = pathname.split("/").pop() || "index.html";
-  const params = new URLSearchParams(search);
-
-  let activeKey = "";
-
-  if (currentPath === "index.html" || currentPath === "") {
-    activeKey = "home";
-  } else if (currentPath === "login.html") {
-    activeKey = "profile";
-  } else if (currentPath === "catalog.html" && params.get("favorites") === "1") {
-    activeKey = "favorites";
-  } else if (currentPath === "catalog.html" && params.get("cart") === "1") {
-    activeKey = "cart";
-  } else if (currentPath === "catalog.html" || currentPath === "product.html" || currentPath === "checkout.html") {
-    activeKey = "catalog";
-  }
+  const activeKey = getMobileNavActiveKey();
 
   items.forEach((item) => {
     const href = item.getAttribute("href") || "";
-    let itemKey = "";
-
-    if (href.includes("favorites=1")) {
-      itemKey = "favorites";
-    } else if (href.includes("cart=1")) {
-      itemKey = "cart";
-    } else if (href.includes("login.html")) {
-      itemKey = "profile";
-    } else if (href.includes("catalog.html")) {
-      itemKey = "catalog";
-    } else if (href.includes("index.html")) {
-      itemKey = "home";
-    }
-
-    item.classList.toggle("active", itemKey === activeKey);
+    const itemKey = getMobileNavItemKey(href);
+    item.classList.toggle("active", Boolean(activeKey) && itemKey === activeKey);
   });
 }
 
@@ -597,6 +608,14 @@ syncCartCount();
 syncFavoritesUI();
 ensureMobileNavFavorites();
 syncMobileNavActive();
+window.emirateSyncMobileNavActive = syncMobileNavActive;
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", syncMobileNavActive);
+} else {
+  syncMobileNavActive();
+}
+window.addEventListener("pageshow", syncMobileNavActive);
 window.emirateResolveProductMedia = emirateResolveProductMedia;
 window.emirateFallbackProductPhotos = emirateFallbackProductPhotos;
 window.emirateProductPriceHtml = emirateProductPriceHtml;

@@ -356,19 +356,6 @@
       <span data-i18n="mobnav.profile">Профиль</span>
     </a>
   </nav>
-  <script>
-    (function () {
-      var params = new URLSearchParams(location.search);
-      var isCart = params.get("cart") === "1";
-      var isFavorites = params.get("favorites") === "1";
-      if (!isCart && !isFavorites) return;
-      document.querySelectorAll(".mobile-nav .mobile-nav-item").forEach(function (item) {
-        var href = item.getAttribute("href") || "";
-        var active = isCart ? href.indexOf("cart=1") !== -1 : href.indexOf("favorites=1") !== -1;
-        item.classList.toggle("active", active);
-      });
-    })();
-  </script>
 
   <!-- ===== SCROLL TOP ===== -->
   <button class="scroll-top" id="scrollTop" title="Наверх">
