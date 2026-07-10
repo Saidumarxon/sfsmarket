@@ -21,7 +21,7 @@ if (!adminSession) {
 
 const adminIdentity = String(adminSession?.role || adminSession?.user || '').toLowerCase();
 const canManageBanners = /admin/.test(adminIdentity);
-const ADMIN_SUPPLIERS_KEY = 'emirate_admin_suppliers';
+const ADMIN_SUPPLIERS_KEY = 'emirate_admin_suppliers_v2';
 
 // ===== SIDEBAR NAV =====
 const sidebarLinks = document.querySelectorAll('.sidebar-link[data-page]');
@@ -484,11 +484,7 @@ function getDateTimeString() {
 }
 
 function defaultSuppliersData() {
-  return [
-    { id: 'SUP-1001', name: 'Samsung Electronics', phone: '+998 90 111 22 33', status: 'active', lat: '41.311081', lng: '69.240562', updatedAt: '09.04.2026 10:20' },
-    { id: 'SUP-1002', name: 'Apple Distribution', phone: '+998 90 222 33 44', status: 'active', lat: '41.299496', lng: '69.240074', updatedAt: '09.04.2026 10:25' },
-    { id: 'SUP-1003', name: 'Xiaomi Partner Group', phone: '+998 90 333 44 55', status: 'inactive', lat: '', lng: '', updatedAt: '08.04.2026 18:10' }
-  ];
+  return [];
 }
 
 function normalizeSupplierRecord(record) {
@@ -508,7 +504,7 @@ function loadSuppliersData() {
   try {
     const raw = localStorage.getItem(ADMIN_SUPPLIERS_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
-    if (!Array.isArray(parsed) || !parsed.length) {
+    if (!Array.isArray(parsed)) {
       return defaultSuppliersData();
     }
     return parsed;
@@ -542,6 +538,12 @@ function renderSuppliers(data = suppliersData) {
   const tbody = document.getElementById('suppliersBody');
   const count = document.getElementById('suppliersCount');
   if (!tbody || !count) return;
+
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">Нет поставщиков</td></tr>';
+    count.textContent = 'Показано 0 из 0';
+    return;
+  }
 
   tbody.innerHTML = data.map((supplier) => `
     <tr>
@@ -1631,68 +1633,7 @@ async function toggleBannerStatus(bannerId) {
 }
 
 // --- Finance / Intake ---
-const intakeData = [
-  {
-    id: 'INT-001',
-    invoice: 'P252167',
-    counterparty: 'Samsung Electronics',
-    counterpartyType: 'Поставщик',
-    type: 'income',
-    description: 'Поступление: смартфоны и аксессуары',
-    value1: '156 000 000 сум',
-    value2: '+1 248 000 000 UZS',
-    pin: 'T104846',
-    date: '05.04.2026 09:40'
-  },
-  {
-    id: 'INT-002',
-    invoice: 'P252162',
-    counterparty: 'Apple Inc.',
-    counterpartyType: 'Поставщик',
-    type: 'income',
-    description: 'Поступление: MacBook и iPad',
-    value1: '285 000 000 сум',
-    value2: '+2 280 000 000 UZS',
-    pin: 'T113410',
-    date: '04.04.2026 14:20'
-  },
-  {
-    id: 'INT-003',
-    invoice: 'P252158',
-    counterparty: 'Xiaomi Corp.',
-    counterpartyType: 'Поставщик',
-    type: 'transfer',
-    description: 'Перемещение между складами',
-    value1: '98 000 000 сум',
-    value2: '0 UZS',
-    pin: 'T103807',
-    date: '03.04.2026 12:15'
-  },
-  {
-    id: 'INT-004',
-    invoice: 'P252154',
-    counterparty: 'LG Electronics',
-    counterpartyType: 'Сервис',
-    type: 'expense',
-    description: 'Списание: брак и возвраты',
-    value1: '-47 200 000 сум',
-    value2: '-377 600 000 UZS',
-    pin: 'T113025',
-    date: '02.04.2026 17:00'
-  },
-  {
-    id: 'INT-005',
-    invoice: 'P252151',
-    counterparty: 'Dyson Ltd.',
-    counterpartyType: 'Логистика',
-    type: 'expense',
-    description: 'Транспортные и складские расходы',
-    value1: '-16 500 000 сум',
-    value2: '-132 000 000 UZS',
-    pin: 'T117051',
-    date: '01.04.2026 10:35'
-  }
-];
+const intakeData = [];
 
 const intakeTypeMap = {
   income: 'Приёмка',
@@ -1767,6 +1708,14 @@ function resetIntakeCreateForm() {
 function renderIntake(data = intakeData) {
   const tbody = document.getElementById('intakeBody');
   const countLabel = document.getElementById('intakeCountText');
+  if (!tbody) return;
+
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:20px;">Нет записей</td></tr>';
+    if (countLabel) countLabel.textContent = 'Показано 0 записей';
+    syncIntakeCounterpartyFilterOptions();
+    return;
+  }
 
   tbody.innerHTML = data.map((i, index) => `
     <tr class="${i.type === 'expense' ? 'intake-row-alert' : ''}">
