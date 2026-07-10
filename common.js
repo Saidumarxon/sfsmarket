@@ -230,6 +230,28 @@ function syncFavoritesUI(scope = document) {
   syncWishlistButtons(scope);
 }
 
+function ensureMobileNavFavorites() {
+  const nav = document.querySelector(".mobile-nav");
+  if (!nav || nav.querySelector('[href*="favorites=1"]')) return;
+
+  const catalogItem = Array.from(nav.querySelectorAll(".mobile-nav-item")).find((item) => {
+    const href = item.getAttribute("href") || "";
+    return href.includes("catalog.html") && !href.includes("cart=1") && !href.includes("favorites=1");
+  });
+  if (!catalogItem) return;
+
+  const fav = document.createElement("a");
+  fav.href = "catalog.html?favorites=1";
+  fav.className = "mobile-nav-item";
+  fav.innerHTML =
+    '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>' +
+    '<span data-i18n="mobnav.favorites">Избранное</span>';
+
+  const cartItem = nav.querySelector('[href*="cart=1"]');
+  if (cartItem) nav.insertBefore(fav, cartItem);
+  else catalogItem.insertAdjacentElement("afterend", fav);
+}
+
 function syncMobileNavActive() {
   const items = Array.from(document.querySelectorAll(".mobile-nav .mobile-nav-item"));
   if (!items.length) return;
@@ -573,6 +595,7 @@ function emirateResolveProductMedia(product) {
 
 syncCartCount();
 syncFavoritesUI();
+ensureMobileNavFavorites();
 syncMobileNavActive();
 window.emirateResolveProductMedia = emirateResolveProductMedia;
 window.emirateFallbackProductPhotos = emirateFallbackProductPhotos;

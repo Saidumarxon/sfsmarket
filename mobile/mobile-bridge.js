@@ -6,6 +6,17 @@
 
   document.documentElement.classList.add("capacitor-app");
 
+  function syncCapacitorHeaderInset() {
+    var header = document.querySelector(".header");
+    if (!header) return;
+    var style = window.getComputedStyle(header);
+    if (style.display === "none" || style.visibility === "hidden") return;
+    var height = Math.round(header.getBoundingClientRect().height);
+    if (height > 0) {
+      document.documentElement.style.setProperty("--app-header-height", height + "px");
+    }
+  }
+
   function plugin(name) {
     if (typeof Capacitor.registerPlugin === "function") {
       return Capacitor.registerPlugin(name);
@@ -44,8 +55,15 @@
   }
 
   hideSplash();
-  document.addEventListener("DOMContentLoaded", hideSplash);
-  window.addEventListener("load", hideSplash);
+  document.addEventListener("DOMContentLoaded", function () {
+    hideSplash();
+    syncCapacitorHeaderInset();
+  });
+  window.addEventListener("load", function () {
+    hideSplash();
+    syncCapacitorHeaderInset();
+  });
+  window.addEventListener("resize", syncCapacitorHeaderInset);
 
   document.addEventListener(
     "click",
