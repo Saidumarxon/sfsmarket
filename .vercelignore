@@ -2,6 +2,7 @@
 !.vercelignore
 !.gitignore
 !robots.txt
+!vercel.json
 !emirate-seo.js
 !emirate-auth.js
 !*.html
