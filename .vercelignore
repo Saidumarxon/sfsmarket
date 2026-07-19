@@ -13,8 +13,6 @@
 !scripts/**
 !api
 !api/**
-!server
-!server/**
 !images
 !images/**
 !icons

@@ -1,7 +1,7 @@
 /**
  * Telegram order notifications + admin order panel.
  */
-const bot = require("../server/telegram-lib");
+const bot = require("./_lib/telegram-lib");
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");

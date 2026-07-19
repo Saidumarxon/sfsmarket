@@ -4,9 +4,9 @@
  * POST /api/auth-send-otp  (rewrite)
  * POST /api/auth-verify-otp (rewrite; body must include code)
  */
-const eskiz = require("../server/eskiz-lib");
-const otpLib = require("../server/sms-otp-lib");
-const rateLimit = require("../server/sms-rate-limit");
+const eskiz = require("./_lib/eskiz-lib");
+const otpLib = require("./_lib/sms-otp-lib");
+const rateLimit = require("./_lib/sms-rate-limit");
 
 async function handleSend(req, res, body) {
   const phone = body.phone || body.mobile_phone || "";
@@ -33,7 +33,12 @@ async function handleSend(req, res, body) {
 
   const result = await otpLib.issueOtp(normalized, purpose);
   if (!result.ok) {
-    const status = result.error === "eskiz_not_configured" ? 503 : 400;
+    const status =
+      result.error === "eskiz_not_configured" || result.error === "supabase_not_configured"
+        ? 503
+        : result.error === "eskiz_login_failed" || result.error === "eskiz_send_failed"
+          ? 502
+          : 400;
     return otpLib.corsJson(res, status, result);
   }
 

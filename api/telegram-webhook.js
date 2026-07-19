@@ -2,7 +2,7 @@
  * Telegram Bot webhook — POST updates from Telegram.
  * Env: TELEGRAM_BOT_TOKEN, SUPABASE_ANON_KEY, optional TELEGRAM_WEBHOOK_SECRET
  */
-const bot = require("../server/telegram-lib");
+const bot = require("./_lib/telegram-lib");
 
 module.exports = async function handler(req, res) {
   if (req.method === "GET") {

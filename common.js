@@ -1776,6 +1776,10 @@ async function submitAuthPhoneOtp() {
       showAuthMessage(t("auth.smsNotConfigured") || "SMS временно недоступен");
       return;
     }
+    if (res.error === "eskiz_login_failed" || res.error === "eskiz_send_failed") {
+      showAuthMessage(t("auth.smsProviderError") || "Ошибка SMS-сервиса. Проверьте настройки Eskiz.");
+      return;
+    }
     showAuthMessage(t("auth.sendCodeError") || "Не удалось отправить код");
     return;
   }
