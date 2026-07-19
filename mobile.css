@@ -42,6 +42,22 @@ html.capacitor-app .mobile-nav {
   padding-bottom: calc(8px + var(--safe-bottom));
 }
 
+html.capacitor-app .mobile-nav-item {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 20%;
+  padding: 6px 4px;
+  font-size: 10px;
+}
+
+html.capacitor-app .mobile-nav-item span {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 html.capacitor-app .scroll-top {
   bottom: calc(90px + var(--safe-bottom));
 }

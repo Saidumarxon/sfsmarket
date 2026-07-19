@@ -608,6 +608,7 @@ syncCartCount();
 syncFavoritesUI();
 ensureMobileNavFavorites();
 syncMobileNavActive();
+window.emirateEnsureMobileNavFavorites = ensureMobileNavFavorites;
 window.emirateSyncMobileNavActive = syncMobileNavActive;
 
 if (document.readyState === "loading") {

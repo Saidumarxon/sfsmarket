@@ -93,12 +93,24 @@ function writeCapacitorConfig() {
   fs.writeFileSync(path.join(root, "capacitor.config.json"), JSON.stringify(config, null, 2) + "\n", "utf8");
 }
 
+function injectMobileStorefrontFix(html) {
+  const tag = '<script src="mobile-storefront-fix.js"></script>';
+  if (html.includes("mobile-storefront-fix.js")) return html;
+  return html.replace("</body>", `  ${tag}\n</body>`);
+}
+
 console.log("[mobile] Preparing www/ …");
 rmDir(www);
 fs.mkdirSync(www, { recursive: true });
 
+copyFile(path.join(root, "mobile", "mobile-bridge.js"), path.join(www, "mobile-bridge.js"));
+copyFile(path.join(root, "mobile", "mobile-storefront-fix.js"), path.join(www, "mobile-storefront-fix.js"));
+
 for (const file of HTML_PAGES) {
-  copyFile(path.join(root, file), path.join(www, file));
+  const srcPath = path.join(root, file);
+  let html = fs.readFileSync(srcPath, "utf8");
+  html = injectMobileStorefrontFix(html);
+  fs.writeFileSync(path.join(www, file), html, "utf8");
 }
 
 for (const file of JS_FILES) {
@@ -108,7 +120,6 @@ for (const file of JS_FILES) {
 copyFile(path.join(root, "supabase-config.prod.js"), path.join(www, "supabase-config.js"));
 copyFile(path.join(root, "styles.css"), path.join(www, "styles.css"));
 copyFile(path.join(root, "robots.txt"), path.join(www, "robots.txt"));
-copyFile(path.join(root, "mobile", "mobile-bridge.js"), path.join(www, "mobile-bridge.js"));
 
 for (const file of STATIC_FILES) {
   copyFile(path.join(root, "mobile", file), path.join(www, file));
@@ -121,7 +132,15 @@ for (const file of STATIC_FILES) {
   copyFile(path.join(root, "mobile", file), path.join(root, file));
 }
 copyFile(path.join(root, "mobile", "mobile-bridge.js"), path.join(root, "mobile-bridge.js"));
+copyFile(path.join(root, "mobile", "mobile-storefront-fix.js"), path.join(root, "mobile-storefront-fix.js"));
 copyDir(path.join(root, "mobile", "icons"), path.join(root, "icons"));
+
+for (const file of HTML_PAGES) {
+  const srcPath = path.join(root, file);
+  let html = fs.readFileSync(srcPath, "utf8");
+  const patched = injectMobileStorefrontFix(html);
+  if (patched !== html) fs.writeFileSync(srcPath, patched, "utf8");
+}
 
 writeMobileConfig();
 writeCapacitorConfig();
