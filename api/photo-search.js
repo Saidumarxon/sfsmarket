@@ -3,7 +3,7 @@
  *
  * Env: GEMINI_API_KEY — https://aistudio.google.com/apikey
  */
-const rateLimit = require("./photo-rate-limit");
+const rateLimit = require("../server/photo-rate-limit");
 
 const GEMINI_MODEL = String(process.env.GEMINI_MODEL || "gemini-2.0-flash-lite");
 const MAX_PRODUCTS = 200;

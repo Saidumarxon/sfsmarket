@@ -1,8 +1,8 @@
 /**
  * Create order server-side (bypasses RLS). Requires SUPABASE_SERVICE_ROLE_KEY.
  */
-const bot = require("./telegram-lib");
-const eskiz = require("./eskiz-lib");
+const bot = require("../server/telegram-lib");
+const eskiz = require("../server/eskiz-lib");
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");

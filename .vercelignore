@@ -13,9 +13,13 @@
 !scripts/**
 !api
 !api/**
+!server
+!server/**
 !images
 !images/**
 !icons
 !icons/**
 !mobile
 !mobile/**
+next-app
+next-app/**

@@ -4,9 +4,9 @@
  * POST /api/auth-send-otp  (rewrite)
  * POST /api/auth-verify-otp (rewrite; body must include code)
  */
-const eskiz = require("./eskiz-lib");
-const otpLib = require("./sms-otp-lib");
-const rateLimit = require("./sms-rate-limit");
+const eskiz = require("../server/eskiz-lib");
+const otpLib = require("../server/sms-otp-lib");
+const rateLimit = require("../server/sms-rate-limit");
 
 async function handleSend(req, res, body) {
   const phone = body.phone || body.mobile_phone || "";
