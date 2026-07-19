@@ -236,6 +236,19 @@ async function issueOtp(phone, purpose) {
   if (!stored.ok) {
     return { ok: false, error: "otp_store_failed" };
   }
+
+  const debugOtp = String(process.env.ESKIZ_DEBUG_OTP || "").trim() === "1";
+  if (debugOtp) {
+    return {
+      ok: true,
+      phone: normalized,
+      expires_in: OTP_TTL_SEC,
+      test_mode: eskiz.isTestMode(),
+      debug_code: code,
+      sms_skipped: true,
+    };
+  }
+
   const sent = await eskiz.sendOtpSms(normalized, code);
   if (!sent.ok) {
     return { ok: false, error: sent.error || "sms_send_failed", details: sent.details || null };

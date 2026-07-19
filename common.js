@@ -1777,7 +1777,10 @@ async function submitAuthPhoneOtp() {
       return;
     }
     if (res.error === "eskiz_login_failed" || res.error === "eskiz_send_failed") {
-      showAuthMessage(t("auth.smsProviderError") || "Ошибка SMS-сервиса. Проверьте настройки Eskiz.");
+      showAuthMessage(
+        t("auth.eskizBadCredentials") ||
+          "Неверный логин/пароль SMS-шлюза Eskiz. В Vercel укажите email и пароль из раздела «SMS шлюз» в my.eskiz.uz (не пароль от входа в кабинет)."
+      );
       return;
     }
     showAuthMessage(t("auth.sendCodeError") || "Не удалось отправить код");

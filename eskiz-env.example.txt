@@ -1,8 +1,9 @@
 # Eskiz SMS — переменные окружения (Vercel → Settings → Environment Variables)
 #
-# Обязательные:
+# Обязательные (логин/пароль именно SMS-шлюза, НЕ пароль входа в my.eskiz.uz):
+# В кабинете my.eskiz.uz → раздел «SMS шлюз» / API → скопируйте email и password
 # ESKIZ_EMAIL=your@email.uz
-# ESKIZ_PASSWORD=your_api_password
+# ESKIZ_PASSWORD=your_sms_gateway_password
 #
 # Рекомендуемые:
 # SUPABASE_SERVICE_ROLE_KEY=...          # OTP + сессии + rate limit

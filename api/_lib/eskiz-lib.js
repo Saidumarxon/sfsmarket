@@ -61,7 +61,12 @@ async function login(force) {
   });
   const token = json && json.data && json.data.token ? String(json.data.token).trim() : "";
   if (!res.ok || !token) {
-    throw new Error("eskiz_login_failed");
+    const err = new Error("eskiz_login_failed");
+    err.details = {
+      status: res.status,
+      message: json && json.message ? String(json.message) : "",
+    };
+    throw err;
   }
   cachedToken = token;
   tokenExpiresAt = now + 25 * 24 * 60 * 60 * 1000;
@@ -140,7 +145,11 @@ async function sendSms(phone, message, options) {
   try {
     token = await login(false);
   } catch (err) {
-    return { ok: false, error: (err && err.message) || "eskiz_login_failed" };
+    return {
+      ok: false,
+      error: (err && err.message) || "eskiz_login_failed",
+      details: (err && err.details) || null,
+    };
   }
   const form = new FormData();
   form.append("mobile_phone", normalized);
@@ -161,7 +170,11 @@ async function sendSms(phone, message, options) {
     try {
       token = await refreshToken();
     } catch (err) {
-      return { ok: false, error: (err && err.message) || "eskiz_login_failed" };
+      return {
+        ok: false,
+        error: (err && err.message) || "eskiz_login_failed",
+        details: (err && err.details) || null,
+      };
     }
     res = await fetch(ESKIZ_BASE + "/message/sms/send", {
       method: "POST",
