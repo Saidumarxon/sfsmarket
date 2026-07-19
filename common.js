@@ -1776,11 +1776,22 @@ async function submitAuthPhoneOtp() {
       showAuthMessage(t("auth.smsNotConfigured") || "SMS временно недоступен");
       return;
     }
-    if (res.error === "eskiz_login_failed" || res.error === "eskiz_send_failed") {
+    if (res.error === "eskiz_login_failed") {
       showAuthMessage(
         t("auth.eskizBadCredentials") ||
-          "Неверный логин/пароль SMS-шлюза Eskiz. В Vercel укажите email и пароль из раздела «SMS шлюз» в my.eskiz.uz (не пароль от входа в кабинет)."
+          "Неверный email или секретный ключ Eskiz. Проверьте ESKIZ_EMAIL и ESKIZ_PASSWORD в Vercel (my.eskiz.uz → SMS → SMS шлюз)."
       );
+      return;
+    }
+    if (res.error === "eskiz_send_failed" || res.error === "sms_send_failed") {
+      showAuthMessage(
+        t("auth.eskizSendFailed") ||
+          "Eskiz не отправил SMS. В тестовом аккаунте SMS уходит только на номер, указанный при регистрации Eskiz, и только с тестовым текстом."
+      );
+      return;
+    }
+    if (res.error === "send_failed" || res.error === "network_error" || res.error === "Failed to fetch") {
+      showAuthMessage(t("auth.networkError") || "Нет связи с сервером. Обновите страницу (Ctrl+F5) и попробуйте снова.");
       return;
     }
     showAuthMessage(t("auth.sendCodeError") || "Не удалось отправить код");

@@ -581,6 +581,18 @@
             showLoginPhoneError((window.emirateT && window.emirateT("auth.smsNotConfigured")) || "SMS временно недоступен");
             return;
           }
+          if (res.error === "eskiz_login_failed") {
+            showLoginPhoneError((window.emirateT && window.emirateT("auth.eskizBadCredentials")) || "Неверный email или секретный ключ Eskiz в Vercel");
+            return;
+          }
+          if (res.error === "eskiz_send_failed" || res.error === "sms_send_failed") {
+            showLoginPhoneError((window.emirateT && window.emirateT("auth.eskizSendFailed")) || "Eskiz не отправил SMS (тестовый аккаунт — только на зарегистрированный номер)");
+            return;
+          }
+          if (res.error === "send_failed" || res.error === "network_error") {
+            showLoginPhoneError((window.emirateT && window.emirateT("auth.networkError")) || "Обновите страницу (Ctrl+F5) и попробуйте снова");
+            return;
+          }
           showLoginPhoneError((window.emirateT && window.emirateT("auth.sendCodeError")) || "Не удалось отправить код");
           return;
         }

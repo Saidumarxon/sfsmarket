@@ -321,7 +321,13 @@
         return {};
       });
       if (!res.ok || !data.ok) {
-        return { ok: false, error: data.error || "send_failed", retry_after_sec: data.retry_after_sec, debug_code: data.debug_code };
+        return {
+          ok: false,
+          error: data.error || "send_failed",
+          retry_after_sec: data.retry_after_sec,
+          debug_code: data.debug_code,
+          details: data.details || null,
+        };
       }
       return { ok: true, phone: data.phone, expires_in: data.expires_in, test_mode: data.test_mode, debug_code: data.debug_code };
     } catch (err) {
