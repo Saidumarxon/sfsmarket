@@ -305,6 +305,77 @@
     }
   }
 
+  async function requestPhoneOtp(phone, purpose) {
+    var normalized = String(phone || "").replace(/\D/g, "");
+    if (normalized.indexOf("998") === 0) normalized = normalized.slice(3);
+    if (normalized.length !== 9) {
+      return { ok: false, error: "invalid_phone" };
+    }
+    try {
+      var res = await fetch("/api/auth-send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: normalized, purpose: purpose || "login" }),
+      });
+      var data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        return { ok: false, error: data.error || "send_failed", retry_after_sec: data.retry_after_sec, debug_code: data.debug_code };
+      }
+      return { ok: true, phone: data.phone, expires_in: data.expires_in, test_mode: data.test_mode, debug_code: data.debug_code };
+    } catch (err) {
+      return { ok: false, error: err && err.message ? err.message : "network_error" };
+    }
+  }
+
+  async function verifyPhoneOtp(phone, code, purpose) {
+    if (!isConfigured()) {
+      return { ok: false, error: { message: "Supabase не настроен" } };
+    }
+    var sb = supabaseClient();
+    if (!sb) {
+      return { ok: false, error: { message: "Supabase не настроен" } };
+    }
+    try {
+      var res = await fetch("/api/auth-verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone, code: code, purpose: purpose || "login" }),
+      });
+      var data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok || !data.access_token) {
+        var errKey = data.error || "verify_failed";
+        var messages = {
+          otp_invalid: "Неверный код",
+          otp_expired: "Код истёк — запросите новый",
+          otp_locked: "Слишком много попыток",
+          invalid_phone: "Неверный номер телефона",
+        };
+        return { ok: false, error: { message: messages[errKey] || errKey } };
+      }
+      var sessionRes = await sb.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (sessionRes.error) {
+        return { ok: false, error: sessionRes.error };
+      }
+      var active = await sb.auth.getSession();
+      var session = active.data && active.data.session;
+      if (!session) {
+        return { ok: false, error: { message: "session_failed" } };
+      }
+      var customer = persistCustomerSession(session);
+      syncCustomerAuthUi();
+      return { ok: true, session: session, customer: customer, phone: data.phone };
+    } catch (err) {
+      return { ok: false, error: { message: err && err.message ? err.message : "network_error" } };
+    }
+  }
+
   async function syncSessionToCustomerStorage() {
     var sb = supabaseClient();
     if (!sb) return null;
@@ -335,6 +406,8 @@
 
   window.emirateAuth = {
     signInWithGoogle: signInWithGoogle,
+    requestPhoneOtp: requestPhoneOtp,
+    verifyPhoneOtp: verifyPhoneOtp,
     completeOAuthFromUrl: completeOAuthFromUrl,
     persistCustomerSession: persistCustomerSession,
     extractProfile: extractProfile,

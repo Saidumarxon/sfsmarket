@@ -2,6 +2,7 @@
  * Create order server-side (bypasses RLS). Requires SUPABASE_SERVICE_ROLE_KEY.
  */
 const bot = require("./telegram-lib");
+const eskiz = require("./eskiz-lib");
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -24,6 +25,15 @@ module.exports = async function handler(req, res) {
       return res.status(status).json(inserted);
     }
     await bot.notifyAdminNewOrder(Object.assign({ id: inserted.id }, inserted.order)).catch(function () {});
+
+    const orderPhone = String((inserted.order && inserted.order.phone) || orderRow.phone || "").trim();
+    if (orderPhone && eskiz.isConfigured()) {
+      const lang = String(body.lang || orderRow.lang || "ru").trim().toLowerCase();
+      void eskiz.sendOrderSms(orderPhone, inserted.id, lang).catch(function (err) {
+        console.warn("[place-order] order sms", err && err.message ? err.message : err);
+      });
+    }
+
     return res.status(200).json({ ok: true, id: inserted.id });
   } catch (err) {
     console.error("[place-order]", err);

@@ -1708,9 +1708,109 @@ function resetAuthCustomerMode(modal) {
   var phoneInput = modal.querySelector("#authPhone");
   var emailInput = modal.querySelector("#authEmail");
   var passInput = modal.querySelector("#authPass");
+  var authForm = modal.querySelector("#authForm");
+  var otpStep = modal.querySelector("#authOtpStep");
+  var otpCode = modal.querySelector("#authOtpCode");
+  var otpHint = modal.querySelector("#authOtpHint");
   if (phoneInput) phoneInput.value = "";
   if (emailInput) emailInput.value = "";
   if (passInput) passInput.value = "";
+  if (otpCode) otpCode.value = "";
+  if (otpHint) otpHint.textContent = "";
+  if (authForm) authForm.removeAttribute("hidden");
+  if (otpStep) otpStep.setAttribute("hidden", "");
+  modal.dataset.otpPhone = "";
+}
+
+function showAuthOtpStep(modal, phone, meta) {
+  if (!modal) return;
+  var authForm = modal.querySelector("#authForm");
+  var otpStep = modal.querySelector("#authOtpStep");
+  var otpHint = modal.querySelector("#authOtpHint");
+  var otpCode = modal.querySelector("#authOtpCode");
+  if (authForm) authForm.setAttribute("hidden", "");
+  if (otpStep) otpStep.removeAttribute("hidden");
+  modal.dataset.otpPhone = String(phone || "");
+  if (otpHint) {
+    var hint = t("auth.codeSent") || "Код отправлен на номер";
+    if (meta && meta.test_mode) {
+      hint += ". " + (t("auth.testModeHint") || "В тестовом режиме Eskiz придёт тестовое SMS.");
+    }
+    if (meta && meta.debug_code) {
+      hint += " " + (t("auth.debugCode") || "Тест-код:") + " " + meta.debug_code;
+    }
+    otpHint.textContent = hint;
+  }
+  if (otpCode) {
+    otpCode.value = meta && meta.debug_code ? String(meta.debug_code) : "";
+    otpCode.focus();
+  }
+}
+
+async function submitAuthPhoneOtp() {
+  var modal = document.getElementById("authModal");
+  var phoneInput = document.getElementById("authPhone");
+  if (!phoneInput) return;
+  var rawPhone = phoneInput.value;
+  if (modal && tryOpenAdminAuthFromInput(modal, rawPhone)) return;
+
+  var digits = rawPhone.replace(/\D/g, "");
+  if (digits.indexOf("998") === 0) digits = digits.slice(3);
+  if (digits.length !== 9) {
+    showAuthMessage(t("auth.phoneInvalid") || "Введите номер в формате +998");
+    return;
+  }
+
+  if (!window.emirateAuth) {
+    await loadScriptOnce("emirate-auth.js");
+  }
+  showAuthMessage(t("auth.sendingCode") || "Отправляем код…");
+  var res = await window.emirateAuth.requestPhoneOtp(digits, "login");
+  if (!res.ok) {
+    if (res.error === "rate_limited") {
+      var wait = res.retry_after_sec ? " (" + res.retry_after_sec + "s)" : "";
+      showAuthMessage((t("auth.rateLimited") || "Слишком много запросов") + wait);
+      return;
+    }
+    if (res.error === "eskiz_not_configured") {
+      showAuthMessage(t("auth.smsNotConfigured") || "SMS временно недоступен");
+      return;
+    }
+    showAuthMessage(t("auth.sendCodeError") || "Не удалось отправить код");
+    return;
+  }
+  showAuthMessage("");
+  showAuthOtpStep(modal, res.phone || digits, res);
+}
+
+async function submitAuthOtpVerify() {
+  var modal = document.getElementById("authModal");
+  var codeEl = document.getElementById("authOtpCode");
+  if (!codeEl) return;
+  var phone = modal && modal.dataset.otpPhone ? modal.dataset.otpPhone : "";
+  var code = String(codeEl.value || "").replace(/\D/g, "");
+  if (!phone || code.length < 4) {
+    showAuthMessage(t("auth.codeInvalid") || "Введите код из SMS");
+    return;
+  }
+  if (!window.emirateAuth) {
+    await loadScriptOnce("emirate-auth.js");
+  }
+  showAuthMessage(t("auth.verifyingCode") || "Проверяем код…");
+  var res = await window.emirateAuth.verifyPhoneOtp(phone, code, "login");
+  if (!res.ok) {
+    showAuthMessage((res.error && res.error.message) || t("auth.codeInvalid") || "Неверный код");
+    return;
+  }
+  showAuthMessage("");
+  closeAuthModal();
+  if (window.location.pathname.includes("login") || /login\.html/i.test(window.location.pathname)) {
+    window.location.reload();
+    return;
+  }
+  if (window.emirateAuth && window.emirateAuth.syncCustomerAuthUi) {
+    window.emirateAuth.syncCustomerAuthUi();
+  }
 }
 
 function tryOpenAdminAuthFromInput(modal, rawValue) {
@@ -1739,6 +1839,13 @@ function ensureAuthModal() {
             '<input class="auth-phone-input" type="tel" id="authPhone" inputmode="tel" autocomplete="tel" data-i18n-placeholder="auth.phonePlaceholder" placeholder="+998 (__) ___-__-__">' +
             '<button type="submit" class="auth-primary-btn" id="authPhoneSubmit" data-i18n="auth.getCode">Получить код активации</button>' +
           '</form>' +
+          '<div id="authOtpStep" class="auth-customer-block" hidden>' +
+            '<p class="auth-otp-hint" id="authOtpHint"></p>' +
+            '<label class="auth-field-label" for="authOtpCode" data-i18n="auth.codeLabel">Код из SMS</label>' +
+            '<input class="auth-phone-input" type="text" id="authOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">' +
+            '<button type="button" class="auth-primary-btn" id="authOtpSubmit" data-i18n="auth.verifyCode">Подтвердить</button>' +
+            '<button type="button" class="auth-link-btn" id="authOtpBack" data-i18n="auth.changePhone">Изменить номер</button>' +
+          '</div>' +
           '<div class="auth-customer-block auth-divider"><span data-i18n="auth.or">Или</span></div>' +
           '<div class="auth-customer-block auth-social-row">' +
             '<button type="button" class="auth-social-btn auth-social-btn--google" id="authGoogleBtn">' +
@@ -1815,14 +1922,24 @@ function ensureAuthModal() {
       submitAuthEmailLogin();
       return;
     }
-    var rawPhone = phoneInput.value;
-    if (tryOpenAdminAuthFromInput(modal, rawPhone)) return;
-    var phone = rawPhone.replace(/\D/g, "");
-    if (phone.length >= 12) {
-      showAuthMessage(t("auth.codeSoon") || "Вход по СМС скоро будет доступен");
-      return;
+    void submitAuthPhoneOtp();
+  });
+
+  modal.querySelector("#authOtpSubmit")?.addEventListener("click", function () {
+    void submitAuthOtpVerify();
+  });
+
+  modal.querySelector("#authOtpBack")?.addEventListener("click", function () {
+    resetAuthCustomerMode(modal);
+    showAuthMessage("");
+    modal.querySelector("#authPhone")?.focus();
+  });
+
+  modal.querySelector("#authOtpCode")?.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void submitAuthOtpVerify();
     }
-    showAuthMessage(t("auth.phonePlaceholder") || "+998");
   });
 
   modal.querySelector("#authEmailSubmit").addEventListener("click", function () {

@@ -384,7 +384,25 @@
         <h2 class="profile-sheet-title" id="loginSheetTitle" data-i18n="profile.loginTitle">Вход</h2>
         <button type="button" class="profile-sheet-close" id="closeLoginModal" aria-label="Закрыть">&times;</button>
       </div>
-      <form id="loginForm">
+      <form id="loginPhoneForm">
+        <div class="profile-form-group">
+          <label for="loginPhone" data-i18n="auth.phone">Телефон</label>
+          <input type="tel" id="loginPhone" inputmode="tel" autocomplete="tel" data-i18n-placeholder="auth.phonePlaceholder" placeholder="+998 (__) ___-__-__" required>
+        </div>
+        <p class="profile-form-error" id="loginPhoneError" hidden></p>
+        <button type="submit" class="profile-login-btn" data-i18n="auth.getCode">Получить код активации</button>
+      </form>
+      <div id="loginOtpStep" hidden>
+        <p class="profile-otp-hint" id="loginOtpHint"></p>
+        <div class="profile-form-group">
+          <label for="loginOtpCode" data-i18n="auth.codeLabel">Код из SMS</label>
+          <input type="text" id="loginOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
+        </div>
+        <p class="profile-form-error" id="loginOtpError" hidden></p>
+        <button type="button" class="profile-login-btn" id="loginOtpSubmit" data-i18n="auth.verifyCode">Подтвердить</button>
+        <button type="button" class="profile-register-link" id="loginOtpBack" data-i18n="auth.changePhone">Изменить номер</button>
+      </div>
+      <form id="loginForm" hidden>
         <div class="profile-form-group">
           <label for="loginEmail">Email (Supabase) или логин</label>
           <input type="text" id="loginEmail" placeholder="you@mail.com или admin" autocomplete="username" required>
@@ -420,10 +438,61 @@
     (function () {
       var loginModal = document.getElementById("loginModal");
       var loginForm = document.getElementById("loginForm");
+      var loginPhoneForm = document.getElementById("loginPhoneForm");
+      var loginOtpStep = document.getElementById("loginOtpStep");
+      var loginOtpPhone = "";
       var toast = document.getElementById("profileToast");
       var toastTimer;
 
+      function resetLoginPhoneAuth() {
+        loginOtpPhone = "";
+        if (loginPhoneForm) loginPhoneForm.hidden = false;
+        if (loginOtpStep) loginOtpStep.hidden = true;
+        var phoneErr = document.getElementById("loginPhoneError");
+        var otpErr = document.getElementById("loginOtpError");
+        if (phoneErr) phoneErr.hidden = true;
+        if (otpErr) otpErr.hidden = true;
+        var otpCode = document.getElementById("loginOtpCode");
+        if (otpCode) otpCode.value = "";
+        var otpHint = document.getElementById("loginOtpHint");
+        if (otpHint) otpHint.textContent = "";
+      }
+
+      function showLoginPhoneError(message) {
+        var err = document.getElementById("loginPhoneError");
+        if (!err) return;
+        err.textContent = message;
+        err.hidden = !message;
+      }
+
+      function showLoginOtpError(message) {
+        var err = document.getElementById("loginOtpError");
+        if (!err) return;
+        err.textContent = message;
+        err.hidden = !message;
+      }
+
+      function showLoginOtpStep(meta) {
+        if (loginPhoneForm) loginPhoneForm.hidden = true;
+        if (loginOtpStep) loginOtpStep.hidden = false;
+        var hint = (window.emirateT && window.emirateT("auth.codeSent")) || "Код отправлен на номер";
+        if (meta && meta.test_mode) {
+          hint += ". " + ((window.emirateT && window.emirateT("auth.testModeHint")) || "В тестовом режиме Eskiz придёт тестовое SMS.");
+        }
+        if (meta && meta.debug_code) {
+          hint += " " + ((window.emirateT && window.emirateT("auth.debugCode")) || "Тест-код:") + " " + meta.debug_code;
+        }
+        var otpHint = document.getElementById("loginOtpHint");
+        if (otpHint) otpHint.textContent = hint;
+        var otpCode = document.getElementById("loginOtpCode");
+        if (otpCode) {
+          otpCode.value = meta && meta.debug_code ? String(meta.debug_code) : "";
+          otpCode.focus();
+        }
+      }
+
       function openLoginModal() {
+        resetLoginPhoneAuth();
         loginModal.classList.add("is-open");
         loginModal.setAttribute("aria-hidden", "false");
       }
@@ -481,8 +550,67 @@
 
       document.getElementById("openRegisterLink").addEventListener("click", function (e) {
         e.preventDefault();
-        var msg = (window.emirateT && window.emirateT("profile.registerSoon")) || "Регистрация скоро будет доступна";
-        showToast(msg);
+        openLoginModal();
+      });
+
+      document.getElementById("loginPhone")?.addEventListener("input", function () {
+        this.value = formatUzPhone(this.value);
+      });
+
+      loginPhoneForm?.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        showLoginPhoneError("");
+        var digits = String(document.getElementById("loginPhone").value || "").replace(/\D/g, "");
+        if (digits.indexOf("998") === 0) digits = digits.slice(3);
+        if (digits.length !== 9) {
+          showLoginPhoneError((window.emirateT && window.emirateT("auth.phoneInvalid")) || "Введите номер в формате +998");
+          return;
+        }
+        if (!window.emirateAuth) {
+          showLoginPhoneError("Auth module missing");
+          return;
+        }
+        showToast((window.emirateT && window.emirateT("auth.sendingCode")) || "Отправляем код…");
+        var res = await window.emirateAuth.requestPhoneOtp(digits, "login");
+        if (!res.ok) {
+          if (res.error === "rate_limited") {
+            showLoginPhoneError(((window.emirateT && window.emirateT("auth.rateLimited")) || "Слишком много запросов"));
+            return;
+          }
+          if (res.error === "eskiz_not_configured") {
+            showLoginPhoneError((window.emirateT && window.emirateT("auth.smsNotConfigured")) || "SMS временно недоступен");
+            return;
+          }
+          showLoginPhoneError((window.emirateT && window.emirateT("auth.sendCodeError")) || "Не удалось отправить код");
+          return;
+        }
+        loginOtpPhone = res.phone || digits;
+        showLoginOtpStep(res);
+        showToast((window.emirateT && window.emirateT("auth.codeSent")) || "Код отправлен");
+      });
+
+      document.getElementById("loginOtpSubmit")?.addEventListener("click", async function () {
+        showLoginOtpError("");
+        var code = String(document.getElementById("loginOtpCode").value || "").replace(/\D/g, "");
+        if (!loginOtpPhone || code.length < 4) {
+          showLoginOtpError((window.emirateT && window.emirateT("auth.codeInvalid")) || "Введите код из SMS");
+          return;
+        }
+        var res = await window.emirateAuth.verifyPhoneOtp(loginOtpPhone, code, "login");
+        if (!res.ok) {
+          showLoginOtpError((res.error && res.error.message) || (window.emirateT && window.emirateT("auth.codeInvalid")) || "Неверный код");
+          return;
+        }
+        closeLoginModal();
+        if (res.session) {
+          showLoggedInProfile(res.session);
+        } else {
+          window.location.reload();
+        }
+      });
+
+      document.getElementById("loginOtpBack")?.addEventListener("click", function () {
+        resetLoginPhoneAuth();
       });
 
       document.getElementById("profileLangSwitch").addEventListener("click", function () {
@@ -816,7 +944,7 @@
         }
       });
 
-      loginForm.addEventListener("submit", async function (e) {
+      loginForm?.addEventListener("submit", async function (e) {
         e.preventDefault();
         var login = document.getElementById("loginEmail").value.trim();
         var pass = document.getElementById("loginPass").value;

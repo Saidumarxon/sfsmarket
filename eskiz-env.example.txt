@@ -1,0 +1,21 @@
+# Eskiz SMS — переменные окружения (Vercel → Settings → Environment Variables)
+#
+# Обязательные:
+# ESKIZ_EMAIL=your@email.uz
+# ESKIZ_PASSWORD=your_api_password
+#
+# Рекомендуемые:
+# SUPABASE_SERVICE_ROLE_KEY=...          # OTP + сессии + rate limit
+# ESKIZ_PHONE_AUTH_SECRET=random_secret  # пароли phone-пользователей в Supabase
+# ESKIZ_DEBUG_OTP=1                        # только dev: показывать код в UI/API
+#
+# Тестовый режим Eskiz (только шаблоны «This is test from Eskiz» и т.д.):
+# ESKIZ_TEST_MODE=auto
+# ESKIZ_TEST_TEMPLATE=This is test from Eskiz
+#
+# После договора — свои шаблоны (точное совпадение текста с Eskiz):
+# ESKIZ_TEST_MODE=0
+# ESKIZ_OTP_MESSAGE=Emirate Co kod: {{code}}
+# ESKIZ_ORDER_MESSAGE=Emirate Co: buyurtma #{{orderId}} qabul qilindi
+#
+# SQL: выполните supabase/eskiz-sms-migration.sql в Supabase SQL Editor
