@@ -36,6 +36,7 @@ const pageTitles = {
   products: 'Продукты',
   banners: 'Баннеры',
   finance: 'Финансы',
+  categories: 'Категории',
   'product-editor': 'Продукты › Добавить',
 };
 
@@ -653,6 +654,320 @@ function deleteSupplier(supplierId) {
   syncIntakeCounterpartyControls();
   resetSupplierForm();
   showSupplierFeedback('Поставщик удален.', 'success');
+}
+
+const ADMIN_CATEGORIES_KEY = 'emirate_admin_categories_v1';
+
+function defaultCategoriesData() {
+  const seed = [
+    { id: 'cat_smartphones', nameRu: 'Смартфоны', nameUz: 'Smartfonlar', sortOrder: 1 },
+    { id: 'cat_laptops', nameRu: 'Ноутбуки', nameUz: 'Noutbuklar', sortOrder: 2 },
+    { id: 'cat_tv', nameRu: 'ТВ и аудио', nameUz: 'TV va audio', sortOrder: 3 },
+    { id: 'cat_appliances', nameRu: 'Бытовая техника', nameUz: 'Maishiy texnika', sortOrder: 4 },
+    { id: 'cat_accessories', nameRu: 'Аксессуары', nameUz: 'Aksessuarlar', sortOrder: 5 },
+    { id: 'cat_home', nameRu: 'Товары для дома', nameUz: 'Uy uchun tovarlar', sortOrder: 6 },
+    { id: 'cat_beauty', nameRu: 'Красота и здоровье', nameUz: 'Go\'zallik va salomatlik', sortOrder: 7 }
+  ];
+  const smartphoneSpecs = [
+    { keyRu: 'Память', keyUz: 'Xotira', valueRu: '', valueUz: '' },
+    { keyRu: 'Экран', keyUz: 'Ekran', valueRu: '', valueUz: '' },
+    { keyRu: 'Процессор', keyUz: 'Protsessor', valueRu: '', valueUz: '' },
+    { keyRu: 'Камера', keyUz: 'Kamera', valueRu: '', valueUz: '' },
+    { keyRu: 'Батарея', keyUz: 'Batareya', valueRu: '', valueUz: '' }
+  ];
+  const laptopSpecs = [
+    { keyRu: 'Процессор', keyUz: 'Protsessor', valueRu: '', valueUz: '' },
+    { keyRu: 'ОЗУ', keyUz: 'Operativ xotira', valueRu: '', valueUz: '' },
+    { keyRu: 'Накопитель', keyUz: 'Xotira', valueRu: '', valueUz: '' },
+    { keyRu: 'Экран', keyUz: 'Ekran', valueRu: '', valueUz: '' }
+  ];
+  const specMap = {
+    'cat_smartphones': smartphoneSpecs,
+    'cat_laptops': laptopSpecs
+  };
+  return seed.map((item) => ({
+    ...item,
+    isActive: true,
+    defaultSpecs: specMap[item.id] || [],
+    updatedAt: getDateTimeString()
+  }));
+}
+
+function normalizeCategorySpec(spec) {
+  const row = spec || {};
+  return {
+    keyRu: String(row.keyRu || row.key || '').trim(),
+    keyUz: String(row.keyUz || '').trim(),
+    valueRu: String(row.valueRu || row.value || '').trim(),
+    valueUz: String(row.valueUz || '').trim()
+  };
+}
+
+function normalizeCategoryRecord(record) {
+  const category = record || {};
+  const defaultSpecs = Array.isArray(category.defaultSpecs)
+    ? category.defaultSpecs.map(normalizeCategorySpec).filter((item) => item.keyRu || item.keyUz)
+    : [];
+  return {
+    id: category.id || `CAT-${Math.floor(Math.random() * 9000 + 1000)}`,
+    nameRu: String(category.nameRu || '').trim(),
+    nameUz: String(category.nameUz || '').trim(),
+    sortOrder: Number.isFinite(Number(category.sortOrder)) ? Number(category.sortOrder) : 100,
+    isActive: category.isActive !== false && category.status !== 'inactive',
+    defaultSpecs,
+    updatedAt: category.updatedAt || getDateTimeString()
+  };
+}
+
+function loadCategoriesData() {
+  try {
+    const raw = localStorage.getItem(ADMIN_CATEGORIES_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!Array.isArray(parsed) || !parsed.length) {
+      return defaultCategoriesData();
+    }
+    return parsed;
+  } catch (_) {
+    return defaultCategoriesData();
+  }
+}
+
+let categoriesData = loadCategoriesData().map(normalizeCategoryRecord);
+let categoryFeedbackTimer = null;
+
+function persistCategoriesData() {
+  localStorage.setItem(ADMIN_CATEGORIES_KEY, JSON.stringify(categoriesData));
+}
+
+function showCategoryFeedback(message, type = 'success', timeoutMs = 2800) {
+  const node = document.getElementById('categoryFeedback');
+  if (!node) return;
+  node.textContent = message;
+  node.classList.remove('success', 'error');
+  node.classList.add(type === 'error' ? 'error' : 'success');
+  node.removeAttribute('hidden');
+  if (categoryFeedbackTimer) clearTimeout(categoryFeedbackTimer);
+  categoryFeedbackTimer = setTimeout(() => {
+    node.setAttribute('hidden', 'hidden');
+    node.classList.remove('success', 'error');
+  }, timeoutMs);
+}
+
+function renderCategorySpecsRows(specs = []) {
+  const container = document.getElementById('categorySpecsContainer');
+  if (!container) return;
+  const rows = Array.isArray(specs)
+    ? specs.filter((item) => item?.keyRu || item?.keyUz || item?.valueRu || item?.valueUz)
+    : [];
+  container.innerHTML = rows.length ? rows.map((item) => getSpecRowMarkup(item)).join('') : getSpecRowMarkup();
+}
+
+function getCategorySpecsFromEditor() {
+  const rows = Array.from(document.querySelectorAll('#categorySpecsContainer .spec-row'));
+  return rows
+    .map((row) => ({
+      keyRu: row.querySelector('.spec-key-ru')?.value.trim() || '',
+      keyUz: row.querySelector('.spec-key-uz')?.value.trim() || '',
+      valueRu: row.querySelector('.spec-value-ru')?.value.trim() || '',
+      valueUz: row.querySelector('.spec-value-uz')?.value.trim() || ''
+    }))
+    .filter((item) => item.keyRu || item.keyUz || item.valueRu || item.valueUz)
+    .map(normalizeCategorySpec)
+    .filter((item) => item.keyRu || item.keyUz);
+}
+
+function renderCategories(data = categoriesData) {
+  const tbody = document.getElementById('categoriesBody');
+  const count = document.getElementById('categoriesCount');
+  if (!tbody || !count) return;
+
+  const sorted = [...data].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+  if (!sorted.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px;">Нет категорий</td></tr>';
+    count.textContent = 'Показано 0 из 0';
+    return;
+  }
+
+  tbody.innerHTML = sorted.map((category) => `
+    <tr>
+      <td><strong>${escapeHtml(category.nameRu)}</strong><div class="product-sku">${escapeHtml(category.id)}</div></td>
+      <td>${escapeHtml(category.nameUz || '—')}</td>
+      <td>${category.defaultSpecs.length}</td>
+      <td>${escapeHtml(String(category.sortOrder))}</td>
+      <td><span class="status-badge ${category.isActive ? 'active' : 'inactive'}"><span class="status-dot"></span>${category.isActive ? 'Активна' : 'Неактивна'}</span></td>
+      <td>${escapeHtml(category.updatedAt)}</td>
+      <td>
+        <div class="action-btns">
+          <button class="action-btn" title="Редактировать" data-action="edit-category" data-category-id="${escapeHtml(category.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="action-btn" title="Вкл/выкл" data-action="toggle-category" data-category-id="${escapeHtml(category.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/></svg></button>
+          <button class="action-btn delete" title="Удалить" data-action="delete-category" data-category-id="${escapeHtml(category.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  count.textContent = `Показано ${sorted.length} из ${categoriesData.length}`;
+}
+
+function resetCategoryForm() {
+  const form = document.getElementById('categoryForm');
+  const idInput = document.getElementById('categoryId');
+  const statusInput = document.getElementById('categoryStatus');
+  const sortInput = document.getElementById('categorySortOrder');
+  const saveBtn = document.getElementById('categorySaveBtn');
+  form?.reset();
+  if (idInput) idInput.value = '';
+  if (statusInput) statusInput.value = 'active';
+  if (sortInput) sortInput.value = '100';
+  if (saveBtn) {
+    saveBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Создать категорию';
+  }
+  document.getElementById('categoryNameRu')?.closest('.form-group')?.classList.remove('error');
+  renderCategorySpecsRows([]);
+}
+
+function fillCategoryForm(categoryId) {
+  const category = categoriesData.find((item) => item.id === categoryId);
+  if (!category) return;
+  document.getElementById('categoryId').value = category.id;
+  document.getElementById('categoryNameRu').value = category.nameRu;
+  document.getElementById('categoryNameUz').value = category.nameUz;
+  document.getElementById('categorySortOrder').value = String(category.sortOrder);
+  document.getElementById('categoryStatus').value = category.isActive ? 'active' : 'inactive';
+  renderCategorySpecsRows(category.defaultSpecs);
+  const saveBtn = document.getElementById('categorySaveBtn');
+  if (saveBtn) {
+    saveBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Сохранить изменения';
+  }
+}
+
+function saveCategory(event) {
+  event.preventDefault();
+  const id = document.getElementById('categoryId').value.trim();
+  const nameRu = document.getElementById('categoryNameRu').value.trim();
+  const nameUz = document.getElementById('categoryNameUz').value.trim();
+  const sortOrder = Number(document.getElementById('categorySortOrder').value);
+  const isActive = document.getElementById('categoryStatus').value !== 'inactive';
+  const defaultSpecs = getCategorySpecsFromEditor();
+  const nameGroup = document.getElementById('categoryNameRu').closest('.form-group');
+  nameGroup?.classList.remove('error');
+
+  if (nameRu.length < 2) {
+    nameGroup?.classList.add('error');
+    showCategoryFeedback('Введите корректное название категории (Ru).', 'error', 3200);
+    return;
+  }
+
+  const duplicate = categoriesData.find((item) => item.nameRu.toLowerCase() === nameRu.toLowerCase() && item.id !== id);
+  if (duplicate) {
+    showCategoryFeedback('Категория с таким названием уже существует.', 'error', 3200);
+    return;
+  }
+
+  const draft = normalizeCategoryRecord({
+    id: id || undefined,
+    nameRu,
+    nameUz,
+    sortOrder,
+    isActive,
+    defaultSpecs,
+    updatedAt: getDateTimeString()
+  });
+
+  const existingIndex = categoriesData.findIndex((item) => item.id === draft.id);
+  if (existingIndex === -1) {
+    categoriesData.unshift(draft);
+    showCategoryFeedback('Категория успешно создана.', 'success');
+  } else {
+    categoriesData[existingIndex] = draft;
+    showCategoryFeedback('Категория обновлена.', 'success');
+  }
+
+  persistCategoriesData();
+  renderCategories();
+  syncProductCategorySelect();
+  fillCategoryForm(draft.id);
+}
+
+function toggleCategoryStatus(categoryId) {
+  const category = categoriesData.find((item) => item.id === categoryId);
+  if (!category) return;
+  category.isActive = !category.isActive;
+  category.updatedAt = getDateTimeString();
+  persistCategoriesData();
+  renderCategories();
+  syncProductCategorySelect();
+  showCategoryFeedback(`Категория ${category.isActive ? 'активирована' : 'деактивирована'}.`, 'success');
+}
+
+function deleteCategory(categoryId) {
+  const category = categoriesData.find((item) => item.id === categoryId);
+  if (!category) return;
+  if (!confirm(`Удалить категорию "${category.nameRu}"?`)) return;
+  categoriesData = categoriesData.filter((item) => item.id !== categoryId);
+  persistCategoriesData();
+  renderCategories();
+  syncProductCategorySelect();
+  resetCategoryForm();
+  showCategoryFeedback('Категория удалена.', 'success');
+}
+
+function getCategoryByProductName(name) {
+  const key = String(name || '').trim();
+  if (!key) return null;
+  return categoriesData.find((item) => item.nameRu === key || item.nameUz === key) || null;
+}
+
+function syncProductCategorySelect(selectedValue = '') {
+  const select = document.getElementById('pCategory');
+  if (!select) return;
+  const current = selectedValue || select.value;
+  const sorted = [...categoriesData].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  const active = sorted.filter((item) => item.isActive);
+  const inactiveSelected = sorted.find((item) => item.nameRu === current && !item.isActive);
+
+  let html = '<option value="">Выберите ...</option>';
+  active.forEach((item) => {
+    html += `<option value="${escapeHtml(item.nameRu)}">${escapeHtml(item.nameRu)}</option>`;
+  });
+  if (inactiveSelected) {
+    html += `<option value="${escapeHtml(inactiveSelected.nameRu)}">${escapeHtml(inactiveSelected.nameRu)} (неактивна)</option>`;
+  }
+  const known = new Set([...active, ...(inactiveSelected ? [inactiveSelected] : [])].map((item) => item.nameRu));
+  if (current && !known.has(current)) {
+    html += `<option value="${escapeHtml(current)}">${escapeHtml(current)}</option>`;
+  }
+  select.innerHTML = html;
+  if (current) select.value = current;
+}
+
+function applyCategoryDefaultSpecsToProduct(categoryName, { mode = 'replace' } = {}) {
+  const category = getCategoryByProductName(categoryName);
+  if (!category || !Array.isArray(category.defaultSpecs) || !category.defaultSpecs.length) return;
+
+  const defaults = category.defaultSpecs
+    .map(normalizeCategorySpec)
+    .filter((item) => item.keyRu || item.keyUz);
+  if (!defaults.length) return;
+
+  if (mode === 'replace') {
+    renderSpecsRows(defaults);
+    return;
+  }
+
+  const current = getSpecsFromEditor();
+  const normKey = (item) => String(item.keyRu || item.keyUz || '').trim().toLowerCase();
+  const existingKeys = new Set(current.map(normKey).filter(Boolean));
+  const merged = [...current];
+  defaults.forEach((def) => {
+    const key = normKey(def);
+    if (key && !existingKeys.has(key)) {
+      merged.push(def);
+      existingKeys.add(key);
+    }
+  });
+  renderSpecsRows(merged.length ? merged : defaults);
 }
 
 const ADMIN_PRODUCTS_KEY = 'emirate_admin_products';
@@ -1908,6 +2223,12 @@ async function applyOrderStatusChange(orderId, newStatus, pickerEl) {
 // ===== RENDER ALL =====
 void loadClientsFromSupabase();
 renderSuppliers();
+if (!localStorage.getItem(ADMIN_CATEGORIES_KEY)) {
+  persistCategoriesData();
+}
+renderCategories();
+syncProductCategorySelect();
+resetCategoryForm();
 renderProducts();
 renderBanners();
 renderIntake();
@@ -2077,6 +2398,59 @@ document.getElementById('suppliersBody')?.addEventListener('click', function(e) 
   }
   if (action === 'delete-supplier') {
     deleteSupplier(supplierId);
+  }
+});
+
+document.getElementById('categoryForm')?.addEventListener('submit', saveCategory);
+
+document.getElementById('addCategoryBtn')?.addEventListener('click', function() {
+  switchPage('categories');
+  resetCategoryForm();
+  document.getElementById('categoryNameRu')?.focus();
+  showCategoryFeedback('Режим создания категории включен.', 'success');
+});
+
+document.getElementById('categoryResetBtn')?.addEventListener('click', function() {
+  resetCategoryForm();
+  showCategoryFeedback('Форма очищена.', 'success');
+});
+
+document.getElementById('addCategorySpecBtn')?.addEventListener('click', function() {
+  const container = document.getElementById('categorySpecsContainer');
+  if (!container) return;
+  container.insertAdjacentHTML('beforeend', getSpecRowMarkup());
+});
+
+document.getElementById('categorySpecsContainer')?.addEventListener('click', function(e) {
+  const btn = e.target.closest('.spec-remove');
+  if (!btn) return;
+  const rows = this.querySelectorAll('.spec-row');
+  if (rows.length <= 1) {
+    renderCategorySpecsRows([]);
+    return;
+  }
+  btn.closest('.spec-row')?.remove();
+});
+
+document.getElementById('categoriesBody')?.addEventListener('click', function(e) {
+  const button = e.target.closest('button[data-action]');
+  if (!button) return;
+  const action = button.getAttribute('data-action');
+  const categoryId = button.getAttribute('data-category-id');
+  if (!categoryId) return;
+
+  if (action === 'edit-category') {
+    switchPage('categories');
+    fillCategoryForm(categoryId);
+    showCategoryFeedback('Категория загружена в форму для редактирования.', 'success');
+    return;
+  }
+  if (action === 'toggle-category') {
+    toggleCategoryStatus(categoryId);
+    return;
+  }
+  if (action === 'delete-category') {
+    deleteCategory(categoryId);
   }
 });
 
@@ -3109,6 +3483,11 @@ document.getElementById('addSpecBtn').addEventListener('click', function() {
   renderEditorSpecsPreview();
 });
 
+document.getElementById('pCategory')?.addEventListener('change', function() {
+  const mode = editingProductId ? 'merge' : 'replace';
+  applyCategoryDefaultSpecsToProduct(this.value, { mode });
+});
+
 document.getElementById('specsContainer').addEventListener('click', function(e) {
   const btn = e.target.closest('.spec-remove');
   if (btn) {
@@ -3473,6 +3852,15 @@ if (headerSearch) {
         || s.id.toLowerCase().includes(query)
         || s.phone.toLowerCase().includes(query)
         || s.status.toLowerCase().includes(query)
+      ));
+    }
+
+    if (activePage === 'page-categories') {
+      if (!query) return renderCategories();
+      return renderCategories(categoriesData.filter(c =>
+        c.nameRu.toLowerCase().includes(query)
+        || c.nameUz.toLowerCase().includes(query)
+        || c.id.toLowerCase().includes(query)
       ));
     }
 

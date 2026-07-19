@@ -21,6 +21,8 @@
     "@capacitor/ios": "^7.2.0",
     "@capacitor/splash-screen": "^7.0.1",
     "@capacitor/status-bar": "^7.0.1",
+    "@next/swc-win32-x64-msvc": "^16.2.10",
+    "lightningcss-win32-x64-msvc": "^1.32.0",
     "next": "16.1.7",
     "react": "19.2.3",
     "react-dom": "19.2.3"
