@@ -3151,10 +3151,192 @@ function openEditorForProduct(id) {
   editorTabContents.forEach(c => c.classList.remove('active'));
   editorTabs[0].classList.add('active');
   editorTabContents[0].classList.add('active');
+
+  setTimeout(function () {
+    scheduleTitleSuggest('ru');
+    scheduleTitleSuggest('uz');
+  }, 150);
 }
+
+// ===== PRODUCT TITLE SUGGESTIONS =====
+const titleSuggestTimers = { ru: null, uz: null };
+const titleSuggestSeq = { ru: 0, uz: 0 };
+
+const titleSuggestEls = {
+  ru: {
+    input: document.getElementById('pNameRu'),
+    panel: document.getElementById('pNameRuSuggest'),
+    score: document.getElementById('pNameRuScore'),
+    chars: document.getElementById('pNameRuChars'),
+    feedback: document.getElementById('pNameRuFeedback'),
+    alt: document.getElementById('pNameRuAlt'),
+    altText: document.getElementById('pNameRuAltText'),
+    apply: document.getElementById('pNameRuApply'),
+  },
+  uz: {
+    input: document.getElementById('pNameUz'),
+    panel: document.getElementById('pNameUzSuggest'),
+    score: document.getElementById('pNameUzScore'),
+    chars: document.getElementById('pNameUzChars'),
+    feedback: document.getElementById('pNameUzFeedback'),
+    alt: document.getElementById('pNameUzAlt'),
+    altText: document.getElementById('pNameUzAltText'),
+    apply: document.getElementById('pNameUzApply'),
+  },
+};
+
+function resetTitleSuggestPanels() {
+  Object.keys(titleSuggestEls).forEach(function (lang) {
+    const els = titleSuggestEls[lang];
+    if (titleSuggestTimers[lang]) {
+      clearTimeout(titleSuggestTimers[lang]);
+      titleSuggestTimers[lang] = null;
+    }
+    titleSuggestSeq[lang] += 1;
+    if (els.panel) els.panel.hidden = true;
+    if (els.panel) els.panel.classList.remove('is-loading');
+    if (els.alt) els.alt.hidden = true;
+  });
+}
+
+function scoreClass(score) {
+  if (score >= 8) return '';
+  if (score >= 5) return 'is-mid';
+  return 'is-low';
+}
+
+function renderTitleSuggest(lang, payload) {
+  const els = titleSuggestEls[lang];
+  if (!els.panel) return;
+
+  const title = String(els.input?.value || '').trim();
+  if (!title || title.length < 12) {
+    els.panel.hidden = true;
+    return;
+  }
+
+  els.panel.hidden = false;
+  els.panel.classList.remove('is-loading');
+
+  const score = Number(payload.score) || 0;
+  const charCount = Number(payload.charCount) || title.length;
+  const suggested = String(payload.suggested || '').trim();
+
+  if (els.score) {
+    els.score.textContent = score + ' ball';
+    els.score.className = 'title-suggest-score ' + scoreClass(score);
+  }
+  if (els.chars) {
+    els.chars.textContent =
+      (lang === 'uz' ? 'Belgilar soni: ' : 'Символов: ') + charCount;
+    els.chars.className = 'title-suggest-chars' + (charCount > 90 ? ' is-warn' : '');
+  }
+  if (els.feedback) {
+    els.feedback.textContent = String(payload.feedback || '').trim();
+  }
+
+  if (els.alt && els.altText && suggested && suggested.toLowerCase() !== title.toLowerCase()) {
+    els.alt.hidden = false;
+    els.altText.textContent = suggested;
+  } else if (els.alt) {
+    els.alt.hidden = true;
+  }
+}
+
+async function requestTitleSuggest(lang) {
+  const els = titleSuggestEls[lang];
+  if (!els.input) return;
+
+  const title = String(els.input.value || '').trim();
+  if (title.length < 12) {
+    if (els.panel) els.panel.hidden = true;
+    return;
+  }
+
+  const seq = ++titleSuggestSeq[lang];
+  if (els.panel) {
+    els.panel.hidden = false;
+    els.panel.classList.add('is-loading');
+  }
+
+  try {
+    const res = await fetch('/api/suggest-product-title', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: title,
+        lang: lang,
+        brand: document.getElementById('pBrand')?.value || '',
+        model: document.getElementById('pModel')?.value || '',
+        category: document.getElementById('pCategory')?.value || '',
+      }),
+    });
+    const data = await res.json().catch(function () {
+      return {};
+    });
+    if (seq !== titleSuggestSeq[lang]) return;
+
+    if (!res.ok || !data.ok) {
+      if (els.panel) els.panel.hidden = true;
+      return;
+    }
+
+    renderTitleSuggest(lang, data);
+
+    if (lang === 'ru' && data.suggestedUz && titleSuggestEls.uz.altText) {
+      const uzTitle = String(titleSuggestEls.uz.input?.value || '').trim();
+      if (!uzTitle || uzTitle.length < 12) {
+        titleSuggestEls.uz.alt.hidden = false;
+        titleSuggestEls.uz.altText.textContent = String(data.suggestedUz).trim();
+        titleSuggestEls.uz.panel.hidden = false;
+        if (titleSuggestEls.uz.feedback) {
+          titleSuggestEls.uz.feedback.textContent = "Rus nomidan o'zbekcha variant taklif qilindi.";
+        }
+      }
+    }
+  } catch (_) {
+    if (seq === titleSuggestSeq[lang] && els.panel) els.panel.hidden = true;
+  }
+}
+
+function scheduleTitleSuggest(lang) {
+  if (titleSuggestTimers[lang]) clearTimeout(titleSuggestTimers[lang]);
+  titleSuggestTimers[lang] = setTimeout(function () {
+    void requestTitleSuggest(lang);
+  }, 700);
+}
+
+Object.keys(titleSuggestEls).forEach(function (lang) {
+  const els = titleSuggestEls[lang];
+  if (!els.input) return;
+  els.input.addEventListener('input', function () {
+    scheduleTitleSuggest(lang);
+  });
+  els.input.addEventListener('blur', function () {
+    scheduleTitleSuggest(lang);
+  });
+  if (els.apply) {
+    els.apply.addEventListener('click', function () {
+      const suggested = String(els.altText?.textContent || '').trim();
+      if (!suggested) return;
+      els.input.value = suggested;
+      scheduleTitleSuggest(lang);
+    });
+  }
+});
+
+['pBrand', 'pModel', 'pCategory'].forEach(function (id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('change', function () {
+    scheduleTitleSuggest('ru');
+    scheduleTitleSuggest('uz');
+  });
+});
 
 // Clear all form fields
 function clearEditorForm() {
+  resetTitleSuggestPanels();
   document.getElementById('pCategory').value = '';
   document.getElementById('pNameUz').value = '';
   document.getElementById('pNameRu').value = '';

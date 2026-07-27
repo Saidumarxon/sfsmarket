@@ -763,12 +763,36 @@
                 </div>
                 <div class="form-group">
                   <label class="required">Название Uz</label>
-                  <input type="text" id="pNameUz" placeholder="Mahsulot nomi">
+                  <input type="text" id="pNameUz" placeholder="Mahsulot nomi" autocomplete="off">
+                  <div class="title-suggest" id="pNameUzSuggest" hidden>
+                    <div class="title-suggest-head">
+                      <span class="title-suggest-score" id="pNameUzScore"></span>
+                      <span class="title-suggest-chars" id="pNameUzChars"></span>
+                    </div>
+                    <p class="title-suggest-feedback" id="pNameUzFeedback"></p>
+                    <div class="title-suggest-alt" id="pNameUzAlt" hidden>
+                      <p class="title-suggest-alt-label">Tavsiya etilgan variant:</p>
+                      <p class="title-suggest-alt-text" id="pNameUzAltText"></p>
+                      <button type="button" class="btn-title-apply" id="pNameUzApply">Qo'llash</button>
+                    </div>
+                  </div>
                   <span class="form-hint">Необходимо заполнить «Название Uz».</span>
                 </div>
                 <div class="form-group">
                   <label class="required">Название Ru</label>
-                  <input type="text" id="pNameRu" placeholder="Название товара">
+                  <input type="text" id="pNameRu" placeholder="Название товара" autocomplete="off">
+                  <div class="title-suggest" id="pNameRuSuggest" hidden>
+                    <div class="title-suggest-head">
+                      <span class="title-suggest-score" id="pNameRuScore"></span>
+                      <span class="title-suggest-chars" id="pNameRuChars"></span>
+                    </div>
+                    <p class="title-suggest-feedback" id="pNameRuFeedback"></p>
+                    <div class="title-suggest-alt" id="pNameRuAlt" hidden>
+                      <p class="title-suggest-alt-label">Рекомендуемый вариант:</p>
+                      <p class="title-suggest-alt-text" id="pNameRuAltText"></p>
+                      <button type="button" class="btn-title-apply" id="pNameRuApply">Использовать</button>
+                    </div>
+                  </div>
                   <span class="form-hint">Необходимо заполнить «Название Ru».</span>
                 </div>
                 <div class="form-row">

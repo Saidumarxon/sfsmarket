@@ -1702,6 +1702,126 @@ body {
   border-color: var(--admin-error) !important;
 }
 
+/* Product title AI suggestions (Yandex-style) */
+.title-suggest {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.title-suggest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.title-suggest-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.title-suggest-score.is-mid {
+  color: #b45309;
+}
+
+.title-suggest-score.is-low {
+  color: #b91c1c;
+}
+
+.title-suggest-score::before {
+  content: "✓";
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 11px;
+}
+
+.title-suggest-score.is-mid::before {
+  background: #fef3c7;
+  color: #b45309;
+  content: "!";
+}
+
+.title-suggest-score.is-low::before {
+  background: #fee2e2;
+  color: #b91c1c;
+  content: "!";
+}
+
+.title-suggest-chars {
+  font-size: 12px;
+  color: #64748b;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.title-suggest-chars.is-warn {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #c2410c;
+}
+
+.title-suggest-feedback {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.title-suggest-alt {
+  padding-top: 8px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.title-suggest-alt-label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.title-suggest-alt-text {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.btn-title-apply {
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  background: var(--admin-accent, #0ea5e9);
+  transition: opacity 0.15s ease;
+}
+
+.btn-title-apply:hover {
+  opacity: 0.9;
+}
+
+.title-suggest.is-loading {
+  opacity: 0.75;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
