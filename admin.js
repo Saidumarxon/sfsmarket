@@ -3227,8 +3227,14 @@ function renderTitleSuggest(lang, payload) {
     els.score.className = 'title-suggest-score ' + scoreClass(score);
   }
   if (els.chars) {
+    const sourceLabel =
+      payload.source === 'openai'
+        ? ' · ChatGPT'
+        : payload.source === 'rules'
+          ? (lang === 'uz' ? ' · qoidalar' : ' · без ИИ')
+          : '';
     els.chars.textContent =
-      (lang === 'uz' ? 'Belgilar soni: ' : 'Символов: ') + charCount;
+      (lang === 'uz' ? 'Belgilar soni: ' : 'Символов: ') + charCount + sourceLabel;
     els.chars.className = 'title-suggest-chars' + (charCount > 90 ? ' is-warn' : '');
   }
   if (els.feedback) {
@@ -3281,7 +3287,7 @@ async function requestTitleSuggest(lang) {
       return;
     }
 
-    renderTitleSuggest(lang, data);
+    renderTitleSuggest(lang, Object.assign({ charCount: title.length }, data));
 
     if (lang === 'ru' && data.suggestedUz && titleSuggestEls.uz.altText) {
       const uzTitle = String(titleSuggestEls.uz.input?.value || '').trim();

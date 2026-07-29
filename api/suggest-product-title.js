@@ -1,9 +1,9 @@
 /**
- * Product title suggestions for admin (Gemini + rule fallback).
+ * Product title suggestions for admin (OpenAI ChatGPT + rule fallback).
  * POST /api/suggest-product-title
- * Env: GEMINI_API_KEY (optional — without it uses rules only)
+ * Env: OPENAI_API_KEY, OPENAI_MODEL (default gpt-4o-mini)
  */
-const GEMINI_MODEL = String(process.env.GEMINI_MODEL || "gemini-2.0-flash-lite");
+const OPENAI_MODEL = String(process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
 const MIN_TITLE_LEN = 12;
 const IDEAL_MAX = 90;
 const HARD_MAX = 120;
@@ -55,9 +55,9 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const apiKey = String(process.env.GEMINI_API_KEY || "").trim();
-    if (apiKey) {
-      const ai = await suggestWithGemini(apiKey, title, lang, brand, model, category);
+    const openaiKey = String(process.env.OPENAI_API_KEY || "").trim();
+    if (openaiKey) {
+      const ai = await suggestWithOpenAI(openaiKey, title, lang, brand, model, category);
       if (ai) {
         return res.status(200).json({
           ok: true,
@@ -67,8 +67,8 @@ module.exports = async function handler(req, res) {
           suggested: ai.suggested,
           suggestedUz: ai.suggestedUz || "",
           suggestedRu: ai.suggestedRu || "",
-          source: "gemini",
-          model: GEMINI_MODEL,
+          source: "openai",
+          model: OPENAI_MODEL,
         });
       }
     }
@@ -138,12 +138,12 @@ function scoreTitle(title, brand, model) {
 
 function feedbackForScore(score, len, lang) {
   if (lang === "uz") {
-    if (score >= 9) return "Sarlavha yaxshi. Agar xohlasangiz, qisqaroq variantni sinab ko'ring.";
+    if (score >= 9) return "Sarlavha yaxshi. Agar xohlasangiz, quyidagi variantni sinab ko'ring.";
     if (len > HARD_MAX) return "Sarlavha juda uzun. Qisqaroq va aniqroq variant yaxshiroq.";
     if (len > IDEAL_MAX) return "Yetarlicha batafsil sarlavha. Yana bir qisqaroq variant taklif qilamiz.";
     return "Sarlavhani yaxshilash uchun quyidagi variantni ko'rib chiqing.";
   }
-  if (score >= 9) return "Название хорошее. Можно использовать или выбрать более короткий вариант ниже.";
+  if (score >= 9) return "Название хорошее — можно использовать. Ниже альтернатива, если нужна короче.";
   if (len > HARD_MAX) return "Название слишком длинное. Лучше короче — так удобнее в каталоге и поиске.";
   if (len > IDEAL_MAX) return "Достаточно подробное название. Предлагаем более короткий вариант.";
   return "Рекомендуем улучшить название — см. вариант ниже.";
@@ -186,9 +186,9 @@ function buildRuleSuggestion(title, brand, model, category, lang) {
   if (/gan/i.test(text)) specs.push("GaN");
   if (/usb-c/i.test(text)) specs.push("USB-C");
   if (/pd/i.test(text)) specs.push("PD");
-  const ports = text.match(/(\d)\s*(?:порт|port|raz'?em|разъем)/i);
+  const ports = text.match(/(\d)\s*(?:порт|port|raz'?em|razem|разъем)/i);
   if (ports) {
-    specs.push(lang === "uz" ? ports[1] + " port" : ports[1] + " разъёма");
+    specs.push(lang === "uz" ? ports[1] + " port" : ports[1] + " razem");
   }
 
   if (!brand && !model && parts.length < 2) {
@@ -213,67 +213,49 @@ function categoryLabelRu(category) {
   return map[String(category || "").toLowerCase()] || "";
 }
 
-async function suggestWithGemini(apiKey, title, lang, brand, model, category) {
+function buildTitlePrompt(title, lang, brand, model, category) {
   const langLabel = lang === "uz" ? "Uzbek (Latin)" : "Russian";
-  const prompt =
-    "You optimize product titles for Emirate Co e-commerce in Uzbekistan (electronics & home goods).\n" +
-    "Input title language focus: " +
+  const feedbackLang = lang === "uz" ? "Uzbek" : "Russian";
+
+  return (
+    "Optimize product titles for Emirate Co e-commerce in Uzbekistan (electronics & home goods).\n" +
+    "Style: like Yandex Market — clear score, short hint if the title is good or needs work, and a better variant.\n\n" +
+    "Input language focus: " +
     langLabel +
-    ".\n" +
+    "\n" +
     "Brand: " +
     (brand || "(unknown)") +
-    "\nModel: " +
+    "\n" +
+    "Model: " +
     (model || "(unknown)") +
-    "\nCategory: " +
+    "\n" +
+    "Category: " +
     (category || "(unknown)") +
-    "\nCurrent title: " +
+    "\n" +
+    "Current title: " +
     title +
     "\n\n" +
     "Return ONLY valid JSON:\n" +
     "{\n" +
     '  "score": 8,\n' +
-    '  "feedback": "short hint in ' +
-    (lang === "uz" ? "Uzbek" : "Russian") +
-    '",\n' +
-    '  "suggestedRu": "optimized Russian title",\n' +
-    '  "suggestedUz": "optimized Uzbek Latin title"\n' +
-    "}\n" +
+    '  "feedback": "1-2 sentences in ' +
+    feedbackLang +
+    ' — explain if current title is OK to use or what to fix (length, clarity, missing brand)",\n' +
+    '  "suggestedRu": "optimized Russian marketplace title",\n' +
+    '  "suggestedUz": "optimized Uzbek Latin marketplace title"\n' +
+    "}\n\n" +
     "Rules:\n" +
-    "- score 1-10 (10 = ideal for marketplace SEO)\n" +
-    "- suggested titles 45-90 chars, include brand + model + 2-4 key specs\n" +
-    "- remove SKU codes in parentheses, redundant words\n" +
-    "- no markdown, no quotes inside JSON values escape properly\n" +
-    "- if current title is already good, suggestedRu/Uz can be slightly improved version\n" +
-    "- feedback explains why (length, clarity) in " +
-    (lang === "uz" ? "Uzbek" : "Russian");
-
-  const geminiRes = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/" +
-      encodeURIComponent(GEMINI_MODEL) +
-      ":generateContent?key=" +
-      encodeURIComponent(apiKey),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.25,
-          maxOutputTokens: 600,
-          responseMimeType: "application/json",
-        },
-      }),
-    }
+    "- score 1-10 (10 = ideal for marketplace SEO and customer search)\n" +
+    "- suggested titles 45-90 characters: brand + model + 2-4 key specs\n" +
+    "- remove SKU codes in parentheses, redundant words, ALL CAPS\n" +
+    "- if current title is already excellent (score 9-10), feedback must say it is good to use; still offer a slightly polished variant\n" +
+    "- feedback must be in " +
+    feedbackLang +
+    " only"
   );
+}
 
-  const geminiJson = await geminiRes.json();
-  if (!geminiRes.ok) {
-    console.warn("[suggest-product-title] gemini", geminiRes.status, geminiJson);
-    return null;
-  }
-
-  const text = extractGeminiText(geminiJson);
-  const parsed = extractJson(text);
+function parseAiSuggestion(parsed, title, lang, brand, model) {
   if (!parsed || typeof parsed !== "object") return null;
 
   const score = Math.max(1, Math.min(10, Math.round(Number(parsed.score) || scoreTitle(title, brand, model))));
@@ -283,7 +265,7 @@ async function suggestWithGemini(apiKey, title, lang, brand, model, category) {
   const feedback =
     String(parsed.feedback || "").trim() || feedbackForScore(score, title.length, lang);
 
-  if (!suggested) return null;
+  if (!suggested && score < 9) return null;
 
   return {
     score: score,
@@ -294,20 +276,46 @@ async function suggestWithGemini(apiKey, title, lang, brand, model, category) {
   };
 }
 
-function extractGeminiText(payload) {
-  const parts =
-    payload &&
-    payload.candidates &&
-    payload.candidates[0] &&
-    payload.candidates[0].content &&
-    payload.candidates[0].content.parts;
-  if (!Array.isArray(parts)) return "";
-  return parts
-    .map(function (part) {
-      return String((part && part.text) || "");
-    })
-    .join("\n")
-    .trim();
+async function suggestWithOpenAI(apiKey, title, lang, brand, model, category) {
+  const prompt = buildTitlePrompt(title, lang, brand, model, category);
+
+  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + apiKey,
+    },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      temperature: 0.25,
+      max_tokens: 700,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an expert e-commerce copywriter for Uzbekistan marketplaces. Always respond with valid JSON only.",
+        },
+        { role: "user", content: prompt },
+      ],
+    }),
+  });
+
+  const openaiJson = await openaiRes.json();
+  if (!openaiRes.ok) {
+    console.warn("[suggest-product-title] openai", openaiRes.status, openaiJson);
+    return null;
+  }
+
+  const text =
+    openaiJson &&
+    openaiJson.choices &&
+    openaiJson.choices[0] &&
+    openaiJson.choices[0].message &&
+    openaiJson.choices[0].message.content;
+
+  const parsed = extractJson(text);
+  return parseAiSuggestion(parsed, title, lang, brand, model);
 }
 
 function extractJson(text) {

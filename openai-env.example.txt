@@ -1,0 +1,15 @@
+# OpenAI ChatGPT — подсказки названий товаров в админке
+# Vercel → Settings → Environment Variables
+#
+# Обязательно:
+# OPENAI_API_KEY=sk-proj-...
+#
+# Модель (по умолчанию gpt-4o-mini — дешевле и быстрее):
+# OPENAI_MODEL=gpt-4o-mini
+#
+# Альтернативы (когда доступны в вашем аккаунте OpenAI):
+# OPENAI_MODEL=gpt-4o
+# OPENAI_MODEL=gpt-5-mini
+#
+# Без OPENAI_API_KEY работает упрощённый режим по правилам (без ИИ).
+# Endpoint: POST /api/suggest-product-title
