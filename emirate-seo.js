@@ -109,25 +109,40 @@
     applyVerificationTags();
   };
 
+  function stripHtml(value) {
+    return String(value || "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   window.emirateProductSeo = function (product) {
     if (!product || typeof product !== "object") return;
-    var title = String(product.title || "Товар").trim();
+    var lang = document.documentElement.lang === "uz" ? "uz" : "ru";
+    var pageTitle = String(product.title || "Товар").trim();
+    var seoTitleRu = String(product.seoTitleRu || "").trim();
+    var seoTitleUz = String(product.seoTitleUz || "").trim();
+    var seoDescRu = String(product.seoDescRu || "").trim();
+    var seoDescUz = String(product.seoDescUz || "").trim();
     var descRu = String(product.descRu || "").trim();
     var descUz = String(product.descUz || "").trim();
+    var metaTitle =
+      (lang === "uz" ? seoTitleUz || seoTitleRu : seoTitleRu || seoTitleUz) ||
+      pageTitle + " — Emirate Co";
     var description =
-      descRu ||
-      descUz ||
-      "Купить " + title + " в Emirate Co. Рассрочка, доставка по Узбекистану.";
+      (lang === "uz" ? seoDescUz || seoDescRu : seoDescRu || seoDescUz) ||
+      stripHtml(descRu || descUz) ||
+      ("Купить " + pageTitle + " в Emirate Co. Рассрочка, доставка по Узбекистану.");
     var media = window.emirateResolveProductMedia
       ? window.emirateResolveProductMedia(product)
       : { image: product.image || "", photos: product.photos || [] };
     var image = media.image || DEFAULT_OG_IMAGE;
-    var path = "/product?product=" + encodeURIComponent(title);
+    var path = "/product?product=" + encodeURIComponent(pageTitle);
     var price = Number(product.price) || 0;
     var brand = String(product.brand || "Emirate Co").trim();
 
     window.emirateApplySeo({
-      title: title + " — Emirate Co",
+      title: metaTitle,
       description: description.slice(0, 160),
       path: path,
       image: image,
@@ -135,7 +150,7 @@
       productJsonLd: {
         "@context": "https://schema.org",
         "@type": "Product",
-        name: title,
+        name: pageTitle,
         description: description.slice(0, 500),
         image: image ? [absUrl(image)] : [DEFAULT_OG_IMAGE],
         sku: String(product.sku || ""),

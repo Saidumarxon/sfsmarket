@@ -5646,6 +5646,16 @@ body.cart-mode.cart-empty-mode .catalog-content {
   margin-bottom: 10px;
 }
 
+.tab-content ul,
+.tab-content ol {
+  margin: 0 0 12px 20px;
+  padding: 0;
+}
+
+.tab-content li {
+  margin-bottom: 6px;
+}
+
 /* Specs Table */
 .specs-list {
   display: grid;

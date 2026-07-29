@@ -74,6 +74,20 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function renderDescriptionBlock(descriptionText, aboutTitle) {
+  if (!descriptionText) return "";
+  if (/<[a-z][\s\S]*>/i.test(descriptionText)) {
+    return `<h3>${escapeHtml(aboutTitle)}</h3>${descriptionText}`;
+  }
+  const paragraphs = descriptionText
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<p>${escapeHtml(line)}</p>`)
+    .join("");
+  return `<h3>${escapeHtml(aboutTitle)}</h3>${paragraphs}`;
+}
+
 function getActiveLang() {
   const lang = typeof window.emirateLang === "function"
     ? window.emirateLang()
@@ -261,6 +275,10 @@ function readAdminProducts() {
           sku: item.id || "",
           descUz: String(item.descUz || "").trim(),
           descRu: String(item.descRu || "").trim(),
+          seoTitleRu: String(item.seoTitleRu || "").trim(),
+          seoTitleUz: String(item.seoTitleUz || "").trim(),
+          seoDescRu: String(item.seoDescRu || "").trim(),
+          seoDescUz: String(item.seoDescUz || "").trim(),
           specs: Array.isArray(item.specs)
             ? item.specs.map((spec) => normalizeSpec(spec)).filter(Boolean)
             : [],
@@ -637,13 +655,7 @@ function hydratePageProduct(product) {
     const descriptionText = lang === "uz" ? (descUz || descRu) : (descRu || descUz);
     const aboutTitle = window.emirateT?.("product.aboutTitle") || (lang === "uz" ? "Mahsulot haqida" : "О товаре");
     if (descriptionText) {
-      const paragraphs = descriptionText
-        .split(/\n+/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => `<p>${escapeHtml(line)}</p>`)
-        .join("");
-      descriptionTabEl.innerHTML = `<h3>${escapeHtml(aboutTitle)}</h3>${paragraphs}`;
+      descriptionTabEl.innerHTML = renderDescriptionBlock(descriptionText, aboutTitle);
     } else {
       descriptionTabEl.innerHTML = defaultDescriptionHtml;
     }

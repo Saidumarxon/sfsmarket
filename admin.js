@@ -1440,6 +1440,10 @@ function normalizeProductRecord(product) {
     photos: Array.isArray(p.photos) ? p.photos : [],
     descUz: String(p.descUz || '').trim(),
     descRu: String(p.descRu || '').trim(),
+    seoTitleRu: String(p.seoTitleRu || '').trim(),
+    seoTitleUz: String(p.seoTitleUz || '').trim(),
+    seoDescRu: String(p.seoDescRu || '').trim(),
+    seoDescUz: String(p.seoDescUz || '').trim(),
     specs: specs
       .map((item) => ({
         keyRu: String(item?.keyRu || item?.key || '').trim(),
@@ -3042,7 +3046,141 @@ let editingProductId = null;
 const editorDescriptionPreview = document.getElementById('editorDescriptionPreview');
 const editorSpecsPreview = document.getElementById('editorSpecsPreview');
 
+const descEditorMap = {
+  uz: { body: document.getElementById('pDescUzEditor'), field: document.getElementById('pDescUz') },
+  ru: { body: document.getElementById('pDescRuEditor'), field: document.getElementById('pDescRu') },
+};
+
+function syncDescFieldFromEditor(lang) {
+  const pair = descEditorMap[lang];
+  if (!pair?.body || !pair?.field) return;
+  pair.field.value = pair.body.innerHTML.trim();
+}
+
+function syncDescEditorFromField(lang) {
+  const pair = descEditorMap[lang];
+  if (!pair?.body || !pair?.field) return;
+  pair.body.innerHTML = pair.field.value || '';
+}
+
+function syncAllDescFieldsFromEditors() {
+  syncDescFieldFromEditor('uz');
+  syncDescFieldFromEditor('ru');
+}
+
+function initDescriptionRichEditors() {
+  Object.keys(descEditorMap).forEach(function (lang) {
+    const pair = descEditorMap[lang];
+    if (!pair?.body) return;
+
+    pair.body.addEventListener('input', function () {
+      syncDescFieldFromEditor(lang);
+      renderEditorDescriptionPreview();
+    });
+
+    const toolbar = pair.body.closest('.desc-rich-editor')?.querySelector('.desc-rich-toolbar');
+    toolbar?.querySelectorAll('.desc-rich-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        pair.body.focus();
+        const cmd = btn.getAttribute('data-cmd');
+        const value = btn.getAttribute('data-value') || null;
+        if (cmd === 'formatBlock' && value) {
+          document.execCommand(cmd, false, value);
+        } else if (cmd) {
+          document.execCommand(cmd, false, null);
+        }
+        syncDescFieldFromEditor(lang);
+        renderEditorDescriptionPreview();
+      });
+    });
+  });
+}
+
+function setDescAiStatus(message, type) {
+  const node = document.getElementById('pDescAiStatus');
+  if (!node) return;
+  if (!message) {
+    node.hidden = true;
+    node.textContent = '';
+    node.className = 'desc-ai-status';
+    return;
+  }
+  node.hidden = false;
+  node.textContent = message;
+  node.className = 'desc-ai-status' + (type === 'error' ? ' is-error' : type === 'loading' ? ' is-loading' : ' is-success');
+}
+
+async function requestDescriptionAiFill() {
+  const nameRu = document.getElementById('pNameRu')?.value?.trim() || '';
+  const nameUz = document.getElementById('pNameUz')?.value?.trim() || '';
+  const brand = document.getElementById('pBrand')?.value?.trim() || '';
+  const model = document.getElementById('pModel')?.value?.trim() || '';
+  const category = document.getElementById('pCategory')?.value?.trim() || '';
+
+  if (nameRu.length < 4 && nameUz.length < 4) {
+    setDescAiStatus('Avval mahsulot nomini (Ru yoki Uz) kiriting.', 'error');
+    editorTabs.forEach(function (t) { t.classList.remove('active'); });
+    editorTabContents.forEach(function (c) { c.classList.remove('active'); });
+    editorTabs[0]?.classList.add('active');
+    editorTabContents[0]?.classList.add('active');
+    return;
+  }
+
+  const btn = document.getElementById('pDescAiFillBtn');
+  if (btn) btn.disabled = true;
+  setDescAiStatus('Emirate AI tavsif yaratmoqda…', 'loading');
+
+  try {
+    const res = await fetch('/api/suggest-product-description', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nameRu, nameUz, brand, model, category }),
+    });
+    const data = await res.json().catch(function () { return {}; });
+
+    if (!res.ok || !data.ok) {
+      setDescAiStatus(data.message || data.error || 'AI javob bermadi.', 'error');
+      return;
+    }
+
+    if (data.descUz && descEditorMap.uz.field) {
+      descEditorMap.uz.field.value = data.descUz;
+      syncDescEditorFromField('uz');
+    }
+    if (data.descRu && descEditorMap.ru.field) {
+      descEditorMap.ru.field.value = data.descRu;
+      syncDescEditorFromField('ru');
+    }
+    if (data.seoTitleRu) document.getElementById('pSeoTitleRu').value = data.seoTitleRu;
+    if (data.seoTitleUz) document.getElementById('pSeoTitleUz').value = data.seoTitleUz;
+    if (data.seoDescRu) document.getElementById('pSeoDescRu').value = data.seoDescRu;
+    if (data.seoDescUz) document.getElementById('pSeoDescUz').value = data.seoDescUz;
+
+    if (Array.isArray(data.specs) && data.specs.length) {
+      const current = getSpecsFromEditor().filter(function (s) {
+        return s.keyRu || s.keyUz || s.valueRu || s.valueUz;
+      });
+      if (!current.length) {
+        renderSpecsRows(data.specs);
+      } else if (confirm('Xususiyatlar allaqachon bor. AI variantini qo\'shishni xohlaysizmi?')) {
+        renderSpecsRows(current.concat(data.specs));
+      }
+      renderEditorSpecsPreview();
+    }
+
+    renderEditorDescriptionPreview();
+    const sourceLabel = data.source === 'openai' ? 'Emirate AI' : 'shablon';
+    setDescAiStatus('Tavsif ' + sourceLabel + ' orqali to\'ldirildi. Kerak bo\'lsa tahrirlang.', 'success');
+  } catch (_) {
+    setDescAiStatus('Tarmoq xatosi. Qayta urinib ko\'ring.', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function getEditorDescriptionText() {
+  syncAllDescFieldsFromEditors();
   const ru = document.getElementById('pDescRu')?.value?.trim() || '';
   const uz = document.getElementById('pDescUz')?.value?.trim() || '';
   return ru || uz;
@@ -3056,14 +3194,17 @@ function renderEditorDescriptionPreview() {
     return;
   }
 
-  const paragraphs = descriptionText
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => `<p>${escapeHtml(line)}</p>`)
-    .join('');
+  if (/<[a-z][\s\S]*>/i.test(descriptionText)) {
+    editorDescriptionPreview.innerHTML = descriptionText;
+    return;
+  }
 
-  editorDescriptionPreview.innerHTML = paragraphs;
+  editorDescriptionPreview.innerHTML = descriptionText
+    .split(/\n+/)
+    .map(function (line) { return line.trim(); })
+    .filter(Boolean)
+    .map(function (line) { return '<p>' + escapeHtml(line) + '</p>'; })
+    .join('');
 }
 
 function renderEditorSpecsPreview() {
@@ -3412,6 +3553,13 @@ function openEditorForProduct(id) {
   document.getElementById('pDeliveryArea').value = p.deliveryArea || '';
   document.getElementById('pDescUz').value = p.descUz || '';
   document.getElementById('pDescRu').value = p.descRu || '';
+  syncDescEditorFromField('uz');
+  syncDescEditorFromField('ru');
+  document.getElementById('pSeoTitleRu').value = p.seoTitleRu || '';
+  document.getElementById('pSeoTitleUz').value = p.seoTitleUz || '';
+  document.getElementById('pSeoDescRu').value = p.seoDescRu || '';
+  document.getElementById('pSeoDescUz').value = p.seoDescUz || '';
+  setDescAiStatus('');
   document.getElementById('pPriceUsd').value = p.priceUsd > 0 ? String(p.priceUsd) : '';
   document.getElementById('pOldPriceUsd').value = p.oldPriceUsd > 0 ? String(p.oldPriceUsd) : '';
   document.getElementById('pPrice').value = p.price || '';
@@ -3680,6 +3828,13 @@ function clearEditorForm() {
   document.getElementById('pDeliveryArea').value = '';
   document.getElementById('pDescUz').value = '';
   document.getElementById('pDescRu').value = '';
+  syncDescEditorFromField('uz');
+  syncDescEditorFromField('ru');
+  document.getElementById('pSeoTitleRu').value = '';
+  document.getElementById('pSeoTitleUz').value = '';
+  document.getElementById('pSeoDescRu').value = '';
+  document.getElementById('pSeoDescUz').value = '';
+  setDescAiStatus('');
   document.getElementById('pPriceUsd').value = '';
   document.getElementById('pOldPriceUsd').value = '';
   document.getElementById('pPrice').value = '';
@@ -3816,8 +3971,13 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
   const express = document.getElementById('pExpress').value;
   const condition = document.getElementById('pCondition').value.trim() || 'Есть в наличии';
   const deliveryArea = document.getElementById('pDeliveryArea').value.trim();
+  syncAllDescFieldsFromEditors();
   const descUz = document.getElementById('pDescUz').value.trim();
   const descRu = document.getElementById('pDescRu').value.trim();
+  const seoTitleRu = document.getElementById('pSeoTitleRu')?.value?.trim() || '';
+  const seoTitleUz = document.getElementById('pSeoTitleUz')?.value?.trim() || '';
+  const seoDescRu = document.getElementById('pSeoDescRu')?.value?.trim() || '';
+  const seoDescUz = document.getElementById('pSeoDescUz')?.value?.trim() || '';
   const priority = Number(document.getElementById('pPriority').value);
   const priceUsd = document.getElementById('pPriceUsd').value.trim();
   const oldPriceUsd = document.getElementById('pOldPriceUsd').value.trim();
@@ -3919,6 +4079,10 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
         deliveryArea,
         descUz,
         descRu,
+        seoTitleRu,
+        seoTitleUz,
+        seoDescRu,
+        seoDescUz,
         specs,
         colorMeta,
         colors,
@@ -3958,6 +4122,10 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
       deliveryArea,
       descUz,
       descRu,
+      seoTitleRu,
+      seoTitleUz,
+      seoDescRu,
+      seoDescUz,
       specs,
       colorMeta,
       colors,
@@ -4020,6 +4188,8 @@ document.getElementById('specsContainer').addEventListener('input', function(e) 
 
 document.getElementById('pDescRu')?.addEventListener('input', renderEditorDescriptionPreview);
 document.getElementById('pDescUz')?.addEventListener('input', renderEditorDescriptionPreview);
+initDescriptionRichEditors();
+document.getElementById('pDescAiFillBtn')?.addEventListener('click', requestDescriptionAiFill);
 renderProductEditorPreviews();
 renderColorVariantsList();
 resetColorVariantForm();

@@ -962,14 +962,64 @@
             <!-- TAB: Описание -->
             <div class="editor-tab-content" data-tab="description">
               <div class="editor-section">
+                <div class="desc-ai-panel">
+                  <button type="button" class="btn-desc-ai" id="pDescAiFillBtn">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M5 18l.75 2.25L8 21l-2.25.75L5 24l-.75-2.25L2 21l2.25-.75L5 18z"/><path d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z"/></svg>
+                    <span>AI bilan to'ldirish</span>
+                  </button>
+                  <p class="desc-ai-hint">Nom, brend va kategoriyani kiriting — keyin Emirate AI tavsif, SEO meta va xususiyatlarni to'ldiradi. Qo'lda tahrirlash mumkin.</p>
+                  <p class="desc-ai-status" id="pDescAiStatus" hidden></p>
+                </div>
+
                 <div class="form-group">
                   <label>Описание Uz</label>
-                  <textarea id="pDescUz" rows="6" placeholder="Mahsulot haqida ma'lumot..."></textarea>
+                  <div class="desc-rich-editor" data-editor="uz">
+                    <div class="desc-rich-toolbar" role="toolbar" aria-label="Formatlash">
+                      <button type="button" class="desc-rich-btn" data-cmd="bold" title="Qalin"><strong>B</strong></button>
+                      <button type="button" class="desc-rich-btn" data-cmd="italic" title="Kursiv"><em>I</em></button>
+                      <button type="button" class="desc-rich-btn" data-cmd="insertUnorderedList" title="Ro'yxat">•</button>
+                      <button type="button" class="desc-rich-btn" data-cmd="insertOrderedList" title="Raqamli">1.</button>
+                      <button type="button" class="desc-rich-btn" data-cmd="formatBlock" data-value="h3" title="Sarlavha">H</button>
+                    </div>
+                    <div class="desc-rich-body" id="pDescUzEditor" contenteditable="true" data-placeholder="Mahsulot haqida ma'lumot..."></div>
+                  </div>
+                  <textarea id="pDescUz" hidden></textarea>
                 </div>
+
                 <div class="form-group">
                   <label>Описание Ru</label>
-                  <textarea id="pDescRu" rows="6" placeholder="Описание товара..."></textarea>
+                  <div class="desc-rich-editor" data-editor="ru">
+                    <div class="desc-rich-toolbar" role="toolbar" aria-label="Форматирование">
+                      <button type="button" class="desc-rich-btn" data-cmd="bold" title="Жирный"><strong>B</strong></button>
+                      <button type="button" class="desc-rich-btn" data-cmd="italic" title="Курсив"><em>I</em></button>
+                      <button type="button" class="desc-rich-btn" data-cmd="insertUnorderedList" title="Список">•</button>
+                      <button type="button" class="desc-rich-btn" data-cmd="insertOrderedList" title="Нумерация">1.</button>
+                      <button type="button" class="desc-rich-btn" data-cmd="formatBlock" data-value="h3" title="Заголовок">H</button>
+                    </div>
+                    <div class="desc-rich-body" id="pDescRuEditor" contenteditable="true" data-placeholder="Описание товара..."></div>
+                  </div>
+                  <textarea id="pDescRu" hidden></textarea>
                 </div>
+
+                <div class="desc-seo-grid">
+                  <div class="form-group">
+                    <label>SEO title Ru</label>
+                    <input type="text" id="pSeoTitleRu" placeholder="Заголовок для поиска">
+                  </div>
+                  <div class="form-group">
+                    <label>SEO title Uz</label>
+                    <input type="text" id="pSeoTitleUz" placeholder="Qidiruv sarlavhasi">
+                  </div>
+                  <div class="form-group desc-seo-wide">
+                    <label>SEO description Ru</label>
+                    <textarea id="pSeoDescRu" rows="2" placeholder="Краткое описание для Google"></textarea>
+                  </div>
+                  <div class="form-group desc-seo-wide">
+                    <label>SEO description Uz</label>
+                    <textarea id="pSeoDescUz" rows="2" placeholder="Google uchun qisqa tavsif"></textarea>
+                  </div>
+                </div>
+
                 <div class="editor-live-preview">
                   <div class="editor-live-preview-head">Предпросмотр на карточке товара</div>
                   <div class="editor-live-description" id="editorDescriptionPreview">
