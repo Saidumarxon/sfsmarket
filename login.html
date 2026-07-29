@@ -169,49 +169,55 @@
         </button>
       </div>
 
-      <section class="profile-account-card">
+      <section class="profile-account-card profile-account-card--hero">
+        <div class="profile-account-hero-bg" aria-hidden="true"></div>
         <div class="profile-account-main">
           <div class="profile-account-identity">
-          <div class="profile-account-avatar-wrap">
-            <img class="profile-account-avatar" id="profileAvatar" src="" alt="" width="72" height="72" hidden>
-            <div class="profile-account-avatar profile-account-avatar--placeholder" id="profileAvatarPlaceholder" hidden>
-              <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <div class="profile-account-avatar-wrap">
+              <img class="profile-account-avatar" id="profileAvatar" src="" alt="" width="88" height="88" hidden>
+              <div class="profile-account-avatar profile-account-avatar--initials" id="profileAvatarInitials">EC</div>
             </div>
-          </div>
             <div class="profile-account-identity-text">
+              <p class="profile-account-badge" id="profileProviderBadge" hidden>SMS</p>
               <h2 class="profile-account-name" id="profileName">—</h2>
               <p class="profile-account-id" id="profileId">ID: —</p>
-              <p class="profile-account-contact" id="profileEmailRow" hidden>
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M22 6l-10 7L2 6"/></svg>
-                <span id="profileEmail">—</span>
-              </p>
-              <p class="profile-account-contact" id="profilePhoneRow" hidden>
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-                <span id="profilePhone">—</span>
-              </p>
+              <div class="profile-account-chips">
+                <span class="profile-account-chip" id="profilePhoneChip" hidden>
+                  <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                  <span id="profilePhone">—</span>
+                </span>
+                <span class="profile-account-chip profile-account-chip--muted" id="profileEmailChip" hidden>
+                  <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M22 6l-10 7L2 6"/></svg>
+                  <span id="profileEmail">—</span>
+                </span>
+              </div>
             </div>
           </div>
-          <div class="profile-account-fields">
-            <div class="profile-account-field">
-              <span class="profile-account-field-label" data-i18n="profile.passport">Серия паспорта</span>
-              <strong class="profile-account-field-value" id="profilePassport">—</strong>
+          <div class="profile-account-fields-wrap" id="profileFieldsWrap">
+            <h3 class="profile-account-fields-title" data-i18n="profile.personalInfo">Личные данные</h3>
+            <div class="profile-account-fields" id="profileFieldsGrid">
+              <div class="profile-account-field" data-profile-field="passport">
+                <span class="profile-account-field-label" data-i18n="profile.passport">Серия паспорта</span>
+                <strong class="profile-account-field-value" id="profilePassport">—</strong>
+              </div>
+              <div class="profile-account-field" data-profile-field="birthday">
+                <span class="profile-account-field-label" data-i18n="profile.birthday">Дата рождения</span>
+                <strong class="profile-account-field-value" id="profileBirthday">—</strong>
+              </div>
+              <div class="profile-account-field" data-profile-field="gender">
+                <span class="profile-account-field-label" data-i18n="profile.gender">Пол</span>
+                <strong class="profile-account-field-value" id="profileGender">—</strong>
+              </div>
+              <div class="profile-account-field" data-profile-field="address">
+                <span class="profile-account-field-label" data-i18n="profile.address">Адрес</span>
+                <strong class="profile-account-field-value" id="profileAddress">—</strong>
+              </div>
+              <div class="profile-account-field" data-profile-field="workAddress">
+                <span class="profile-account-field-label" data-i18n="profile.workAddress">Рабочий адрес</span>
+                <strong class="profile-account-field-value" id="profileWorkAddress">—</strong>
+              </div>
             </div>
-            <div class="profile-account-field">
-              <span class="profile-account-field-label" data-i18n="profile.birthday">Дата рождения</span>
-              <strong class="profile-account-field-value" id="profileBirthday">—</strong>
-            </div>
-            <div class="profile-account-field">
-              <span class="profile-account-field-label" data-i18n="profile.gender">Пол</span>
-              <strong class="profile-account-field-value" id="profileGender">—</strong>
-            </div>
-            <div class="profile-account-field">
-              <span class="profile-account-field-label" data-i18n="profile.address">Адрес</span>
-              <strong class="profile-account-field-value" id="profileAddress">—</strong>
-            </div>
-            <div class="profile-account-field">
-              <span class="profile-account-field-label" data-i18n="profile.workAddress">Рабочий адрес</span>
-              <strong class="profile-account-field-value" id="profileWorkAddress">—</strong>
-            </div>
+            <p class="profile-account-empty-hint" id="profileEmptyHint" hidden data-i18n="profile.completeHint">Заполните профиль — это упростит оформление заказа и рассрочки.</p>
           </div>
         </div>
       </section>
@@ -704,7 +710,23 @@
         if (!userId) return "—";
         var n = 0;
         for (var i = 0; i < userId.length; i++) n = (n * 31 + userId.charCodeAt(i)) >>> 0;
-        return String(n % 1000000).padStart(6, "0");
+        return "E" + String(n % 1000000).padStart(6, "0");
+      }
+
+      function syncProfileFieldVisibility() {
+        var fields = document.querySelectorAll("[data-profile-field]");
+        var filled = 0;
+        fields.forEach(function (field) {
+          var valueEl = field.querySelector(".profile-account-field-value");
+          var raw = valueEl ? String(valueEl.textContent || "").trim() : "";
+          var empty = !raw || raw === "—" || raw === (window.emirateT && window.emirateT("profile.unknown")) || raw === "Не указан" || raw === "Noma'lum";
+          field.hidden = empty;
+          if (!empty) filled += 1;
+        });
+        var wrap = document.getElementById("profileFieldsWrap");
+        var hint = document.getElementById("profileEmptyHint");
+        if (wrap) wrap.classList.toggle("is-empty", filled === 0);
+        if (hint) hint.hidden = filled > 0;
       }
 
       function dash(value) {
@@ -728,11 +750,24 @@
         var profile = window.emirateAuth && window.emirateAuth.extractProfile
           ? window.emirateAuth.extractProfile(user)
           : null;
-        var name = dash(profile ? profile.name : (meta.full_name || meta.name || user.email));
-        var email = dash(user.email);
+        var lang = window.emirateLang && window.emirateLang();
+        var displayName =
+          window.emirateAuth && window.emirateAuth.getCustomerDisplayName
+            ? window.emirateAuth.getCustomerDisplayName(user, lang)
+            : dash(meta.full_name || meta.name || user.email);
+        var emailRaw = String(user.email || "").trim();
+        var showEmail = emailRaw && !(window.emirateAuth && window.emirateAuth.isPhoneAuthEmail(emailRaw));
         var phoneRaw = profile ? profile.phone : (meta.phone || meta.phone_number);
-        var phone = phoneRaw ? formatUzPhone(phoneRaw) : "—";
+        if (!phoneRaw && window.emirateAuth && window.emirateAuth.phoneFromAuthEmail) {
+          phoneRaw = window.emirateAuth.phoneFromAuthEmail(emailRaw);
+        }
+        var phone = phoneRaw
+          ? (window.emirateAuth && window.emirateAuth.formatUzPhoneDisplay
+              ? window.emirateAuth.formatUzPhoneDisplay(phoneRaw)
+              : formatUzPhone(phoneRaw))
+          : "";
         var avatar = String(profile ? profile.avatar : (meta.avatar_url || meta.picture || "")).trim();
+        var provider = profile && profile.provider ? profile.provider : "";
 
         document.body.classList.add("profile-logged-in");
         var sidebar = document.getElementById("profileSidebar");
@@ -744,55 +779,80 @@
         document.getElementById("profileGuestActions").hidden = true;
         document.getElementById("profileLoggedActions").hidden = false;
 
-        document.getElementById("profileName").textContent = name;
-        document.getElementById("profileId").textContent = "ID: " + formatProfileId(user.id);
-        document.getElementById("profileEmail").textContent = email;
-        document.getElementById("profilePhone").textContent = phone;
+        document.getElementById("profileName").textContent = displayName;
+        document.getElementById("profileId").textContent =
+          ((window.emirateT && window.emirateT("profile.idLabel")) || "ID:") + " " + formatProfileId(user.id);
+
+        var phoneChip = document.getElementById("profilePhoneChip");
+        var emailChip = document.getElementById("profileEmailChip");
+        var phoneEl = document.getElementById("profilePhone");
+        var emailEl = document.getElementById("profileEmail");
+        if (phoneEl) phoneEl.textContent = phone || "—";
+        if (emailEl) emailEl.textContent = emailRaw || "—";
+        if (phoneChip) phoneChip.hidden = !phone;
+        if (emailChip) emailChip.hidden = !showEmail;
+
+        var badge = document.getElementById("profileProviderBadge");
+        if (badge) {
+          if (provider === "phone" || (window.emirateAuth && window.emirateAuth.isPhoneAuthEmail(emailRaw))) {
+            badge.hidden = false;
+            badge.textContent = (window.emirateT && window.emirateT("profile.smsLogin")) || "Вход по SMS";
+          } else if (provider === "google") {
+            badge.hidden = false;
+            badge.textContent = "Google";
+          } else {
+            badge.hidden = true;
+          }
+        }
+
         document.getElementById("profilePassport").textContent = dash(profile ? profile.passport : meta.passport);
         document.getElementById("profileBirthday").textContent = dash(profile ? profile.birthday : (meta.birthday || meta.birth_date));
         document.getElementById("profileGender").textContent = genderLabel(profile ? profile.gender : meta.gender);
         document.getElementById("profileAddress").textContent = dash(profile ? profile.address : meta.address);
         document.getElementById("profileWorkAddress").textContent = dash(profile ? profile.workAddress : meta.work_address);
 
-        var emailRow = document.getElementById("profileEmailRow");
-        var phoneRow = document.getElementById("profilePhoneRow");
-        if (emailRow) emailRow.hidden = email === "—";
-        if (phoneRow) phoneRow.hidden = phone === "—";
-
-        setAccountAvatar(avatar, name);
+        syncProfileFieldVisibility();
+        setAccountAvatar(avatar, displayName, emailRaw, phoneRaw);
 
         if (window.emirateAuth && window.emirateAuth.syncCustomerAuthUi) {
           window.emirateAuth.syncCustomerAuthUi();
         }
       }
 
-      function setAccountAvatar(url, name) {
+      function setAccountAvatar(url, name, email, phone) {
         var avatarEl = document.getElementById("profileAvatar");
-        var avatarPh = document.getElementById("profileAvatarPlaceholder");
-        if (!avatarEl || !avatarPh) return;
+        var initialsEl = document.getElementById("profileAvatarInitials");
+        if (!avatarEl || !initialsEl) return;
+
+        var initials =
+          window.emirateAuth && window.emirateAuth.getProfileInitials
+            ? window.emirateAuth.getProfileInitials(name, email, phone)
+            : "EC";
+        initialsEl.textContent = initials;
 
         avatarEl.onload = null;
         avatarEl.onerror = null;
 
+        function showInitials() {
+          avatarEl.hidden = true;
+          avatarEl.removeAttribute("src");
+          initialsEl.hidden = false;
+        }
+
         if (url) {
           avatarEl.onload = function () {
             avatarEl.hidden = false;
-            avatarPh.hidden = true;
+            initialsEl.hidden = true;
           };
-          avatarEl.onerror = function () {
-            avatarEl.hidden = true;
-            avatarPh.hidden = false;
-          };
+          avatarEl.onerror = showInitials;
           avatarEl.alt = name || "";
           avatarEl.src = url;
           if (avatarEl.complete && avatarEl.naturalWidth > 0) {
             avatarEl.hidden = false;
-            avatarPh.hidden = true;
+            initialsEl.hidden = true;
           }
         } else {
-          avatarEl.removeAttribute("src");
-          avatarEl.hidden = true;
-          avatarPh.hidden = false;
+          showInitials();
         }
       }
 

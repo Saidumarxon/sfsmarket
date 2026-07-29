@@ -2079,7 +2079,10 @@ function formatProfileMoney(value) {
   return currentLang === "uz" ? amount + " so'm" : amount + " сум";
 }
 
-function profileDropdownInitial(name, email) {
+function profileDropdownInitial(name, email, phone) {
+  if (window.emirateAuth && window.emirateAuth.getProfileInitials) {
+    return window.emirateAuth.getProfileInitials(name, email, phone);
+  }
   var source = String(name || email || "?").trim();
   if (!source) return "?";
   var parts = source.split(/\s+/).filter(Boolean);
@@ -2219,7 +2222,10 @@ function renderProfileDropdown(wrap, customer) {
     if (guestPanel) guestPanel.hidden = true;
     if (loggedPanel) loggedPanel.hidden = false;
 
-    var displayName = customer.name || customer.email || t("profile.unknown") || "—";
+    var displayName =
+      window.emirateAuth && window.emirateAuth.getCustomerDisplayName
+        ? window.emirateAuth.getCustomerDisplayName(customer, currentLang)
+        : customer.name || customer.email || t("profile.unknown") || "—";
     var nameEl = loggedPanel.querySelector(".profile-dropdown-name");
     var idEl = loggedPanel.querySelector(".profile-dropdown-id");
     var balanceEl = loggedPanel.querySelector(".profile-dropdown-balance-value");
@@ -2232,10 +2238,21 @@ function renderProfileDropdown(wrap, customer) {
     if (pointsEl) pointsEl.textContent = formatProfileMoney(customer.points || 0);
 
     avatarEl.hidden = false;
+    var initials = profileDropdownInitial(customer.name, customer.email, customer.phone);
+    avatarEl.textContent = "";
+    avatarEl.innerHTML = "";
     if (customer.avatar) {
-      avatarEl.innerHTML = '<img src="' + customer.avatar.replace(/"/g, "&quot;") + '" alt="" referrerpolicy="no-referrer">';
+      var img = document.createElement("img");
+      img.src = customer.avatar;
+      img.alt = displayName;
+      img.referrerPolicy = "no-referrer";
+      img.onerror = function () {
+        img.remove();
+        avatarEl.textContent = initials;
+      };
+      avatarEl.appendChild(img);
     } else {
-      avatarEl.textContent = profileDropdownInitial(customer.name, customer.email);
+      avatarEl.textContent = initials;
     }
     var defaultSvg = iconWrap.querySelector("svg");
     if (defaultSvg) defaultSvg.hidden = true;

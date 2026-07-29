@@ -90,18 +90,81 @@
     return "email";
   }
 
+  function isPhoneAuthEmail(email) {
+    return /^p\d{9,12}@phone\.emirateco\.uz$/i.test(String(email || "").trim());
+  }
+
+  function phoneFromAuthEmail(email) {
+    var match = String(email || "").trim().match(/^p(\d{9,12})@phone\.emirateco\.uz$/i);
+    if (!match) return "";
+    var digits = match[1];
+    if (digits.length === 9) return "998" + digits;
+    if (digits.startsWith("998")) return digits.slice(0, 12);
+    return digits;
+  }
+
+  function normalizePhoneDigits(value) {
+    var digits = String(value || "").replace(/\D/g, "");
+    if (digits.indexOf("998") === 0) digits = digits.slice(3);
+    digits = digits.slice(0, 9);
+    if (digits.length !== 9) return "";
+    return "998" + digits;
+  }
+
+  function formatUzPhoneDisplay(value) {
+    var digits = normalizePhoneDigits(value);
+    if (!digits) return "";
+    var local = digits.slice(3);
+    return "+998 (" + local.slice(0, 2) + ") " + local.slice(2, 5) + "-" + local.slice(5, 7) + "-" + local.slice(7, 9);
+  }
+
+  function getProfileInitials(name, email, phone) {
+    var source = String(name || "").trim();
+    if (source) {
+      var parts = source.split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+      return source.slice(0, 2).toUpperCase();
+    }
+    if (phone) {
+      var local = normalizePhoneDigits(phone).slice(-2);
+      return local || "EC";
+    }
+    var mail = String(email || "").trim();
+    if (isPhoneAuthEmail(mail)) return "EC";
+    if (mail.indexOf("@") > 0) return mail.split("@")[0].slice(0, 2).toUpperCase();
+    return "EC";
+  }
+
+  function getCustomerDisplayName(input, lang) {
+    var profile = input && input.user_metadata ? extractProfile(input) : input || {};
+    var name = String(profile.name || "").trim();
+    if (name) return name;
+    var phone = String(profile.phone || "").trim() || phoneFromAuthEmail(profile.email);
+    if (phone) return formatUzPhoneDisplay(phone);
+    var email = String(profile.email || "").trim();
+    if (email && !isPhoneAuthEmail(email)) {
+      var local = email.split("@")[0];
+      return local.charAt(0).toUpperCase() + local.slice(1);
+    }
+    return lang === "uz" ? "Mijoz" : "Покупатель";
+  }
+
   function extractProfile(user) {
     if (!user) return null;
     var meta = user.user_metadata || {};
+    var email = String(user.email || "").trim();
+    var phone = String(meta.phone || meta.phone_number || "").trim();
+    if (!phone && isPhoneAuthEmail(email)) phone = phoneFromAuthEmail(email);
+    phone = normalizePhoneDigits(phone) || phone;
     return {
       id: user.id,
-      email: String(user.email || "").trim(),
+      email: email,
       name: String(meta.full_name || meta.name || meta.user_name || "").trim(),
       avatar: String(meta.avatar_url || meta.picture || "").trim(),
       provider: detectProvider(user),
       passport: String(meta.passport || "").trim(),
       birthday: String(meta.birthday || meta.birth_date || "").trim(),
-      phone: String(meta.phone || meta.phone_number || "").trim(),
+      phone: phone,
       address: String(meta.address || "").trim(),
       workAddress: String(meta.work_address || "").trim(),
       gender: String(meta.gender || "").trim(),
@@ -400,9 +463,9 @@
       var label = link.querySelector("[data-i18n='header.login']");
       if (!label) return;
       if (customer && customer.name) {
-        label.textContent = customer.name.split(" ")[0] || customer.email || label.textContent;
-      } else if (customer && customer.email) {
-        label.textContent = customer.email.split("@")[0] || label.textContent;
+        label.textContent = customer.name.split(" ")[0] || getCustomerDisplayName(customer) || label.textContent;
+      } else if (customer) {
+        label.textContent = getCustomerDisplayName(customer) || label.textContent;
       }
     });
     if (typeof window.emirateUpdateProfileDropdown === "function") {
@@ -417,6 +480,11 @@
     completeOAuthFromUrl: completeOAuthFromUrl,
     persistCustomerSession: persistCustomerSession,
     extractProfile: extractProfile,
+    getCustomerDisplayName: getCustomerDisplayName,
+    getProfileInitials: getProfileInitials,
+    formatUzPhoneDisplay: formatUzPhoneDisplay,
+    isPhoneAuthEmail: isPhoneAuthEmail,
+    phoneFromAuthEmail: phoneFromAuthEmail,
     updateCustomerProfile: updateCustomerProfile,
     uploadCustomerAvatar: uploadCustomerAvatar,
     formatGenderLabel: formatGenderLabel,
