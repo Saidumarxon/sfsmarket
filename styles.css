@@ -1374,7 +1374,7 @@ html[data-theme="dark"] .badge-match {
 
   html[data-theme="dark"]:not(.capacitor-app) .profile-account-card,
   html[data-theme="dark"]:not(.capacitor-app) .profile-stat-card,
-  html[data-theme="dark"]:not(.capacitor-app) #profileEditView {
+  html[data-theme="dark"]:not(.capacitor-app) .profile-edit-card {
     background: var(--bg-card);
     border-color: var(--border);
     box-shadow: var(--shadow-sm);

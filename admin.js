@@ -3229,7 +3229,7 @@ function renderTitleSuggest(lang, payload) {
   if (els.chars) {
     const sourceLabel =
       payload.source === 'openai'
-        ? ' · ChatGPT'
+        ? ' · Emirate AI'
         : payload.source === 'rules'
           ? (lang === 'uz' ? ' · qoidalar' : ' · без ИИ')
           : '';
