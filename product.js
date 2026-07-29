@@ -34,6 +34,8 @@ const reviewsTabBtn = document.querySelector('.tab-btn[data-tab="reviews"]');
 const similarSectionEl = document.getElementById("similarProductsSection");
 const similarGridEl = document.getElementById("similarProductsGrid");
 const similarCategoryLinkEl = document.getElementById("similarCategoryLink");
+const productFactsEl = document.getElementById("productFacts");
+const productSkuCopyBtn = document.getElementById("productSkuCopyBtn");
 let similarProductsSource = [];
 let activePhotoIndex = 0;
 let currentPhotos = [];
@@ -245,7 +247,8 @@ function readAdminProducts() {
         }) || { image: uploadedPhotos[0] || "", photos: uploadedPhotos };
         return {
           title,
-          brand: item.brand || title.split(" ")[0] || "",
+          brand: item.brand || "",
+          model: String(item.model || "").trim(),
           category: item.category || "Смартфоны",
           price,
           oldPrice,
@@ -516,6 +519,56 @@ function renderProductReviews(product, lang) {
     itemsHtml;
 }
 
+function renderProductFacts(product, lang, skuValue) {
+  if (!productFactsEl) return;
+
+  const sku = String(skuValue || product.sku || "").trim();
+  const brand = String(product.brand || "").trim();
+  const model = String(product.model || "").trim();
+
+  productFactsEl.hidden = false;
+
+  const skuEl = document.getElementById("productFactSku");
+  if (skuEl) skuEl.textContent = sku || "—";
+
+  const brandRow = document.getElementById("productBrandRow");
+  const brandLink = document.getElementById("productBrandLink");
+  const brandNameEl = document.getElementById("productBrandName");
+  const brandLogoEl = document.getElementById("productBrandLogo");
+
+  if (brand && brandRow && brandLink && brandNameEl) {
+    brandRow.hidden = false;
+    const brandMeta = window.emirateBrands?.getBrandByName?.(brand);
+    const displayName =
+      window.emirateBrands?.getBrandDisplayName?.(brandMeta || { nameRu: brand, nameUz: brand }, lang) || brand;
+    brandNameEl.textContent = displayName;
+    brandLink.href =
+      window.emirateBrands?.buildBrandCatalogUrl?.(brandMeta || { nameRu: brand }) ||
+      ("catalog.html?brand=" + encodeURIComponent(brand));
+    if (brandLogoEl) {
+      if (brandMeta?.logoUrl) {
+        brandLogoEl.src = brandMeta.logoUrl;
+        brandLogoEl.alt = displayName;
+        brandLogoEl.hidden = false;
+      } else {
+        brandLogoEl.hidden = true;
+        brandLogoEl.removeAttribute("src");
+      }
+    }
+  } else if (brandRow) {
+    brandRow.hidden = true;
+  }
+
+  const modelRow = document.getElementById("productModelRow");
+  const modelEl = document.getElementById("productFactModel");
+  if (model && modelRow && modelEl) {
+    modelRow.hidden = false;
+    modelEl.textContent = model;
+  } else if (modelRow) {
+    modelRow.hidden = true;
+  }
+}
+
 function hydratePageProduct(product) {
   const title = product.title || "Товар";
   const price = Number(product.price) || 0;
@@ -550,6 +603,7 @@ function hydratePageProduct(product) {
   if (currentPriceEl) currentPriceEl.textContent = `${formatMoney(price)} сум`;
   if (oldPriceEl) oldPriceEl.textContent = oldPrice > price ? `${formatMoney(oldPrice)} сум` : "";
   if (skuChipEl) skuChipEl.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> ${sku}`;
+  renderProductFacts(product, lang, sku);
   renderProductReviews(product, lang);
 
   window.emirateProductSeo?.(product);
@@ -914,4 +968,12 @@ document.querySelectorAll(".wishlist-btn").forEach((btn) => {
     const svg = btn.querySelector("svg");
     if (svg) svg.setAttribute("fill", isActive ? "#ef4444" : "none");
   });
+});
+
+productSkuCopyBtn?.addEventListener("click", function () {
+  const sku = document.getElementById("productFactSku")?.textContent?.trim();
+  if (!sku || sku === "—") return;
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(sku).catch(function () {});
+  }
 });

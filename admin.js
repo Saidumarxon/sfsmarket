@@ -37,6 +37,7 @@ const pageTitles = {
   banners: 'Баннеры',
   finance: 'Финансы',
   categories: 'Категории',
+  brands: 'Бренды',
   'product-editor': 'Продукты › Добавить',
 };
 
@@ -968,6 +969,243 @@ function applyCategoryDefaultSpecsToProduct(categoryName, { mode = 'replace' } =
     }
   });
   renderSpecsRows(merged.length ? merged : defaults);
+}
+
+// ===== BRANDS =====
+const ADMIN_BRANDS_KEY = window.emirateBrands?.ADMIN_BRANDS_KEY || 'emirate_admin_brands_v1';
+let brandsData = (window.emirateBrands?.loadBrandsData?.() || []).map(function (item) {
+  return window.emirateBrands?.normalizeBrandRecord?.(item) || item;
+});
+let brandFeedbackTimer = null;
+let pendingBrandLogoData = null;
+
+function persistBrandsData() {
+  if (window.emirateBrands?.persistBrandsData) {
+    window.emirateBrands.persistBrandsData(brandsData);
+  } else {
+    localStorage.setItem(ADMIN_BRANDS_KEY, JSON.stringify(brandsData));
+  }
+  void syncBrandsToSupabase();
+}
+
+async function syncBrandsToSupabase() {
+  if (!window.emirateSupabaseApi?.pushAdminBrandsPayload) return;
+  try {
+    const res = await window.emirateSupabaseApi.pushAdminBrandsPayload(brandsData);
+    if (!res?.ok && res?.error !== 'no_session') {
+      console.warn('[Supabase] brands sync', res?.error);
+    }
+  } catch (err) {
+    console.warn('[Supabase] brands sync', err);
+  }
+}
+
+function showBrandFeedback(message, type = 'success', timeoutMs = 2800) {
+  const node = document.getElementById('brandFeedback');
+  if (!node) return;
+  node.textContent = message;
+  node.classList.remove('success', 'error');
+  node.classList.add(type === 'error' ? 'error' : 'success');
+  node.removeAttribute('hidden');
+  if (brandFeedbackTimer) clearTimeout(brandFeedbackTimer);
+  brandFeedbackTimer = setTimeout(() => {
+    node.setAttribute('hidden', 'hidden');
+    node.classList.remove('success', 'error');
+  }, timeoutMs);
+}
+
+function setBrandLogoPreview(url) {
+  const img = document.getElementById('brandLogoPreview');
+  const placeholder = document.getElementById('brandLogoPlaceholder');
+  if (!img || !placeholder) return;
+  if (url) {
+    img.src = url;
+    img.hidden = false;
+    placeholder.hidden = true;
+  } else {
+    img.hidden = true;
+    img.removeAttribute('src');
+    placeholder.hidden = false;
+  }
+}
+
+function renderBrands(data = brandsData) {
+  const tbody = document.getElementById('brandsBody');
+  const count = document.getElementById('brandsCount');
+  if (!tbody || !count) return;
+
+  const sorted = [...data].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  if (!sorted.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:20px;">Нет брендов</td></tr>';
+    count.textContent = 'Показано 0 из 0';
+    return;
+  }
+
+  tbody.innerHTML = sorted.map((brand) => {
+    const logo = brand.logoUrl
+      ? `<img class="brand-table-logo" src="${escapeHtml(brand.logoUrl)}" alt="">`
+      : '<span class="brand-table-logo brand-table-logo--empty">—</span>';
+    return `
+    <tr>
+      <td>${logo}</td>
+      <td><strong>${escapeHtml(brand.nameRu)}</strong><div class="product-sku">${escapeHtml(brand.id)}</div></td>
+      <td>${escapeHtml(brand.nameUz || '—')}</td>
+      <td>${escapeHtml(brand.slug || '—')}</td>
+      <td>${escapeHtml(String(brand.sortOrder))}</td>
+      <td><span class="status-badge ${brand.isActive ? 'active' : 'inactive'}"><span class="status-dot"></span>${brand.isActive ? 'Активен' : 'Неактивен'}</span></td>
+      <td>${escapeHtml(formatBrandUpdatedAt(brand.updatedAt))}</td>
+      <td>
+        <div class="action-btns">
+          <button class="action-btn" title="Редактировать" data-action="edit-brand" data-brand-id="${escapeHtml(brand.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="action-btn" title="Вкл/выкл" data-action="toggle-brand" data-brand-id="${escapeHtml(brand.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg></button>
+          <button class="action-btn delete" title="Удалить" data-action="delete-brand" data-brand-id="${escapeHtml(brand.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  count.textContent = `Показано ${sorted.length} из ${brandsData.length}`;
+}
+
+function formatBrandUpdatedAt(value) {
+  if (!value) return '—';
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch (_) {
+    return String(value);
+  }
+}
+
+function resetBrandForm() {
+  document.getElementById('brandForm')?.reset();
+  document.getElementById('brandId').value = '';
+  document.getElementById('brandStatus').value = 'active';
+  document.getElementById('brandSortOrder').value = '100';
+  pendingBrandLogoData = null;
+  setBrandLogoPreview('');
+  const saveBtn = document.getElementById('brandSaveBtn');
+  if (saveBtn) {
+    saveBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Создать бренд';
+  }
+  document.getElementById('brandNameRu')?.closest('.form-group')?.classList.remove('error');
+}
+
+function fillBrandForm(brandId) {
+  const brand = brandsData.find((item) => item.id === brandId);
+  if (!brand) return;
+  document.getElementById('brandId').value = brand.id;
+  document.getElementById('brandNameRu').value = brand.nameRu;
+  document.getElementById('brandNameUz').value = brand.nameUz || '';
+  document.getElementById('brandSlug').value = brand.slug || '';
+  document.getElementById('brandSortOrder').value = String(brand.sortOrder || 100);
+  document.getElementById('brandStatus').value = brand.isActive ? 'active' : 'inactive';
+  pendingBrandLogoData = brand.logoUrl || null;
+  setBrandLogoPreview(brand.logoUrl || '');
+  const saveBtn = document.getElementById('brandSaveBtn');
+  if (saveBtn) {
+    saveBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Сохранить изменения';
+  }
+}
+
+function saveBrand(event) {
+  event.preventDefault();
+  const id = document.getElementById('brandId').value.trim();
+  const nameRu = document.getElementById('brandNameRu').value.trim();
+  const nameUz = document.getElementById('brandNameUz').value.trim();
+  const slugInput = document.getElementById('brandSlug').value.trim();
+  const sortOrder = Number(document.getElementById('brandSortOrder').value);
+  const isActive = document.getElementById('brandStatus').value !== 'inactive';
+  const nameGroup = document.getElementById('brandNameRu').closest('.form-group');
+  nameGroup?.classList.remove('error');
+
+  if (nameRu.length < 2) {
+    nameGroup?.classList.add('error');
+    showBrandFeedback('Введите корректное название бренда (Ru).', 'error', 3200);
+    return;
+  }
+
+  const slug = slugInput || (window.emirateBrands?.slugifyBrand?.(nameRu) || nameRu.toLowerCase());
+  const duplicate = brandsData.find((item) => item.nameRu.toLowerCase() === nameRu.toLowerCase() && item.id !== id);
+  if (duplicate) {
+    showBrandFeedback('Бренд с таким названием уже существует.', 'error', 3200);
+    return;
+  }
+
+  const draft = window.emirateBrands?.normalizeBrandRecord
+    ? window.emirateBrands.normalizeBrandRecord({
+        id: id || undefined,
+        nameRu,
+        nameUz: nameUz || nameRu,
+        slug,
+        logoUrl: pendingBrandLogoData || '',
+        sortOrder,
+        isActive,
+        updatedAt: getDateTimeString(),
+      })
+    : { id: id || `brand_${Date.now()}`, nameRu, nameUz, slug, logoUrl: pendingBrandLogoData || '', sortOrder, isActive, updatedAt: getDateTimeString() };
+
+  const existingIndex = brandsData.findIndex((item) => item.id === draft.id);
+  if (existingIndex === -1) {
+    brandsData.unshift(draft);
+    showBrandFeedback('Бренд успешно создан.', 'success');
+  } else {
+    brandsData[existingIndex] = draft;
+    showBrandFeedback('Бренд обновлён.', 'success');
+  }
+
+  persistBrandsData();
+  renderBrands();
+  syncProductBrandSelect();
+  fillBrandForm(draft.id);
+}
+
+function toggleBrandStatus(brandId) {
+  const brand = brandsData.find((item) => item.id === brandId);
+  if (!brand) return;
+  brand.isActive = !brand.isActive;
+  brand.updatedAt = getDateTimeString();
+  persistBrandsData();
+  renderBrands();
+  syncProductBrandSelect();
+  showBrandFeedback(`Бренд ${brand.isActive ? 'активирован' : 'деактивирован'}.`, 'success');
+}
+
+function deleteBrand(brandId) {
+  const brand = brandsData.find((item) => item.id === brandId);
+  if (!brand) return;
+  if (!confirm(`Удалить бренд "${brand.nameRu}"?`)) return;
+  brandsData = brandsData.filter((item) => item.id !== brandId);
+  persistBrandsData();
+  void window.emirateSupabaseApi?.deleteAdminBrand?.(brandId);
+  renderBrands();
+  syncProductBrandSelect();
+  resetBrandForm();
+  showBrandFeedback('Бренд удалён.', 'success');
+}
+
+function syncProductBrandSelect(selectedValue = '') {
+  const select = document.getElementById('pBrand');
+  if (!select) return;
+  const current = selectedValue || select.value;
+  const sorted = [...brandsData].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  const active = sorted.filter((item) => item.isActive);
+  const inactiveSelected = sorted.find((item) => item.nameRu === current && !item.isActive);
+
+  let html = '<option value="">Выберите ...</option>';
+  active.forEach((item) => {
+    html += `<option value="${escapeHtml(item.nameRu)}">${escapeHtml(item.nameRu)}</option>`;
+  });
+  if (inactiveSelected) {
+    html += `<option value="${escapeHtml(inactiveSelected.nameRu)}">${escapeHtml(inactiveSelected.nameRu)} (неактивен)</option>`;
+  }
+  const known = new Set([...active, ...(inactiveSelected ? [inactiveSelected] : [])].map((item) => item.nameRu));
+  if (current && !known.has(current)) {
+    html += `<option value="${escapeHtml(current)}">${escapeHtml(current)}</option>`;
+  }
+  select.innerHTML = html;
+  if (current) select.value = current;
 }
 
 const ADMIN_PRODUCTS_KEY = 'emirate_admin_products';
@@ -2226,9 +2464,15 @@ renderSuppliers();
 if (!localStorage.getItem(ADMIN_CATEGORIES_KEY)) {
   persistCategoriesData();
 }
+if (!localStorage.getItem(ADMIN_BRANDS_KEY)) {
+  persistBrandsData();
+}
 renderCategories();
 syncProductCategorySelect();
 resetCategoryForm();
+renderBrands();
+syncProductBrandSelect();
+resetBrandForm();
 renderProducts();
 renderBanners();
 renderIntake();
@@ -2311,6 +2555,20 @@ void (async () => {
     }
   } catch (err) {
     console.warn('[Supabase] admin banners pull', err);
+  }
+})();
+
+void (async () => {
+  try {
+    const raw = await window.emirateSupabaseApi?.pullAdminBrandsRaw?.();
+    if (raw && raw.length) {
+      brandsData = raw.map((item) => window.emirateBrands?.normalizeBrandRecord?.(item) || item);
+      persistBrandsData();
+      renderBrands();
+      syncProductBrandSelect();
+    }
+  } catch (err) {
+    console.warn('[Supabase] admin brands pull', err);
   }
 })();
 
@@ -2451,6 +2709,71 @@ document.getElementById('categoriesBody')?.addEventListener('click', function(e)
   }
   if (action === 'delete-category') {
     deleteCategory(categoryId);
+  }
+});
+
+document.getElementById('brandForm')?.addEventListener('submit', saveBrand);
+
+document.getElementById('addBrandBtn')?.addEventListener('click', function() {
+  switchPage('brands');
+  resetBrandForm();
+  document.getElementById('brandNameRu')?.focus();
+  showBrandFeedback('Режим создания бренда включен.', 'success');
+});
+
+document.getElementById('brandResetBtn')?.addEventListener('click', function() {
+  resetBrandForm();
+  showBrandFeedback('Форма очищена.', 'success');
+});
+
+document.getElementById('brandLogoClearBtn')?.addEventListener('click', function() {
+  pendingBrandLogoData = null;
+  setBrandLogoPreview('');
+});
+
+document.getElementById('brandLogoInput')?.addEventListener('change', function() {
+  const file = this.files && this.files[0];
+  if (!file) return;
+  if (file.size > 1024 * 1024 * 2) {
+    showBrandFeedback('Логотип слишком большой. Максимум 2 МБ.', 'error', 3200);
+    this.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function () {
+    pendingBrandLogoData = String(reader.result || '');
+    setBrandLogoPreview(pendingBrandLogoData);
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('brandNameRu')?.addEventListener('blur', function() {
+  const slugInput = document.getElementById('brandSlug');
+  if (!slugInput || slugInput.value.trim()) return;
+  const name = this.value.trim();
+  if (!name || !window.emirateBrands?.slugifyBrand) return;
+  slugInput.value = window.emirateBrands.slugifyBrand(name);
+});
+
+document.getElementById('brandsBody')?.addEventListener('click', function(e) {
+  const button = e.target.closest('button[data-action]');
+  if (!button) return;
+  const action = button.getAttribute('data-action');
+  const brandId = button.getAttribute('data-brand-id');
+  if (!brandId) return;
+
+  if (action === 'edit-brand') {
+    switchPage('brands');
+    fillBrandForm(brandId);
+    showBrandFeedback('Бренд загружен в форму для редактирования.', 'success');
+    return;
+  }
+  if (action === 'toggle-brand') {
+    toggleBrandStatus(brandId);
+    return;
+  }
+  if (action === 'delete-brand') {
+    deleteBrand(brandId);
   }
 });
 

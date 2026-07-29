@@ -701,7 +701,36 @@ function renderInitialCarousels() {
   }
 }
 
+function renderHomeBrands() {
+  const grid = document.getElementById("homeBrandsGrid");
+  if (!grid || !window.emirateBrands) return;
+
+  const brands = window.emirateBrands.getActiveBrands();
+  if (!brands.length) return;
+
+  grid.innerHTML = brands
+    .map(function (brand) {
+      const url = window.emirateBrands.buildBrandCatalogUrl(brand);
+      const logo = brand.logoUrl
+        ? `<img class="brand-card-logo" src="${escapeHtmlAttr(brand.logoUrl)}" alt="" loading="lazy">`
+        : "";
+      return `<a href="${escapeHtmlAttr(url)}" class="brand-card">${logo}<span>${escapeHtml(brand.nameRu)}</span></a>`;
+    })
+    .join("");
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 async function initHomeStorefront() {
+  if (window.emirateBrands?.refreshPublicBrandsFromRemote) {
+    await window.emirateBrands.refreshPublicBrandsFromRemote();
+  }
+  renderHomeBrands();
   if (!isLiveStorefront()) {
     applyLocalAdminProductsToHome();
     rebuildAllProductsIndex();

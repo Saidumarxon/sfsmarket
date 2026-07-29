@@ -315,6 +315,11 @@ window.TRANSLATIONS = {
 
   "product.reviews":        { ru: "\u043e\u0442\u0437\u044b\u0432\u0430", uz: "sharh" },
   "product.inStock":        { ru: "\u0412 \u043d\u0430\u043b\u0438\u0447\u0438\u0438", uz: "Mavjud" },
+  "product.brand":          { ru: "\u0411\u0440\u0435\u043d\u0434", uz: "Brend" },
+  "product.model":          { ru: "\u041c\u043e\u0434\u0435\u043b\u044c", uz: "Model" },
+  "product.article":        { ru: "\u0410\u0440\u0442\u0438\u043a\u0443\u043b", uz: "Artikul" },
+  "product.status":         { ru: "\u0421\u0442\u0430\u0442\u0443\u0441", uz: "Holati" },
+  "catalog.brandPage":      { ru: "\u0411\u0440\u0435\u043d\u0434", uz: "Brend" },
   "product.installment":    { ru: "\u0432 \u0440\u0430\u0441\u0441\u0440\u043e\u0447\u043a\u0443 0-0-12", uz: "0-0-12 bo'lib to'lash" },
   "product.color":          { ru: "\u0426\u0432\u0435\u0442", uz: "Rang" },
   "product.memory":         { ru: "\u041f\u0430\u043c\u044f\u0442\u044c", uz: "Xotira" },

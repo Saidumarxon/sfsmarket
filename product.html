@@ -152,6 +152,41 @@
           </div>
         </div>
         <div class="product-options">
+          <div class="product-facts" id="productFacts" hidden>
+            <div class="product-facts-row">
+              <span class="product-facts-label" data-i18n="product.article">Артикул</span>
+              <span class="product-facts-dots" aria-hidden="true"></span>
+              <span class="product-facts-value">
+                <span id="productFactSku">—</span>
+                <button type="button" class="product-facts-copy" id="productSkuCopyBtn" aria-label="Копировать">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                </button>
+              </span>
+            </div>
+            <div class="product-facts-row" id="productBrandRow" hidden>
+              <span class="product-facts-label" data-i18n="product.brand">Бренд</span>
+              <span class="product-facts-dots" aria-hidden="true"></span>
+              <span class="product-facts-value">
+                <a href="#" class="product-brand-link" id="productBrandLink">
+                  <img class="product-brand-logo" id="productBrandLogo" src="" alt="" hidden>
+                  <span id="productBrandName">—</span>
+                </a>
+              </span>
+            </div>
+            <div class="product-facts-row" id="productModelRow" hidden>
+              <span class="product-facts-label" data-i18n="product.model">Модель</span>
+              <span class="product-facts-dots" aria-hidden="true"></span>
+              <span class="product-facts-value" id="productFactModel">—</span>
+            </div>
+            <div class="product-facts-row">
+              <span class="product-facts-label" data-i18n="product.status">Статус</span>
+              <span class="product-facts-dots" aria-hidden="true"></span>
+              <span class="product-facts-value product-facts-status" id="productFactStatus">
+                <span class="stock-dot"></span>
+                <span data-i18n="product.inStock">В наличии</span>
+              </span>
+            </div>
+          </div>
           <div class="option-group">
             <p class="option-label"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg> <span data-i18n="product.color">Цвет</span>: <strong id="colorValueLabel">Natural Titanium</strong></p>
             <div class="option-row" id="colorOptionsRow" data-role="color-options">
@@ -294,6 +329,7 @@
   <script src="supabase-config.prod.js"></script>
   <script src="emirate-exchange.js"></script>
   <script src="emirate-supabase-api.js"></script>
+  <script src="emirate-brands.js"></script>
   <script src="emirate-auth.js"></script>
   <script src="translations.js"></script>
   <script src="emirate-telegram-config.js"></script>

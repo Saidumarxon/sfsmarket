@@ -3495,8 +3495,11 @@ body.home-storefront-loading .carousel-track {
 
 .brand-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+  min-height: 92px;
   padding: 20px;
   background: var(--white);
   border: 1px solid var(--border);
@@ -3514,6 +3517,126 @@ body.home-storefront-loading .carousel-track {
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);
   background: var(--accent-light);
+}
+
+.brand-card-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.catalog-brand-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+
+.catalog-brand-hero-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 16px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  padding: 10px;
+}
+
+.catalog-brand-hero-kicker {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.product-facts {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--bg-secondary, #f8fafc);
+  border: 1px solid var(--border);
+}
+
+.product-facts-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.product-facts-label {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.product-facts-dots {
+  border-bottom: 1px dotted rgba(100, 116, 139, 0.45);
+  height: 1px;
+  align-self: end;
+  margin-bottom: 4px;
+}
+
+.product-facts-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.product-facts-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.product-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.product-brand-link:hover {
+  text-decoration: underline;
+}
+
+.product-brand-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.product-facts-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.product-facts-status .stock-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.filter-empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
 /* ========================================

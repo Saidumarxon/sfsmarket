@@ -2350,3 +2350,71 @@ body {
     padding: 18px 16px;
   }
 }
+
+.brand-logo-block {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin: 18px 0 8px;
+  padding: 16px;
+  border: 1px dashed rgba(148, 163, 184, 0.45);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.brand-logo-preview-wrap {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+}
+
+.brand-logo-preview,
+.brand-logo-placeholder {
+  width: 96px;
+  height: 96px;
+  border-radius: 16px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.brand-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.brand-logo-preview[hidden],
+.brand-logo-placeholder[hidden] {
+  display: none !important;
+}
+
+.brand-logo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.brand-logo-upload {
+  cursor: pointer;
+}
+
+.brand-table-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.brand-table-logo--empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}

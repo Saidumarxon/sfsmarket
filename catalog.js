@@ -13,7 +13,7 @@ const applyFiltersBtn = document.getElementById("applyFilters");
 const resetFiltersBtn = document.getElementById("resetFilters");
 const minPriceEl = document.getElementById("minPrice");
 const maxPriceEl = document.getElementById("maxPrice");
-const pageTitleEl = document.querySelector(".catalog-head h1");
+const pageTitleEl = document.getElementById("catalogDefaultTitle");
 const pageStatsEl = document.querySelector(".catalog-head p");
 const foundLabelEl = pageStatsEl?.querySelector("[data-i18n='catalog.foundLabel']");
 const foundSuffixEl = pageStatsEl?.querySelector("[data-i18n='catalog.found']");
@@ -35,6 +35,9 @@ const isCartMode = new URLSearchParams(window.location.search).get("cart") === "
 const isPhotoSearchMode = new URLSearchParams(window.location.search).get("photo") === "1";
 const textSearchQuery = (new URLSearchParams(window.location.search).get("q") || "").trim().toLowerCase();
 const categoryFilter = (new URLSearchParams(window.location.search).get("category") || "").trim();
+const brandFilterRaw = (new URLSearchParams(window.location.search).get("brand") || "").trim();
+const brandFilterBrand = window.emirateBrands?.resolveBrandFilterParam?.(brandFilterRaw) || null;
+const brandFilter = brandFilterBrand?.nameRu || brandFilterRaw;
 let photoSearchList = null;
 let photoSearchLoading = false;
 let photoSearchError = "";
@@ -72,6 +75,7 @@ function loadAdminProductsForCatalog() {
         title: item.nameRu || item.nameUz || "Товар",
         sku: item.id || "",
         brand: item.brand || "",
+        model: String(item.model || "").trim(),
         category: item.category || "Аксессуары",
         price: marked.price,
         oldPrice: marked.oldPrice,
@@ -194,6 +198,10 @@ function escapeHtmlAttr(value) {
     .replace(/'/g, "&#39;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function escapeHtml(value) {
+  return escapeHtmlAttr(value);
 }
 
 function renderProduct(product, options = {}) {
@@ -732,13 +740,87 @@ function updateCartItemCard(productId) {
 }
 
 function applyCategoryFilterFromUrl() {
-  if (!categoryFilter) return;
+  if (!categoryFilter || brandFilter) return;
   document.querySelectorAll(".filter-category").forEach((item) => {
     item.checked = item.value === categoryFilter;
   });
   if (pageTitleEl) {
     pageTitleEl.textContent = categoryFilter;
   }
+}
+
+function renderCatalogBrandHero() {
+  const hero = document.getElementById("catalogBrandHero");
+  const defaultTitle = document.getElementById("catalogDefaultTitle");
+  if (!brandFilter || !hero) return;
+
+  const brand = brandFilterBrand || window.emirateBrands?.getBrandByName?.(brandFilter);
+  const lang = window.emirateLang?.() || "ru";
+  const title =
+    window.emirateBrands?.getBrandDisplayName?.(brand || { nameRu: brandFilter, nameUz: brandFilter }, lang) ||
+    brandFilter;
+
+  hero.hidden = false;
+  if (defaultTitle) defaultTitle.hidden = true;
+
+  const titleEl = document.getElementById("catalogBrandHeroTitle");
+  if (titleEl) titleEl.textContent = title;
+
+  const logoEl = document.getElementById("catalogBrandHeroLogo");
+  if (logoEl) {
+    if (brand?.logoUrl) {
+      logoEl.src = brand.logoUrl;
+      logoEl.alt = title;
+      logoEl.hidden = false;
+    } else {
+      logoEl.hidden = true;
+      logoEl.removeAttribute("src");
+    }
+  }
+
+  const breadCatalogEl = document.querySelector('.breadcrumbs [data-i18n="catalog.breadCatalog"]');
+  if (breadCatalogEl) {
+    breadCatalogEl.removeAttribute("data-i18n");
+    breadCatalogEl.textContent = title;
+  }
+}
+
+function renderBrandFilters() {
+  const container = document.getElementById("brandFiltersContainer");
+  if (!container) return;
+
+  const active = window.emirateBrands?.getActiveBrands?.() || [];
+  const known = new Set(active.map((item) => item.nameRu));
+  const extras = [...new Set(sourceProducts.map((item) => String(item.brand || "").trim()).filter(Boolean))]
+    .filter((name) => !known.has(name))
+    .sort((a, b) => a.localeCompare(b, "ru"));
+
+  const selected = getCheckedValues(".filter-brand");
+  let html = "";
+
+  active.forEach((brand) => {
+    const checked = selected.includes(brand.nameRu) || brandFilter === brand.nameRu ? " checked" : "";
+    html += `<label class="filter-label"><input type="checkbox" class="filter-brand" value="${escapeHtml(brand.nameRu)}"${checked}> <span>${escapeHtml(brand.nameRu)}</span></label>`;
+  });
+
+  extras.forEach((name) => {
+    const checked = selected.includes(name) || brandFilter === name ? " checked" : "";
+    html += `<label class="filter-label"><input type="checkbox" class="filter-brand" value="${escapeHtml(name)}"${checked}> <span>${escapeHtml(name)}</span></label>`;
+  });
+
+  if (!html) {
+    html = '<p class="filter-empty">—</p>';
+  }
+
+  container.innerHTML = html;
+}
+
+function applyBrandFilterFromUrl() {
+  if (!brandFilter) return;
+  renderCatalogBrandHero();
+  document.querySelectorAll(".filter-brand").forEach((item) => {
+    item.checked = item.value === brandFilter;
+  });
 }
 
 function resetFilters() {
@@ -749,6 +831,12 @@ function resetFilters() {
   if (maxPriceEl) maxPriceEl.value = "";
   if (sortSelectEl) sortSelectEl.value = "popular";
   applyFiltersAndSort();
+}
+
+async function initCatalogBrands() {
+  if (window.emirateBrands?.refreshPublicBrandsFromRemote) {
+    await window.emirateBrands.refreshPublicBrandsFromRemote();
+  }
 }
 
 function finishCatalogShellMode() {
@@ -810,21 +898,26 @@ if (isPhotoSearchMode) {
   }
 } else {
   syncCatalogSeoMeta();
-  applyCategoryFilterFromUrl();
-  if (window.emirateSupabaseApi?.isConfigured?.()) {
-    void (async () => {
+  void (async () => {
+    await initCatalogBrands();
+    renderBrandFilters();
+    applyCategoryFilterFromUrl();
+    applyBrandFilterFromUrl();
+    if (window.emirateSupabaseApi?.isConfigured?.()) {
       try {
         await refreshCatalogFromRemote();
+        renderBrandFilters();
         applyCategoryFilterFromUrl();
+        applyBrandFilterFromUrl();
         applyFiltersAndSort();
       } finally {
         finishCatalogShellMode();
       }
-    })();
-  } else {
-    applyFiltersAndSort();
-    finishCatalogShellMode();
-  }
+    } else {
+      applyFiltersAndSort();
+      finishCatalogShellMode();
+    }
+  })();
 }
 
 // Events

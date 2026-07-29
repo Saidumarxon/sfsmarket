@@ -136,7 +136,14 @@
 
     <!-- Page Title -->
     <section class="catalog-head">
-      <h1 data-i18n="catalog.pageTitle">Каталог товаров</h1>
+      <div class="catalog-brand-hero" id="catalogBrandHero" hidden>
+        <img class="catalog-brand-hero-logo" id="catalogBrandHeroLogo" src="" alt="" hidden>
+        <div>
+          <p class="catalog-brand-hero-kicker" data-i18n="catalog.brandPage">Бренд</p>
+          <h1 id="catalogBrandHeroTitle">—</h1>
+        </div>
+      </div>
+      <h1 data-i18n="catalog.pageTitle" id="catalogDefaultTitle">Каталог товаров</h1>
       <p><span data-i18n="catalog.foundLabel">Найдено</span> <strong id="totalProducts">0</strong> <span data-i18n="catalog.found">товаров</span></p>
     </section>
     <script>
@@ -206,12 +213,9 @@
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
             <span data-i18n="catalog.brand">Бренд</span>
           </p>
-          <label class="filter-label"><input type="checkbox" class="filter-brand" value="Apple"> <span>Apple</span></label>
-          <label class="filter-label"><input type="checkbox" class="filter-brand" value="Samsung"> <span>Samsung</span></label>
-          <label class="filter-label"><input type="checkbox" class="filter-brand" value="Xiaomi"> <span>Xiaomi</span></label>
-          <label class="filter-label"><input type="checkbox" class="filter-brand" value="Sony"> <span>Sony</span></label>
-          <label class="filter-label"><input type="checkbox" class="filter-brand" value="LG"> <span>LG</span></label>
-          <label class="filter-label"><input type="checkbox" class="filter-brand" value="ASUS"> <span>ASUS</span></label>
+          <div id="brandFiltersContainer">
+            <label class="filter-label"><input type="checkbox" class="filter-brand" value="Apple"> <span>Apple</span></label>
+          </div>
         </div>
 
         <div class="filter-group">
@@ -369,6 +373,7 @@
   <script src="supabase-config.prod.js"></script>
   <script src="emirate-exchange.js"></script>
   <script src="emirate-supabase-api.js"></script>
+  <script src="emirate-brands.js"></script>
   <script src="emirate-auth.js"></script>
   <script src="translations.js"></script>
   <script src="emirate-telegram-config.js"></script>
