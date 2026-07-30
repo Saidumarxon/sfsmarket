@@ -26,15 +26,20 @@ module.exports = async function handler(req, res) {
             pendingUpdates: info.pending_update_count || 0,
             lastError: info.last_error_message || "",
             lastErrorDate: info.last_error_date || 0,
+            allowedUpdates: info.allowed_updates || [],
+            callbackQueryEnabled: bot.webhookSupportsCallbacks(info),
           });
         }
         const webhookUrl = String(req.query?.url || bot.SITE + "/api/telegram-webhook").trim();
         await bot.registerWebhook(webhookUrl);
         await bot.registerCommands();
+        const info = await bot.getWebhookInfo();
         const products = await bot.fetchProducts();
         return res.status(200).json({
           ok: true,
           webhook: webhookUrl,
+          callbackQueryEnabled: bot.webhookSupportsCallbacks(info),
+          allowedUpdates: info.allowed_updates || [],
           productsCached: Array.isArray(products) ? products.length : 0,
         });
       } catch (err) {

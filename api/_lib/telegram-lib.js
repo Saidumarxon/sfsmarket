@@ -53,6 +53,41 @@ function shortOrderId(id) {
     .toUpperCase();
 }
 
+function compactOrderId(id) {
+  return String(id || "")
+    .replace(/-/g, "")
+    .toLowerCase();
+}
+
+function expandCompactOrderId(value) {
+  const compact = String(value || "")
+    .replace(/-/g, "")
+    .toLowerCase();
+  if (compact.length !== 32 || !/^[a-f0-9]+$/.test(compact)) {
+    return String(value || "").trim();
+  }
+  return (
+    compact.slice(0, 8) +
+    "-" +
+    compact.slice(8, 12) +
+    "-" +
+    compact.slice(12, 16) +
+    "-" +
+    compact.slice(16, 20) +
+    "-" +
+    compact.slice(20)
+  );
+}
+
+function extractOrderIdFromMessage(message) {
+  if (!message) return null;
+  const text = String(message.text || message.caption || "");
+  const htmlMatch = text.match(/<code>([a-f0-9-]{36})<\/code>/i);
+  if (htmlMatch) return htmlMatch[1];
+  const plainMatch = text.match(/\b([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\b/i);
+  return plainMatch ? plainMatch[1] : null;
+}
+
 /** Русские/узбекские запросы → латиница в каталоге */
 const SEARCH_SYNONYMS = {
   айфон: "iphone",
@@ -335,20 +370,38 @@ async function fetchOrderById(orderId) {
   return normalizeOrder(rows[0]);
 }
 
-async function resolveOrderId(ref) {
+async function resolveOrderId(ref, message) {
   const token = String(ref || "").trim();
-  if (!token) return null;
+  if (!token) {
+    return extractOrderIdFromMessage(message);
+  }
+
+  if (/^[a-f0-9-]{36}$/i.test(token)) {
+    const direct = await fetchOrderById(token);
+    return direct ? direct.id : token;
+  }
+
+  const compact = token.replace(/-/g, "");
+  if (/^[a-f0-9]{32}$/i.test(compact)) {
+    const fullId = expandCompactOrderId(compact);
+    const direct = await fetchOrderById(fullId);
+    if (direct) return direct.id;
+  }
+
   if (token.length > 12) {
     const direct = await fetchOrderById(token);
     return direct ? direct.id : token;
   }
+
   const shortRef = token.replace(/-/g, "").slice(0, 8).toUpperCase();
-  const orders = await fetchRecentOrders(100);
+  const orders = await fetchRecentOrders(200);
   const found =
     orders.find(function (item) {
       return shortOrderId(item.id) === shortRef;
     }) || null;
-  return found ? found.id : null;
+  if (found) return found.id;
+
+  return extractOrderIdFromMessage(message);
 }
 
 async function fetchRecentOrders(limit) {
@@ -484,16 +537,16 @@ function formatOrderMessage(order, options) {
 }
 
 function orderActionKeyboard(orderId) {
-  const id = shortOrderId(orderId);
-  if (!id) return undefined;
+  const compact = compactOrderId(orderId);
+  if (!compact || compact.length !== 32) return undefined;
   return {
     inline_keyboard: [
       [
-        { text: "⏳ В обработке", callback_data: "ost:" + id + ":processing" },
-        { text: "📦 Готов", callback_data: "ost:" + id + ":ready_to_ship" },
+        { text: "⏳ В обработке", callback_data: "o:" + compact + ":processing" },
+        { text: "📦 Готов", callback_data: "o:" + compact + ":ready_to_ship" },
       ],
       [
-        { text: "✅ Выполнен", callback_data: "ost:" + id + ":successful" },
+        { text: "✅ Выполнен", callback_data: "o:" + compact + ":successful" },
         { text: "📋 Заказы", callback_data: "cmd:orders" },
       ],
     ],
@@ -595,6 +648,9 @@ async function handleCallbackQuery(query) {
   const chatId = query.message && query.message.chat && query.message.chat.id;
   const userId = query.from && query.from.id;
   const queryId = query.id;
+  const data = String(query.data || "");
+
+  if (!queryId) return;
 
   try {
     if (!isAdmin(chatId, userId)) {
@@ -606,32 +662,47 @@ async function handleCallbackQuery(query) {
       return;
     }
 
-    const data = String(query.data || "");
     if (data === "cmd:orders") {
       await tgApi("answerCallbackQuery", { callback_query_id: queryId, text: "Загрузка…" }).catch(function () {});
       await sendOrdersList(chatId);
       return;
     }
 
-    if (data.indexOf("ost:") !== 0) {
+    var orderRef = "";
+    var status = "";
+    if (data.indexOf("o:") === 0) {
+      var oParts = data.split(":");
+      orderRef = oParts[1] || "";
+      status = oParts[2] || "";
+    } else if (data.indexOf("ost:") === 0) {
+      var legacyParts = data.split(":");
+      orderRef = legacyParts[1] || "";
+      status = legacyParts[2] || "";
+    } else {
       await tgApi("answerCallbackQuery", {
         callback_query_id: queryId,
         text: "Неизвестная команда",
         show_alert: true,
-      });
+      }).catch(function () {});
       return;
     }
 
-    const parts = data.split(":");
-    const orderRef = parts[1];
-    const status = parts[2];
-    const orderId = await resolveOrderId(orderRef);
+    if (!status) {
+      await tgApi("answerCallbackQuery", {
+        callback_query_id: queryId,
+        text: "Некорректная команда",
+        show_alert: true,
+      }).catch(function () {});
+      return;
+    }
+
+    const orderId = await resolveOrderId(orderRef, query.message);
     if (!orderId) {
       await tgApi("answerCallbackQuery", {
         callback_query_id: queryId,
         text: "Заказ не найден",
         show_alert: true,
-      });
+      }).catch(function () {});
       return;
     }
 
@@ -641,16 +712,12 @@ async function handleCallbackQuery(query) {
         callback_query_id: queryId,
         text: "Не удалось обновить статус. Проверьте SUPABASE_SERVICE_ROLE_KEY и колонку status в orders.",
         show_alert: true,
-      });
+      }).catch(function () {});
       return;
     }
 
     const order = await fetchOrderById(orderId);
     const statusLabel = ORDER_STATUS_LABELS[normalizeOrderStatus(status)] || status;
-    await tgApi("answerCallbackQuery", {
-      callback_query_id: queryId,
-      text: "Статус: " + statusLabel,
-    }).catch(function () {});
 
     if (order && query.message) {
       await tgApi("editMessageText", {
@@ -668,6 +735,11 @@ async function handleCallbackQuery(query) {
         });
       });
     }
+
+    await tgApi("answerCallbackQuery", {
+      callback_query_id: queryId,
+      text: "Статус: " + statusLabel,
+    }).catch(function () {});
   } catch (err) {
     console.error("[telegram-lib] handleCallbackQuery", err);
     await tgApi("answerCallbackQuery", {
@@ -866,13 +938,21 @@ async function handleUpdate(update) {
 
 async function registerWebhook(publicUrl) {
   const url = String(publicUrl || SITE + "/api/telegram-webhook").trim();
+  await tgApi("deleteWebhook", { drop_pending_updates: false }).catch(function () {});
   const body = {
     url: url,
     allowed_updates: ["message", "callback_query"],
     drop_pending_updates: true,
   };
   if (WEBHOOK_SECRET) body.secret_token = WEBHOOK_SECRET;
-  return tgApi("setWebhook", body);
+  const result = await tgApi("setWebhook", body);
+  return result;
+}
+
+function webhookSupportsCallbacks(info) {
+  const allowed = info && Array.isArray(info.allowed_updates) ? info.allowed_updates : [];
+  if (!allowed.length) return true;
+  return allowed.indexOf("callback_query") !== -1;
 }
 
 async function registerCommands() {
@@ -908,6 +988,7 @@ module.exports = {
   registerCommands,
   getWebhookInfo,
   verifyWebhookSecret,
+  webhookSupportsCallbacks,
   fetchProducts,
   searchProducts,
   fetchOrderById,

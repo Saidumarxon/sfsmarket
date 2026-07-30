@@ -59,13 +59,15 @@ function switchPage(pageName) {
 
   if (pageTitle) pageTitle.textContent = pageTitles[pageName] || pageName;
 
-  if (pageName === 'orders') {
+  if (pageName === 'orders' || pageName === 'dashboard') {
     void loadOrdersFromSupabase();
   }
 
   if (pageName === 'clients') {
     void loadClientsFromSupabase();
   }
+
+  syncOrdersPolling(pageName);
 
   // Scroll to top
   window.scrollTo(0, 0);
@@ -95,6 +97,10 @@ document.getElementById('logoutBtn').addEventListener('click', async function() 
 
 // --- Orders (Supabase) ---
 let ordersData = [];
+const ORDERS_POLL_MS = 30000;
+let ordersPollTimer = null;
+let ordersPollInFlight = false;
+let ordersStatusSaving = false;
 
 const ORDER_STATUS_VARIANTS = ['processing', 'ready_to_ship', 'out_of_stock', 'successful'];
 
@@ -306,9 +312,16 @@ function renderOrders(data = ordersData) {
   if (count) count.textContent = `Показано ${data.length} из ${ordersData.length}`;
 }
 
-async function loadOrdersFromSupabase() {
+async function loadOrdersFromSupabase(options) {
+  const silent = Boolean(options && options.silent);
+  if (silent) {
+    if (ordersPollInFlight || ordersStatusSaving) return;
+    if (document.querySelector('.order-status-picker.is-open')) return;
+    ordersPollInFlight = true;
+  }
+
   const tbody = document.getElementById('ordersBody');
-  if (tbody && !ordersData.length) {
+  if (tbody && !ordersData.length && !silent) {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:24px;">Загрузка заказов…</td></tr>';
   }
   if (!window.emirateSupabaseApi?.pullAdminOrdersRaw) {
@@ -316,6 +329,7 @@ async function loadOrdersFromSupabase() {
     renderOrderStats();
     renderDashboardRecentOrders();
     applyOrdersStatusFilter();
+    if (silent) ordersPollInFlight = false;
     return;
   }
   try {
@@ -327,11 +341,51 @@ async function loadOrdersFromSupabase() {
     }
   } catch (err) {
     console.warn('[Supabase] admin orders pull', err);
-    ordersData = [];
+    if (!silent) ordersData = [];
   }
   renderOrderStats();
   renderDashboardRecentOrders();
   applyOrdersStatusFilter();
+  if (silent) ordersPollInFlight = false;
+}
+
+function getActiveAdminPageName() {
+  const active = document.querySelector('.admin-page.active');
+  if (!active || !active.id) return '';
+  return active.id.replace(/^page-/, '');
+}
+
+function shouldPollOrdersPage(pageName) {
+  return pageName === 'orders' || pageName === 'dashboard';
+}
+
+function stopOrdersPolling() {
+  if (!ordersPollTimer) return;
+  clearInterval(ordersPollTimer);
+  ordersPollTimer = null;
+}
+
+function startOrdersPolling() {
+  stopOrdersPolling();
+  if (document.hidden) return;
+  ordersPollTimer = setInterval(function () {
+    void tickOrdersPoll();
+  }, ORDERS_POLL_MS);
+}
+
+function syncOrdersPolling(pageName) {
+  if (shouldPollOrdersPage(pageName)) {
+    startOrdersPolling();
+  } else {
+    stopOrdersPolling();
+  }
+}
+
+async function tickOrdersPoll() {
+  if (document.hidden || ordersStatusSaving) return;
+  const pageName = getActiveAdminPageName();
+  if (!shouldPollOrdersPage(pageName)) return;
+  await loadOrdersFromSupabase({ silent: true });
 }
 
 function getFilteredOrdersByStatus() {
@@ -2445,21 +2499,25 @@ async function applyOrderStatusChange(orderId, newStatus, pickerEl) {
   const normalized = normalizeOrderStatus(newStatus);
   if (normalized === previous) return;
 
+  ordersStatusSaving = true;
   setOrderStatusPickerLoading(pickerEl, true);
-  if (window.emirateSupabaseApi?.updateAdminOrderStatus && order.uuid) {
-    const res = await window.emirateSupabaseApi.updateAdminOrderStatus(order.uuid, normalized);
-    if (!res?.ok) {
-      updateOrderStatusPickerUI(pickerEl, previous);
-      setOrderStatusPickerLoading(pickerEl, false);
-      alert('Не удалось сохранить статус.\n' + (res?.error || ''));
-      return;
+  try {
+    if (window.emirateSupabaseApi?.updateAdminOrderStatus && order.uuid) {
+      const res = await window.emirateSupabaseApi.updateAdminOrderStatus(order.uuid, normalized);
+      if (!res?.ok) {
+        updateOrderStatusPickerUI(pickerEl, previous);
+        alert('Не удалось сохранить статус.\n' + (res?.error || ''));
+        return;
+      }
     }
+    order.status = normalized;
+    updateOrderStatusPickerUI(pickerEl, normalized);
+    renderOrderStats();
+    renderDashboardRecentOrders();
+  } finally {
+    setOrderStatusPickerLoading(pickerEl, false);
+    ordersStatusSaving = false;
   }
-  order.status = normalized;
-  updateOrderStatusPickerUI(pickerEl, normalized);
-  setOrderStatusPickerLoading(pickerEl, false);
-  renderOrderStats();
-  renderDashboardRecentOrders();
 }
 
 // ===== RENDER ALL =====
@@ -2511,9 +2569,22 @@ function showSupabaseStorageBanner() {
 showSupabaseStorageBanner();
 
 void loadOrdersFromSupabase();
+syncOrdersPolling(getActiveAdminPageName());
 
 document.getElementById('refreshOrdersBtn')?.addEventListener('click', () => {
   void loadOrdersFromSupabase();
+});
+
+document.addEventListener('visibilitychange', function () {
+  const pageName = getActiveAdminPageName();
+  if (document.hidden) {
+    stopOrdersPolling();
+    return;
+  }
+  if (shouldPollOrdersPage(pageName)) {
+    void loadOrdersFromSupabase({ silent: true });
+    startOrdersPolling();
+  }
 });
 
 void loadAdminProductsFromSupabase();
