@@ -3117,55 +3117,140 @@ let editingProductId = null;
 const editorDescriptionPreview = document.getElementById('editorDescriptionPreview');
 const editorSpecsPreview = document.getElementById('editorSpecsPreview');
 
-const descEditorMap = {
-  uz: { body: document.getElementById('pDescUzEditor'), field: document.getElementById('pDescUz') },
-  ru: { body: document.getElementById('pDescRuEditor'), field: document.getElementById('pDescRu') },
-};
+const DESC_EDITOR_IDS = { uz: 'pDescUz', ru: 'pDescRu' };
+let descEditorsReady = false;
+const descEditorPending = { uz: null, ru: null };
+
+function getDescEditor(lang) {
+  const id = DESC_EDITOR_IDS[lang];
+  if (!id || !window.tinymce) return null;
+  return window.tinymce.get(id);
+}
 
 function syncDescFieldFromEditor(lang) {
-  const pair = descEditorMap[lang];
-  if (!pair?.body || !pair?.field) return;
-  pair.field.value = pair.body.innerHTML.trim();
+  const id = DESC_EDITOR_IDS[lang];
+  const field = id ? document.getElementById(id) : null;
+  const editor = getDescEditor(lang);
+  if (!field || !editor) return;
+  field.value = editor.getContent({ format: 'html' }) || '';
 }
 
 function syncDescEditorFromField(lang) {
-  const pair = descEditorMap[lang];
-  if (!pair?.body || !pair?.field) return;
-  pair.body.innerHTML = pair.field.value || '';
+  const id = DESC_EDITOR_IDS[lang];
+  const field = id ? document.getElementById(id) : null;
+  if (!field) return;
+  const html = field.value || '';
+  const editor = getDescEditor(lang);
+  if (editor) {
+    editor.setContent(html);
+    descEditorPending[lang] = null;
+    return;
+  }
+  descEditorPending[lang] = html;
 }
 
 function syncAllDescFieldsFromEditors() {
-  syncDescFieldFromEditor('uz');
-  syncDescFieldFromEditor('ru');
+  if (window.tinymce?.triggerSave) {
+    window.tinymce.triggerSave();
+  } else {
+    syncDescFieldFromEditor('uz');
+    syncDescFieldFromEditor('ru');
+  }
+}
+
+function flushPendingDescEditor(lang) {
+  if (descEditorPending[lang] == null) return;
+  const editor = getDescEditor(lang);
+  const field = document.getElementById(DESC_EDITOR_IDS[lang]);
+  if (!editor || !field) return;
+  editor.setContent(descEditorPending[lang] || field.value || '');
+  descEditorPending[lang] = null;
+}
+
+async function uploadDescEditorImage(blobInfo) {
+  const file = blobInfo.blob();
+  if (!file) throw new Error('Файл не найден');
+  if (!window.emirateSupabaseApi?.uploadAdminAsset) {
+    throw new Error('Загрузка изображений недоступна. Настройте Supabase.');
+  }
+  const res = await window.emirateSupabaseApi.uploadAdminAsset(file, {
+    folder: 'product-descriptions',
+  });
+  if (!res?.ok || !res.url) {
+    throw new Error(res?.error || 'Не удалось загрузить изображение');
+  }
+  return res.url;
 }
 
 function initDescriptionRichEditors() {
-  Object.keys(descEditorMap).forEach(function (lang) {
-    const pair = descEditorMap[lang];
-    if (!pair?.body) return;
+  if (!window.tinymce) {
+    console.warn('[admin] TinyMCE CDN недоступен — используйте обычные textarea');
+    return;
+  }
+  if (descEditorsReady) return;
 
-    pair.body.addEventListener('input', function () {
-      syncDescFieldFromEditor(lang);
-      renderEditorDescriptionPreview();
-    });
-
-    const toolbar = pair.body.closest('.desc-rich-editor')?.querySelector('.desc-rich-toolbar');
-    toolbar?.querySelectorAll('.desc-rich-btn').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        pair.body.focus();
-        const cmd = btn.getAttribute('data-cmd');
-        const value = btn.getAttribute('data-value') || null;
-        if (cmd === 'formatBlock' && value) {
-          document.execCommand(cmd, false, value);
-        } else if (cmd) {
-          document.execCommand(cmd, false, null);
-        }
-        syncDescFieldFromEditor(lang);
+  const shared = {
+    base_url: 'https://cdn.jsdelivr.net/npm/tinymce@7.6.1',
+    suffix: '.min',
+    license_key: 'gpl',
+    height: 420,
+    menubar: 'file edit view insert format tools table help',
+    branding: false,
+    promotion: false,
+    plugins: [
+      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+      'insertdatetime', 'media', 'table', 'help', 'wordcount', 'directionality',
+    ].join(' '),
+    toolbar: [
+      'undo redo | styles fontsize | bold italic underline strikethrough | forecolor backcolor | removeformat',
+      'alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | blockquote',
+      'link unlink anchor image media table hr | ltr rtl | searchreplace | code visualblocks fullscreen',
+    ].join(' | '),
+    toolbar_mode: 'wrap',
+    font_size_formats: '12px 14px 16px 18px 20px 24px 28px 32px',
+    style_formats: [
+      { title: 'Заголовок 2', block: 'h2' },
+      { title: 'Заголовок 3', block: 'h3' },
+      { title: 'Абзац', block: 'p' },
+      { title: 'FAQ вопрос', block: 'h3' },
+    ],
+    content_style:
+      'body{font-family:Inter,system-ui,sans-serif;font-size:14px;line-height:1.65;color:#0f172a;}' +
+      'h2,h3{margin:16px 0 8px} p{margin:0 0 10px} ul,ol{margin:0 0 12px 20px}' +
+      'table{border-collapse:collapse;width:100%} td,th{border:1px solid #cbd5e1;padding:8px}' +
+      'img{max-width:100%;height:auto}',
+    images_upload_handler: function (blobInfo) {
+      return uploadDescEditorImage(blobInfo);
+    },
+    automatic_uploads: true,
+    file_picker_types: 'image',
+    convert_urls: false,
+    relative_urls: false,
+    remove_script_host: false,
+    setup: function (editor) {
+      editor.on('init', function () {
+        const lang = editor.id === 'pDescUz' ? 'uz' : 'ru';
+        flushPendingDescEditor(lang);
+        editor.save();
         renderEditorDescriptionPreview();
       });
-    });
-  });
+      editor.on('change input Undo Redo SetContent', function () {
+        editor.save();
+        renderEditorDescriptionPreview();
+      });
+    },
+  };
+
+  window.tinymce.init(Object.assign({}, shared, {
+    selector: '#pDescUz',
+    placeholder: "Mahsulot haqida ma'lumot...",
+  }));
+  window.tinymce.init(Object.assign({}, shared, {
+    selector: '#pDescRu',
+    placeholder: 'Описание товара...',
+  }));
+  descEditorsReady = true;
 }
 
 function setDescAiStatus(message, type) {
@@ -3215,12 +3300,14 @@ async function requestDescriptionAiFill() {
       return;
     }
 
-    if (data.descUz && descEditorMap.uz.field) {
-      descEditorMap.uz.field.value = data.descUz;
+    if (data.descUz) {
+      const uzField = document.getElementById('pDescUz');
+      if (uzField) uzField.value = data.descUz;
       syncDescEditorFromField('uz');
     }
-    if (data.descRu && descEditorMap.ru.field) {
-      descEditorMap.ru.field.value = data.descRu;
+    if (data.descRu) {
+      const ruField = document.getElementById('pDescRu');
+      if (ruField) ruField.value = data.descRu;
       syncDescEditorFromField('ru');
     }
     if (data.seoTitleRu) document.getElementById('pSeoTitleRu').value = data.seoTitleRu;

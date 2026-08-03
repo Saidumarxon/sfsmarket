@@ -2053,71 +2053,25 @@ body {
   color: #0f766e;
 }
 
-.desc-rich-editor {
+.desc-tinymce {
+  width: 100%;
+  min-height: 220px;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  overflow: hidden;
-  background: #fff;
-}
-
-.desc-rich-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 8px 10px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
-}
-
-.desc-rich-btn {
-  min-width: 32px;
-  height: 32px;
-  padding: 0 8px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #fff;
-  color: #334155;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.desc-rich-btn:hover {
-  background: #eef2ff;
-  border-color: #c7d2fe;
-}
-
-.desc-rich-body {
-  min-height: 220px;
-  max-height: 420px;
-  overflow-y: auto;
-  padding: 14px 16px;
+  padding: 12px 14px;
   font-size: 14px;
-  line-height: 1.65;
+  line-height: 1.6;
   color: #0f172a;
-  outline: none;
+  resize: vertical;
 }
 
-.desc-rich-body:empty::before {
-  content: attr(data-placeholder);
-  color: #94a3b8;
-  pointer-events: none;
+.tox-tinymce {
+  border-radius: 12px !important;
+  border-color: #e2e8f0 !important;
 }
 
-.desc-rich-body h3 {
-  margin: 16px 0 8px;
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.desc-rich-body p,
-.desc-rich-body li {
-  margin: 0 0 10px;
-}
-
-.desc-rich-body ul,
-.desc-rich-body ol {
-  margin: 0 0 12px 20px;
-  padding: 0;
+.tox .tox-edit-area__iframe {
+  background: #fff;
 }
 
 .desc-seo-grid {

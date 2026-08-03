@@ -5656,6 +5656,52 @@ body.cart-mode.cart-empty-mode .catalog-content {
   margin-bottom: 6px;
 }
 
+.tab-content h2 {
+  font-size: 20px;
+  color: var(--text);
+  margin: 18px 0 10px;
+}
+
+.tab-content blockquote {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.tab-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 16px;
+  font-size: 14px;
+}
+
+.tab-content th,
+.tab-content td {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tab-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
+.tab-content a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.tab-content hr {
+  border: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin: 16px 0;
+}
+
 /* Specs Table */
 .specs-list {
   display: grid;
