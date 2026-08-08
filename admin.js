@@ -3261,35 +3261,7 @@ function scheduleProductDraftAutosave() {
 }
 
 function updateProductDraftUi() {
-  const draft = readProductDraft();
-  const hasDraft = isProductEditorMeaningful(draft);
-  const banner = document.getElementById('productDraftBanner');
-  const bannerMeta = document.getElementById('productDraftBannerMeta');
-  const resume = document.getElementById('productDraftResume');
-  const resumeMeta = document.getElementById('productDraftResumeMeta');
-
-  if (banner) {
-    banner.hidden = !(hasDraft && getActiveAdminPageName() === 'product-editor');
-    if (bannerMeta && hasDraft) {
-      const mode = draft.editingProductId ? 'редактирование' : 'новый товар';
-      const name = String(draft.nameRu || draft.nameUz || '').trim();
-      bannerMeta.textContent =
-        (name ? name + ' · ' : '') +
-        mode +
-        (draft.savedAt ? ' · сохранено ' + formatDraftTime(draft.savedAt) : '') +
-        '. Можно уйти в Бренды и вернуться.';
-    }
-  }
-
-  if (resume) {
-    resume.hidden = !(hasDraft && getActiveAdminPageName() === 'products');
-    if (resumeMeta && hasDraft) {
-      const mode = draft.editingProductId ? 'Редактирование' : 'Новый товар';
-      const name = String(draft.nameRu || draft.nameUz || 'Без названия').trim();
-      resumeMeta.textContent =
-        mode + ': ' + name + (draft.savedAt ? ' · ' + formatDraftTime(draft.savedAt) : '');
-    }
-  }
+  // Черновик сохраняется тихо, без баннеров в интерфейсе
 }
 
 function applyProductDraft(draft) {
@@ -4438,23 +4410,6 @@ document.getElementById('editorBackToProducts')?.addEventListener('click', funct
   e.preventDefault();
   saveProductEditorDraft({ silent: true });
   switchPage('products');
-});
-
-document.getElementById('productDraftDiscardBtn')?.addEventListener('click', function () {
-  if (!confirm('Сбросить черновик товара? Несохранённые данные будут удалены.')) return;
-  clearProductDraft();
-  if (!editingProductId) {
-    clearEditorForm();
-  }
-});
-
-document.getElementById('productDraftResumeBtn')?.addEventListener('click', function () {
-  openProductEditorFromDraft();
-});
-
-document.getElementById('productDraftResumeDiscardBtn')?.addEventListener('click', function () {
-  if (!confirm('Удалить несохранённый черновик?')) return;
-  clearProductDraft();
 });
 
 const productEditorPage = document.getElementById('page-product-editor');

@@ -2053,48 +2053,6 @@ body {
   color: #0f766e;
 }
 
-.product-draft-banner,
-.product-draft-resume {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 16px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 1px solid #fcd34d;
-  background: #fffbeb;
-  color: #92400e;
-}
-
-.product-draft-banner[hidden],
-.product-draft-resume[hidden] {
-  display: none !important;
-}
-
-.product-draft-banner__text,
-.product-draft-resume__text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.product-draft-banner__text strong,
-.product-draft-resume__text strong {
-  font-size: 14px;
-  color: #78350f;
-}
-
-.product-draft-banner__actions,
-.product-draft-resume__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .desc-tinymce {
   width: 100%;
   min-height: 220px;
