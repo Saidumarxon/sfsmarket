@@ -2053,6 +2053,48 @@ body {
   color: #0f766e;
 }
 
+.product-draft-banner,
+.product-draft-resume {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.product-draft-banner[hidden],
+.product-draft-resume[hidden] {
+  display: none !important;
+}
+
+.product-draft-banner__text,
+.product-draft-resume__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.product-draft-banner__text strong,
+.product-draft-resume__text strong {
+  font-size: 14px;
+  color: #78350f;
+}
+
+.product-draft-banner__actions,
+.product-draft-resume__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .desc-tinymce {
   width: 100%;
   min-height: 220px;
@@ -2266,12 +2308,69 @@ body {
   border-radius: 10px;
   overflow: hidden;
   border: 2px solid var(--admin-border);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition: border-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.photo-preview-item:active {
+  cursor: grabbing;
+}
+
+.photo-preview-item.is-dragging {
+  opacity: 0.45;
+  transform: scale(0.96);
+}
+
+.photo-preview-item.is-drag-over {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 
 .photo-preview-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  pointer-events: none;
+}
+
+.photo-preview-item .photo-main-badge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.92);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+.photo-preview-item .photo-drag-handle {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--admin-transition);
+}
+
+.photo-preview-item:hover .photo-drag-handle,
+.photo-preview-item.is-dragging .photo-drag-handle {
+  opacity: 1;
 }
 
 .photo-preview-item .photo-remove {
@@ -2292,6 +2391,7 @@ body {
   font-weight: 700;
   opacity: 0;
   transition: opacity var(--admin-transition);
+  z-index: 2;
 }
 
 .photo-preview-item:hover .photo-remove {

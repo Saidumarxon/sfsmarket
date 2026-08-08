@@ -1,5 +1,5 @@
 /**
- * Product title suggestions for admin (OpenAI ChatGPT + rule fallback).
+ * Product title suggestions for admin (OpenAI + brand/model detection + rule fallback).
  * POST /api/suggest-product-title
  * Env: OPENAI_API_KEY, OPENAI_MODEL (default gpt-4o-mini)
  */
@@ -11,6 +11,62 @@ const HARD_MAX = 120;
 const memoryHits = new Map();
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_MAX = 80;
+
+/** Common marketplace brands (fallback when admin brands list is empty). */
+const KNOWN_BRANDS = [
+  "Green Lion",
+  "Apple",
+  "Samsung",
+  "Xiaomi",
+  "Redmi",
+  "POCO",
+  "Huawei",
+  "Honor",
+  "Realme",
+  "Oppo",
+  "Vivo",
+  "OnePlus",
+  "Nokia",
+  "Sony",
+  "LG",
+  "Asus",
+  "Acer",
+  "Lenovo",
+  "HP",
+  "Dell",
+  "MSI",
+  "Microsoft",
+  "Google",
+  "Nothing",
+  "Tecno",
+  "Infinix",
+  "Itel",
+  "UGREEN",
+  "Baseus",
+  "Anker",
+  "JBL",
+  "Beats",
+  "Bose",
+  "Marshall",
+  "Xiaomi Redmi",
+  "Garmin",
+  "Amazfit",
+  "Huawei Watch",
+  "Samsung Galaxy",
+  "Dyson",
+  "Philips",
+  "Bosch",
+  "Tefal",
+  "Remax",
+  "Hoco",
+  "Borofone",
+  "Joyroom",
+  "Poco",
+  "iPhone",
+  "MacBook",
+  "iPad",
+  "AirPods",
+];
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -28,9 +84,10 @@ module.exports = async function handler(req, res) {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
     const title = String(body.title || "").trim();
     const lang = String(body.lang || "ru").trim().toLowerCase() === "uz" ? "uz" : "ru";
-    const brand = String(body.brand || "").trim();
-    const model = String(body.model || "").trim();
+    const brandInput = String(body.brand || "").trim();
+    const modelInput = String(body.model || "").trim();
     const category = String(body.category || "").trim();
+    const brandsCatalog = normalizeBrandsCatalog(body.brands);
 
     if (title.length < MIN_TITLE_LEN) {
       return res.status(200).json({
@@ -43,6 +100,8 @@ module.exports = async function handler(req, res) {
             : "Название слишком короткое. Введите минимум 12 символов.",
         suggested: "",
         source: "rules",
+        detectedBrand: "",
+        detectedModel: "",
       });
     }
 
@@ -55,20 +114,28 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    const detected = detectBrandAndModel(title, brandInput, modelInput, brandsCatalog);
+    const brand = detected.brand;
+    const model = detected.model;
+
     const openaiKey = String(process.env.OPENAI_API_KEY || "").trim();
     if (openaiKey) {
-      const ai = await suggestWithOpenAI(openaiKey, title, lang, brand, model, category);
+      const ai = await suggestWithOpenAI(openaiKey, title, lang, brand, model, category, brandsCatalog);
       if (ai) {
+        const finalBrand = ai.detectedBrand || brand;
+        const finalModel = ai.detectedModel || model;
         return res.status(200).json({
           ok: true,
           score: ai.score,
           charCount: title.length,
-          feedback: ai.feedback,
+          feedback: sanitizeBrandFeedback(ai.feedback, title, finalBrand, lang),
           suggested: ai.suggested,
           suggestedUz: ai.suggestedUz || "",
           suggestedRu: ai.suggestedRu || "",
           source: "openai",
           model: OPENAI_MODEL,
+          detectedBrand: finalBrand,
+          detectedModel: finalModel,
         });
       }
     }
@@ -78,11 +145,13 @@ module.exports = async function handler(req, res) {
       ok: true,
       score: rules.score,
       charCount: title.length,
-      feedback: rules.feedback,
+      feedback: sanitizeBrandFeedback(rules.feedback, title, brand, lang),
       suggested: rules.suggested,
       suggestedRu: lang === "ru" ? rules.suggested : "",
       suggestedUz: lang === "uz" ? rules.suggested : "",
       source: "rules",
+      detectedBrand: brand,
+      detectedModel: model,
     });
   } catch (err) {
     console.error("[suggest-product-title]", err);
@@ -113,6 +182,136 @@ function consumeRateLimit(req) {
   return { allowed: true, retryAfterSec: 0 };
 }
 
+function normalizeBrandsCatalog(raw) {
+  const list = [];
+  const push = function (name) {
+    const value = String(name || "").trim();
+    if (!value || value.length < 2) return;
+    if (list.some(function (item) { return item.toLowerCase() === value.toLowerCase(); })) return;
+    list.push(value);
+  };
+
+  if (Array.isArray(raw)) {
+    raw.forEach(function (item) {
+      if (typeof item === "string") push(item);
+      else if (item && typeof item === "object") {
+        push(item.nameRu);
+        push(item.nameUz);
+        push(item.name);
+      }
+    });
+  }
+
+  KNOWN_BRANDS.forEach(push);
+  list.sort(function (a, b) {
+    return b.length - a.length;
+  });
+  return list;
+}
+
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function titleIncludesBrand(title, brand) {
+  if (!brand) return false;
+  const re = new RegExp("(?:^|[^\\p{L}\\p{N}])" + escapeRegExp(brand) + "(?:[^\\p{L}\\p{N}]|$)", "iu");
+  try {
+    return re.test(title);
+  } catch (_) {
+    return title.toLowerCase().includes(brand.toLowerCase());
+  }
+}
+
+function findBrandInTitle(title, brandsCatalog) {
+  for (let i = 0; i < brandsCatalog.length; i++) {
+    const brand = brandsCatalog[i];
+    if (titleIncludesBrand(title, brand)) return brand;
+  }
+  return "";
+}
+
+function detectModelFromTitle(title, brand) {
+  let work = String(title || "");
+  if (brand) {
+    work = work.replace(new RegExp(escapeRegExp(brand), "ig"), " ");
+  }
+
+  const patterns = [
+    /\b([A-Z]{1,4}-?[A-Z]{0,3}\d{2,5}[A-Z0-9-]{0,8})\b/,
+    /\b((?:iPhone|Galaxy|Redmi|POCO|MacBook|iPad|Watch)\s?[A-Za-z0-9.+-]{1,20})\b/i,
+    /\b(Nexus(?:\s+[A-Z0-9-]{2,20})?)\b/i,
+    /\b([A-Z]{2,}\s?\d{2,4}[A-Z]?)\b/,
+    /\b(\d{1,2}\/\d{2,4}\s*(?:GB|TB)?)\b/i,
+  ];
+
+  for (let i = 0; i < patterns.length; i++) {
+    const match = work.match(patterns[i]);
+    if (!match) continue;
+    const value = String(match[1] || "").trim();
+    if (value.length < 2 || value.length > 40) continue;
+    if (/^(USB|AMOLED|Bluetooth|IP\d+|GaN|PD)$/i.test(value)) continue;
+    return value.replace(/\s+/g, " ");
+  }
+
+  // Fallback: token after brand (e.g. "Green Lion Nexus")
+  if (brand) {
+    const after = String(title || "").split(new RegExp(escapeRegExp(brand), "i"))[1] || "";
+    const token = after
+      .replace(/^[\s,.:;-]+/, "")
+      .split(/[,\|/]| с | va | и /i)[0]
+      .trim()
+      .split(/\s+/)
+      .slice(0, 3)
+      .join(" ")
+      .trim();
+    if (token && token.length >= 2 && token.length <= 40 && !/^(умные|smart|часы|soat)/i.test(token)) {
+      return token;
+    }
+  }
+  return "";
+}
+
+function detectBrandAndModel(title, brandInput, modelInput, brandsCatalog) {
+  let brand = String(brandInput || "").trim();
+  let model = String(modelInput || "").trim();
+
+  if (!brand) {
+    brand = findBrandInTitle(title, brandsCatalog);
+  } else if (!titleIncludesBrand(title, brand)) {
+    const fromTitle = findBrandInTitle(title, brandsCatalog);
+    if (fromTitle) brand = fromTitle;
+  }
+
+  if (!model) {
+    model = detectModelFromTitle(title, brand);
+  }
+
+  return { brand: brand, model: model };
+}
+
+function sanitizeBrandFeedback(feedback, title, brand, lang) {
+  let text = String(feedback || "").trim();
+  if (!brand) return text;
+
+  const brandInTitle = titleIncludesBrand(title, brand);
+  if (!brandInTitle) return text;
+
+  const missingBrandRe =
+    /(brend\s*nomi\s*yo'?q|бренд(?:а)?\s*нет|нет\s*бренда|missing\s*brand|brand\s*(is\s*)?missing|без\s*бренда)/i;
+  if (missingBrandRe.test(text)) {
+    text =
+      lang === "uz"
+        ? "Brend topildi: " +
+          brand +
+          ". Sarlavhani biroz qisqartirish va asosiy xususiyatlarni aniqroq yozish mumkin."
+        : "Бренд найден: " +
+          brand +
+          ". Можно чуть сократить название и выделить ключевые характеристики.";
+  }
+  return text;
+}
+
 function scoreTitle(title, brand, model) {
   const len = title.length;
   let score = 10;
@@ -129,6 +328,7 @@ function scoreTitle(title, brand, model) {
   const modelLc = model.toLowerCase();
   const titleLc = title.toLowerCase();
   if (brand && !titleLc.includes(brandLc)) score -= 1;
+  else if (brand && titleLc.includes(brandLc)) score += 0.5;
   if (model && model.length > 2 && !titleLc.includes(modelLc)) score -= 0.5;
 
   if (len >= 35 && len <= IDEAL_MAX) score += 0.5;
@@ -136,12 +336,22 @@ function scoreTitle(title, brand, model) {
   return Math.max(1, Math.min(10, Math.round(score)));
 }
 
-function feedbackForScore(score, len, lang) {
+function feedbackForScore(score, len, lang, brand) {
   if (lang === "uz") {
+    if (brand) {
+      if (score >= 9) return "Brend aniqlandi: " + brand + ". Sarlavha yaxshi — ishlatish mumkin.";
+      if (len > HARD_MAX) return "Brend: " + brand + ". Sarlavha uzun — qisqaroq variant yaxshiroq.";
+      return "Brend aniqlandi: " + brand + ". Sarlavhani biroz yaxshilash mumkin.";
+    }
     if (score >= 9) return "Sarlavha yaxshi. Agar xohlasangiz, quyidagi variantni sinab ko'ring.";
     if (len > HARD_MAX) return "Sarlavha juda uzun. Qisqaroq va aniqroq variant yaxshiroq.";
     if (len > IDEAL_MAX) return "Yetarlicha batafsil sarlavha. Yana bir qisqaroq variant taklif qilamiz.";
     return "Sarlavhani yaxshilash uchun quyidagi variantni ko'rib chiqing.";
+  }
+  if (brand) {
+    if (score >= 9) return "Бренд определён: " + brand + ". Название хорошее — можно использовать.";
+    if (len > HARD_MAX) return "Бренд: " + brand + ". Название длинное — лучше короче.";
+    return "Бренд определён: " + brand + ". Можно чуть улучшить формулировку.";
   }
   if (score >= 9) return "Название хорошее — можно использовать. Ниже альтернатива, если нужна короче.";
   if (len > HARD_MAX) return "Название слишком длинное. Лучше короче — так удобнее в каталоге и поиске.";
@@ -154,7 +364,7 @@ function suggestWithRules(title, lang, brand, model, category) {
   const suggested = buildRuleSuggestion(title, brand, model, category, lang);
   return {
     score: score,
-    feedback: feedbackForScore(score, title.length, lang),
+    feedback: feedbackForScore(score, title.length, lang, brand),
     suggested: suggested && suggested !== title ? suggested : "",
   };
 }
@@ -186,6 +396,11 @@ function buildRuleSuggestion(title, brand, model, category, lang) {
   if (/gan/i.test(text)) specs.push("GaN");
   if (/usb-c/i.test(text)) specs.push("USB-C");
   if (/pd/i.test(text)) specs.push("PD");
+  if (/AMOLED/i.test(text)) specs.push("AMOLED");
+  if (/IP\d+/i.test(text)) {
+    const ip = text.match(/IP\d+/i);
+    if (ip) specs.push(ip[0].toUpperCase());
+  }
   const ports = text.match(/(\d)\s*(?:порт|port|raz'?em|razem|разъем)/i);
   if (ports) {
     specs.push(lang === "uz" ? ports[1] + " port" : ports[1] + " razem");
@@ -209,28 +424,35 @@ function categoryLabelRu(category) {
     accessories: "Аксессуар",
     audio: "Аудио",
     tv: "Телевизор",
+    "Смартфоны": "Смартфон",
+    "Ноутбуки": "Ноутбук",
+    "Планшеты": "Планшет",
   };
-  return map[String(category || "").toLowerCase()] || "";
+  return map[String(category || "")] || map[String(category || "").toLowerCase()] || "";
 }
 
-function buildTitlePrompt(title, lang, brand, model, category) {
+function buildTitlePrompt(title, lang, brand, model, category, brandsCatalog) {
   const langLabel = lang === "uz" ? "Uzbek (Latin)" : "Russian";
   const feedbackLang = lang === "uz" ? "Uzbek" : "Russian";
+  const brandHints = brandsCatalog.slice(0, 40).join(", ");
 
   return (
     "Optimize product titles for Emirate Co e-commerce in Uzbekistan (electronics & home goods).\n" +
-    "Style: like Yandex Market — clear score, short hint if the title is good or needs work, and a better variant.\n\n" +
+    "Style: like Yandex Market — clear score, short hint, and a better variant.\n\n" +
     "Input language focus: " +
     langLabel +
     "\n" +
-    "Brand: " +
-    (brand || "(unknown)") +
+    "Known brand from form/detector: " +
+    (brand || "(not selected — extract from title)") +
     "\n" +
-    "Model: " +
-    (model || "(unknown)") +
+    "Known model from form/detector: " +
+    (model || "(not selected — extract from title)") +
     "\n" +
     "Category: " +
     (category || "(unknown)") +
+    "\n" +
+    "Brand catalog hints: " +
+    (brandHints || "Apple, Samsung, Green Lion, UGREEN, Xiaomi") +
     "\n" +
     "Current title: " +
     title +
@@ -240,11 +462,16 @@ function buildTitlePrompt(title, lang, brand, model, category) {
     '  "score": 8,\n' +
     '  "feedback": "1-2 sentences in ' +
     feedbackLang +
-    ' — explain if current title is OK to use or what to fix (length, clarity, missing brand)",\n' +
+    '",\n' +
+    '  "detectedBrand": "brand name found in title or form",\n' +
+    '  "detectedModel": "model/sku like GL-SW58 or Nexus",\n' +
     '  "suggestedRu": "optimized Russian marketplace title",\n' +
     '  "suggestedUz": "optimized Uzbek Latin marketplace title"\n' +
     "}\n\n" +
     "Rules:\n" +
+    "- ALWAYS extract brand and model from the current title when possible (multi-word brands like Green Lion, Baseus, UGREEN count)\n" +
+    "- NEVER say brand is missing if the brand text already appears in the title\n" +
+    "- If brand is already in the title, say that brand was found and only suggest length/clarity improvements\n" +
     "- score 1-10 (10 = ideal for marketplace SEO and customer search)\n" +
     "- suggested titles 45-90 characters: brand + model + 2-4 key specs\n" +
     "- remove SKU codes in parentheses, redundant words, ALL CAPS\n" +
@@ -263,7 +490,9 @@ function parseAiSuggestion(parsed, title, lang, brand, model) {
   const suggestedUz = String(parsed.suggestedUz || "").trim();
   const suggested = lang === "uz" ? suggestedUz || suggestedRu : suggestedRu || suggestedUz;
   const feedback =
-    String(parsed.feedback || "").trim() || feedbackForScore(score, title.length, lang);
+    String(parsed.feedback || "").trim() || feedbackForScore(score, title.length, lang, brand);
+  const detectedBrand = String(parsed.detectedBrand || brand || "").trim();
+  const detectedModel = String(parsed.detectedModel || model || "").trim();
 
   if (!suggested && score < 9) return null;
 
@@ -273,11 +502,13 @@ function parseAiSuggestion(parsed, title, lang, brand, model) {
     suggested: suggested,
     suggestedRu: suggestedRu,
     suggestedUz: suggestedUz,
+    detectedBrand: detectedBrand,
+    detectedModel: detectedModel,
   };
 }
 
-async function suggestWithOpenAI(apiKey, title, lang, brand, model, category) {
-  const prompt = buildTitlePrompt(title, lang, brand, model, category);
+async function suggestWithOpenAI(apiKey, title, lang, brand, model, category, brandsCatalog) {
+  const prompt = buildTitlePrompt(title, lang, brand, model, category, brandsCatalog);
 
   const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -287,14 +518,17 @@ async function suggestWithOpenAI(apiKey, title, lang, brand, model, category) {
     },
     body: JSON.stringify({
       model: OPENAI_MODEL,
-      temperature: 0.25,
-      max_tokens: 700,
+      temperature: 0.2,
+      max_tokens: 800,
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
           content:
-            "You are an expert e-commerce copywriter for Uzbekistan marketplaces. Always respond with valid JSON only.",
+            "You are an expert e-commerce copywriter for Uzbekistan marketplaces. " +
+            "You always detect brand/model from the product title when present. " +
+            "Never claim the brand is missing if it is written in the title. " +
+            "Always respond with valid JSON only.",
         },
         { role: "user", content: prompt },
       ],

@@ -357,6 +357,16 @@
 
       <!-- ==================== PRODUCTS ==================== -->
       <div class="admin-page" id="page-products">
+        <div class="product-draft-resume" id="productDraftResume" hidden>
+          <div class="product-draft-resume__text">
+            <strong>Есть несохранённый товар</strong>
+            <span id="productDraftResumeMeta">Черновик сохранён в этом браузере.</span>
+          </div>
+          <div class="product-draft-resume__actions">
+            <button type="button" class="btn-filter-reset" id="productDraftResumeDiscardBtn">Удалить</button>
+            <button type="button" class="btn-add" id="productDraftResumeBtn">Продолжить редактирование</button>
+          </div>
+        </div>
         <div class="table-card">
           <div class="table-card-header">
             <h3>Продукты</h3>
@@ -833,9 +843,19 @@
       <!-- ==================== PRODUCT EDITOR ==================== -->
       <div class="admin-page" id="page-product-editor">
         <div class="editor-breadcrumb">
-          <a href="#" onclick="switchPage('products'); return false;">Продукты</a>
+          <a href="#" id="editorBackToProducts">Продукты</a>
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
           <span id="editorBreadcrumb">Добавить</span>
+        </div>
+
+        <div class="product-draft-banner" id="productDraftBanner" hidden>
+          <div class="product-draft-banner__text">
+            <strong>Черновик сохранён</strong>
+            <span id="productDraftBannerMeta">Можно уйти в Бренды и вернуться — данные не пропадут.</span>
+          </div>
+          <div class="product-draft-banner__actions">
+            <button type="button" class="btn-filter-reset" id="productDraftDiscardBtn">Сбросить черновик</button>
+          </div>
         </div>
 
         <div class="editor-layout">
@@ -1226,7 +1246,7 @@
                   <div class="color-variant-upload">
                     <label class="upload-btn" for="colorVariantPhotoInput">Добавить фото для этого цвета</label>
                     <input type="file" id="colorVariantPhotoInput" accept="image/*" multiple hidden>
-                    <span class="upload-hint">Можно загрузить несколько фото. Они будут показываться при выборе этого цвета.</span>
+                    <span class="upload-hint">Можно загрузить несколько фото. Перетащите мышкой, чтобы поменять порядок.</span>
                   </div>
                   <div class="photo-preview-grid" id="colorVariantPhotoPreview"></div>
                   <div class="color-variants-list" id="colorVariantsList"></div>
@@ -1236,7 +1256,7 @@
                   <p>Перетащите фото сюда или</p>
                   <label class="upload-btn" for="photoInput">Выберите файлы</label>
                   <input type="file" id="photoInput" accept="image/*" multiple hidden>
-                  <span class="upload-hint">PNG, JPG, WEBP — до 5MB каждый</span>
+                  <span class="upload-hint">PNG, JPG, WEBP — до 5MB каждый. Перетащите превью мышкой, чтобы поменять местами (первое = главное).</span>
                 </div>
                 <div class="photo-preview-grid" id="photoPreviewGrid"></div>
               </div>
