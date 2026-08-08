@@ -920,16 +920,6 @@
                 </div>
                 <div class="form-row">
                   <div class="form-group">
-                    <label>Group Id</label>
-                    <select id="pGroupId"><option value="">Select ...</option></select>
-                  </div>
-                  <div class="form-group">
-                    <label>Group Name Id</label>
-                    <select id="pGroupNameId"><option value="">Select ...</option></select>
-                  </div>
-                </div>
-                <div class="form-row form-row-3">
-                  <div class="form-group">
                     <label>Модель</label>
                     <input type="text" id="pModel" placeholder="">
                   </div>
@@ -939,12 +929,8 @@
                       <option value="">Выберите ...</option>
                     </select>
                   </div>
-                  <div class="form-group">
-                    <label>Barcode</label>
-                    <input type="text" id="pBarcode" placeholder="">
-                  </div>
                 </div>
-                <div class="form-row form-row-5">
+                <div class="form-row">
                   <div class="form-group">
                     <label>Состояния</label>
                     <input type="text" id="pCondition" value="Есть в наличии" readonly>
@@ -957,35 +943,8 @@
                     </select>
                   </div>
                   <div class="form-group">
-                    <label>Статус рассрочки</label>
-                    <select id="pInstallment">
-                      <option value="active">Активный</option>
-                      <option value="inactive">Неактивный</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>АКЦИЯ</label>
-                    <select id="pPromo">
-                      <option value="no">Нет</option>
-                      <option value="yes">Да</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>Express доставка</label>
-                    <select id="pExpress">
-                      <option value="no">Нет</option>
-                      <option value="yes">Да</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="form-row">
-                  <div class="form-group">
                     <label>Приоритет</label>
                     <input type="number" id="pPriority" value="300">
-                  </div>
-                  <div class="form-group">
-                    <label>Область доставки</label>
-                    <input type="text" id="pDeliveryArea" placeholder="">
                   </div>
                 </div>
               </div>
@@ -1405,7 +1364,7 @@
         var gate = document.getElementById("adminAuthGate");
         if (gate) gate.remove();
         var tag = document.createElement("script");
-        tag.src = "admin.js?v=20260808h";
+        tag.src = "admin.js?v=20260808i";
         document.body.appendChild(tag);
       }
 
