@@ -2005,7 +2005,6 @@ function updateStorefrontPricePreview() {
       → +20% = ${window.emirateExchange.formatUzs(preview.rawMarked)}
       → <span class="storefront-price-preview-final">${window.emirateExchange.formatUzs(shown)}</span>
     </div>
-    <div class="storefront-price-preview-note">Округление как Asaxiy: 3 899 000 / 99 000. Поле ниже можно изменить вручную.</div>
     ${shownOld > shown ? `<div class="storefront-price-preview-old">Старая на витрине: ${window.emirateExchange.formatUzs(shownOld)}</div>` : ''}
   `;
 }
