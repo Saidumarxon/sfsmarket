@@ -3261,7 +3261,12 @@ function scheduleProductDraftAutosave() {
 }
 
 function updateProductDraftUi() {
-  // Черновик сохраняется тихо, без баннеров в интерфейсе
+  // Полностью убираем старые баннеры черновика (в т.ч. из кэша браузера)
+  document.querySelectorAll(
+    '#productDraftBanner, #productDraftResume, .product-draft-banner, .product-draft-resume'
+  ).forEach(function (el) {
+    el.remove();
+  });
 }
 
 function applyProductDraft(draft) {
@@ -3623,6 +3628,8 @@ function renderProductEditorPreviews() {
 const colorNameRuInput = document.getElementById('pColorNameRu');
 const colorNameUzInput = document.getElementById('pColorNameUz');
 const colorHexInput = document.getElementById('pColorHex');
+const colorHexPicker = document.getElementById('pColorHexPicker');
+const colorHexPresets = document.getElementById('colorHexPresets');
 const colorStatusInput = document.getElementById('pColorStatus');
 const colorAttrNameRuInput = document.getElementById('pColorAttrNameRu');
 const colorAttrNameUzInput = document.getElementById('pColorAttrNameUz');
@@ -3670,6 +3677,32 @@ function normalizeColorHex(value) {
   return /^[0-9a-f]{3,8}$/i.test(hex) ? `#${hex}` : '';
 }
 
+function colorHexForPicker(value) {
+  const normalized = normalizeColorHex(value);
+  if (!normalized) return '#c4b5a0';
+  const hex = normalized.replace(/^#/, '');
+  if (hex.length === 3) {
+    return '#' + hex.split('').map(function (ch) { return ch + ch; }).join('');
+  }
+  if (hex.length >= 6) return '#' + hex.slice(0, 6);
+  return '#c4b5a0';
+}
+
+function syncColorPickerUi(value) {
+  const normalized = normalizeColorHex(value);
+  const pickerValue = colorHexForPicker(normalized || value);
+  if (colorHexPicker) colorHexPicker.value = pickerValue;
+  if (colorHexInput && normalized && colorHexInput.value !== normalized) {
+    colorHexInput.value = normalized;
+  }
+  const swatch = colorHexInput?.closest('.color-picker-field')?.querySelector('.color-picker-swatch');
+  if (swatch) swatch.style.setProperty('--swatch', pickerValue);
+  colorHexPresets?.querySelectorAll('.color-preset-btn').forEach(function (btn) {
+    const active = normalizeColorHex(btn.getAttribute('data-color')).toLowerCase() === (normalized || '').toLowerCase();
+    btn.classList.toggle('is-active', active);
+  });
+}
+
 function syncColorMetaFromForm() {
   productColorMeta = {
     nameRu: String(colorAttrNameRuInput?.value || 'Цвет').trim() || 'Цвет',
@@ -3701,6 +3734,8 @@ function resetColorVariantForm() {
   uploadedColorVariantPhotos = [];
   if (colorNameRuInput) colorNameRuInput.value = '';
   if (colorNameUzInput) colorNameUzInput.value = '';
+  if (colorHexInput) colorHexInput.value = '';
+  syncColorPickerUi('#c4b5a0');
   if (colorHexInput) colorHexInput.value = '';
   if (colorStatusInput) colorStatusInput.value = 'active';
   if (colorVariantSaveBtn) colorVariantSaveBtn.textContent = '+ Добавить цвет';
@@ -3855,6 +3890,8 @@ function fillColorVariantForm(id) {
   if (colorNameRuInput) colorNameRuInput.value = variant.nameRu || '';
   if (colorNameUzInput) colorNameUzInput.value = variant.nameUz || '';
   if (colorHexInput) colorHexInput.value = variant.swatch || '';
+  syncColorPickerUi(variant.swatch || '#c4b5a0');
+  if (!variant.swatch && colorHexInput) colorHexInput.value = '';
   if (colorStatusInput) colorStatusInput.value = variant.status === 'inactive' ? 'inactive' : 'active';
   if (colorVariantSaveBtn) colorVariantSaveBtn.textContent = 'Обновить цвет';
   renderColorVariantPhotoPreview();
@@ -3911,19 +3948,11 @@ editorTabs.forEach(tab => {
 
 // Open editor for new product
 document.getElementById('addProductBtn').addEventListener('click', function() {
+  // Есть черновик нового товара — тихо продолжаем без всплывающих окон
   const draft = readProductDraft();
-  if (isProductEditorMeaningful(draft)) {
-    const label = String(draft.nameRu || draft.nameUz || 'без названия').trim();
-    const resume = confirm(
-      'Есть несохранённый черновик («' + label + '»).\n\n' +
-      'OK — продолжить черновик\n' +
-      'Отмена — начать новый товар'
-    );
-    if (resume) {
-      openProductEditorFromDraft();
-      return;
-    }
-    clearProductDraft();
+  if (isProductEditorMeaningful(draft) && !draft.editingProductId) {
+    openProductEditorFromDraft();
+    return;
   }
 
   editingProductId = null;
@@ -3945,26 +3974,14 @@ function openEditorForProduct(id) {
   if (!p) return;
 
   const draft = readProductDraft();
-  if (isProductEditorMeaningful(draft)) {
-    if (String(draft.editingProductId || '') === String(id)) {
-      applyProductDraft(draft);
-      switchPage('product-editor');
-      editorTabs.forEach((t) => t.classList.remove('active'));
-      editorTabContents.forEach((c) => c.classList.remove('active'));
-      editorTabs[0]?.classList.add('active');
-      editorTabContents[0]?.classList.add('active');
-      return;
-    }
-    const label = String(draft.nameRu || draft.nameUz || 'черновик').trim();
-    const keepGoing = confirm(
-      'Сейчас открыт другой черновик («' + label + '»).\n\n' +
-      'OK — открыть выбранный товар (черновик останется в фоне)\n' +
-      'Отмена — сначала продолжить черновик'
-    );
-    if (!keepGoing) {
-      openProductEditorFromDraft();
-      return;
-    }
+  if (isProductEditorMeaningful(draft) && String(draft.editingProductId || '') === String(id)) {
+    applyProductDraft(draft);
+    switchPage('product-editor');
+    editorTabs.forEach((t) => t.classList.remove('active'));
+    editorTabContents.forEach((c) => c.classList.remove('active'));
+    editorTabs[0]?.classList.add('active');
+    editorTabContents[0]?.classList.add('active');
+    return;
   }
 
   editingProductId = id;
@@ -4683,6 +4700,35 @@ resetColorVariantForm();
 
 colorVariantSaveBtn?.addEventListener('click', saveColorVariant);
 colorVariantResetBtn?.addEventListener('click', resetColorVariantForm);
+
+colorHexPicker?.addEventListener('input', function () {
+  const value = normalizeColorHex(this.value) || this.value;
+  if (colorHexInput) colorHexInput.value = value;
+  syncColorPickerUi(value);
+});
+
+colorHexInput?.addEventListener('input', function () {
+  syncColorPickerUi(this.value);
+});
+
+colorHexInput?.addEventListener('blur', function () {
+  const normalized = normalizeColorHex(this.value);
+  if (normalized) this.value = normalized;
+  syncColorPickerUi(this.value || '#c4b5a0');
+  if (!normalized) this.value = '';
+});
+
+colorHexPresets?.addEventListener('click', function (e) {
+  const btn = e.target.closest('.color-preset-btn');
+  if (!btn) return;
+  const value = normalizeColorHex(btn.getAttribute('data-color'));
+  if (!value) return;
+  if (colorHexInput) colorHexInput.value = value;
+  syncColorPickerUi(value);
+});
+
+syncColorPickerUi(colorHexInput?.value || '#c4b5a0');
+if (colorHexInput && !normalizeColorHex(colorHexInput.value)) colorHexInput.value = '';
 colorAttrNameRuInput?.addEventListener('input', renderColorVariantsList);
 colorAttrNameUzInput?.addEventListener('input', renderColorVariantsList);
 colorAttrStatusInput?.addEventListener('change', renderColorVariantsList);

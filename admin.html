@@ -9,7 +9,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin.css?v=20260808b">
+  <style>
+    /* Старые кэшированные баннеры черновика больше не показываем */
+    #productDraftBanner,
+    #productDraftResume,
+    .product-draft-banner,
+    .product-draft-resume { display: none !important; }
+  </style>
   <style>
     body.admin-auth-pending { overflow: hidden; }
     body.admin-auth-pending .admin-sidebar,
@@ -1205,8 +1212,24 @@
                       <input type="text" id="pColorNameUz" placeholder="Natural Titanium">
                     </div>
                     <div class="form-group">
-                      <label>Цвет кнопки (HEX)</label>
-                      <input type="text" id="pColorHex" placeholder="#c4b5a0">
+                      <label>Цвет кнопки</label>
+                      <div class="color-picker-field">
+                        <label class="color-picker-swatch" for="pColorHexPicker" title="Нажмите, чтобы выбрать цвет">
+                          <input type="color" id="pColorHexPicker" value="#c4b5a0" aria-label="Выбрать цвет">
+                        </label>
+                        <input type="text" id="pColorHex" placeholder="#c4b5a0" maxlength="9" autocomplete="off">
+                      </div>
+                      <div class="color-picker-presets" id="colorHexPresets" aria-label="Быстрый выбор цвета">
+                        <button type="button" class="color-preset-btn" data-color="#000000" title="Чёрный" style="--c:#000000"></button>
+                        <button type="button" class="color-preset-btn" data-color="#ffffff" title="Белый" style="--c:#ffffff"></button>
+                        <button type="button" class="color-preset-btn" data-color="#c0c0c0" title="Серебристый" style="--c:#c0c0c0"></button>
+                        <button type="button" class="color-preset-btn" data-color="#c4b5a0" title="Titanium" style="--c:#c4b5a0"></button>
+                        <button type="button" class="color-preset-btn" data-color="#1e3a5f" title="Синий" style="--c:#1e3a5f"></button>
+                        <button type="button" class="color-preset-btn" data-color="#7f1d1d" title="Красный" style="--c:#7f1d1d"></button>
+                        <button type="button" class="color-preset-btn" data-color="#14532d" title="Зелёный" style="--c:#14532d"></button>
+                        <button type="button" class="color-preset-btn" data-color="#f5d0c5" title="Розовый" style="--c:#f5d0c5"></button>
+                      </div>
+                      <small class="form-hint">Нажмите на квадрат — откроется палитра. Или выберите готовый цвет ниже.</small>
                     </div>
                     <div class="form-group">
                       <label>Статус цвета</label>
@@ -1360,7 +1383,7 @@
         var gate = document.getElementById("adminAuthGate");
         if (gate) gate.remove();
         var tag = document.createElement("script");
-        tag.src = "admin.js";
+        tag.src = "admin.js?v=20260808b";
         document.body.appendChild(tag);
       }
 
