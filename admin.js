@@ -1981,34 +1981,7 @@ function updateNbuRateLine() {
 }
 
 function updateStorefrontPricePreview() {
-  const el = document.getElementById('pStorefrontPreview');
-  if (!el || !window.emirateExchange?.previewStorefrontFromUsd) return;
-  const usd = window.emirateExchange.parseUsdInput(document.getElementById('pPriceUsd')?.value);
-  if (usd <= 0) {
-    el.className = 'storefront-price-preview';
-    el.innerHTML = '';
-    el.hidden = true;
-    return;
-  }
-  const preview = window.emirateExchange.previewStorefrontFromUsd(
-    usd,
-    document.getElementById('pOldPriceUsd')?.value
-  );
-  const edited = parseAdminMoneyInput(document.getElementById('pPrice')?.value);
-  const shown = edited > 0 ? charmAdminMoney(edited) : preview.price;
-  const oldEdited = parseAdminMoneyInput(document.getElementById('pOldPrice')?.value);
-  const shownOld = oldEdited > 0 ? charmAdminMoney(oldEdited) : preview.oldPrice;
-  el.hidden = false;
-  el.className = 'storefront-price-preview is-ready';
-  el.innerHTML = `
-    <div class="storefront-price-preview-calc">
-      ${usd.toLocaleString('ru-RU')} USD × ${preview.rate.toLocaleString('ru-RU')} =
-      <strong>${window.emirateExchange.formatUzs(preview.base)}</strong> (закуп)
-      → +20% = ${window.emirateExchange.formatUzs(preview.rawMarked)}
-      → <span class="storefront-price-preview-final">${window.emirateExchange.formatUzs(shown)}</span>
-    </div>
-    ${shownOld > shown ? `<div class="storefront-price-preview-old">Старая на витрине: ${window.emirateExchange.formatUzs(shownOld)}</div>` : ''}
-  `;
+  // Preview banner removed — fields sync automatically from USD.
 }
 
 function syncStorefrontPricesFromUsd({ force = false } = {}) {
