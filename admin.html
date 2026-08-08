@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=20260808e">
+  <link rel="stylesheet" href="admin.css?v=20260808g">
   <style>
     /* Старые кэшированные баннеры черновика больше не показываем */
     #productDraftBanner,
@@ -1084,34 +1084,26 @@
                 <p class="form-hint" id="pNbuRateLine" style="margin:0 0 12px;font-size:13px;color:#64748b;">
                   Курс NBU (продажа USD): загрузка… · на витрине +20%
                 </p>
-                <button type="button" class="btn-filter-reset" id="refreshNbuRateBtn" style="margin-bottom:14px;">Обновить курс с nbu.uz</button>
                 <div class="form-row">
                   <div class="form-group">
                     <label>Цена закупа (USD)</label>
                     <input type="text" id="pPriceUsd" inputmode="decimal" placeholder="например 1000">
-                    <small class="form-hint">Закуп в USD → сразу считаем сумму на витрине</small>
                   </div>
                   <div class="form-group">
                     <label>Старая цена (USD)</label>
                     <input type="text" id="pOldPriceUsd" inputmode="decimal" placeholder="опционально">
                   </div>
                 </div>
-                <div class="storefront-price-preview" id="pStorefrontPreview" aria-live="polite">
-                  Укажите цену закупа в USD — увидите расчёт по курсу NBU и +20%.
-                </div>
+                <div class="storefront-price-preview" id="pStorefrontPreview" aria-live="polite" hidden></div>
                 <div class="form-row" style="margin-top:12px;">
                   <div class="form-group">
                     <label>Цена на витрине (сум)</label>
                     <input type="text" id="pPrice" inputmode="numeric" placeholder="считается автоматически">
-                    <small class="form-hint">USD × NBU × 1.2, затем как Asaxiy: 3 899 000 / 99 000. Можно изменить вручную.</small>
                   </div>
                   <div class="form-group">
                     <label>Старая цена на витрине (сум)</label>
                     <input type="text" id="pOldPrice" inputmode="numeric" placeholder="опционально">
                   </div>
-                </div>
-                <div style="margin:0 0 14px;">
-                  <button type="button" class="btn-filter-reset" id="recalcStorefrontPriceBtn">Пересчитать от USD</button>
                 </div>
                 <div class="form-row">
                   <div class="form-group">
@@ -1414,7 +1406,7 @@
         var gate = document.getElementById("adminAuthGate");
         if (gate) gate.remove();
         var tag = document.createElement("script");
-        tag.src = "admin.js?v=20260808f";
+        tag.src = "admin.js?v=20260808g";
         document.body.appendChild(tag);
       }
 

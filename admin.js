@@ -1986,7 +1986,8 @@ function updateStorefrontPricePreview() {
   const usd = window.emirateExchange.parseUsdInput(document.getElementById('pPriceUsd')?.value);
   if (usd <= 0) {
     el.className = 'storefront-price-preview';
-    el.innerHTML = 'Укажите <strong>цену закупа в USD</strong> — сразу увидите: курс NBU × USD × 1.2, затем округление до …9. Или заполните сумму вручную ниже.';
+    el.innerHTML = '';
+    el.hidden = true;
     return;
   }
   const preview = window.emirateExchange.previewStorefrontFromUsd(
@@ -1997,6 +1998,7 @@ function updateStorefrontPricePreview() {
   const shown = edited > 0 ? charmAdminMoney(edited) : preview.price;
   const oldEdited = parseAdminMoneyInput(document.getElementById('pOldPrice')?.value);
   const shownOld = oldEdited > 0 ? charmAdminMoney(oldEdited) : preview.oldPrice;
+  el.hidden = false;
   el.className = 'storefront-price-preview is-ready';
   el.innerHTML = `
     <div class="storefront-price-preview-calc">
@@ -4882,26 +4884,6 @@ productEditorPage?.addEventListener('input', scheduleProductDraftAutosave);
 productEditorPage?.addEventListener('change', scheduleProductDraftAutosave);
 
 // Save product
-document.getElementById('refreshNbuRateBtn')?.addEventListener('click', async function() {
-  const btn = this;
-  btn.disabled = true;
-  try {
-    const res = await window.emirateExchange?.refreshNbuUsdSellRate?.(true);
-    if (!res?.ok) {
-      alert('Не удалось обновить курс с nbu.uz. Используется последний сохранённый курс.');
-    }
-    updateNbuRateLine();
-    syncStorefrontPricesFromUsd({ force: !storefrontPriceTouched });
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-document.getElementById('recalcStorefrontPriceBtn')?.addEventListener('click', function() {
-  storefrontPriceTouched = false;
-  syncStorefrontPricesFromUsd({ force: true });
-});
-
 ['pPriceUsd', 'pOldPriceUsd'].forEach((id) => {
   document.getElementById(id)?.addEventListener('input', () => {
     storefrontPriceTouched = false;
