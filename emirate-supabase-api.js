@@ -46,13 +46,31 @@
     return Number(String(text || "").replace(/\s+/g, "").replace(/[^\d]/g, "")) || 0;
   }
 
-  /** Admin price → vitrina (+20%). Base prices stay in DB/admin. */
+  /**
+   * Asaxiy-style charm: 3 899 000 / 99 000 / 3 999 000
+   * (…9000 — ends with 000, 9 before zeros; never above the raw amount).
+   */
+  function roundCharmPrice(amount) {
+    var n = Math.round(Number(amount) || 0);
+    if (n <= 0) return 0;
+    if (n < 1000) return Math.max(9, Math.floor(n / 10) * 10 + 9);
+    if (n < 10000) {
+      var k = Math.floor(n / 1000);
+      return Math.max(1000, (k >= 9 ? 9 : k) * 1000);
+    }
+    var tier = Math.round(n / 10000);
+    var charm = tier * 10000 - 1000;
+    if (charm > n) charm = (tier - 1) * 10000 - 1000;
+    return charm >= 9000 ? charm : 9000;
+  }
+
+  /** Admin base price → vitrina (+20%, then …9). Base prices stay in DB/admin. */
   function applyStorefrontMarkupToPrices(basePrice, baseOldPrice) {
     var base = Number(basePrice) || 0;
     var oldBase = Number(baseOldPrice) || 0;
     if (base <= 0) return { price: 0, oldPrice: 0 };
-    var price = Math.round(base * STOREFRONT_MARKUP_RATE);
-    var oldPrice = oldBase > 0 ? Math.round(oldBase * STOREFRONT_MARKUP_RATE) : price;
+    var price = roundCharmPrice(Math.round(base * STOREFRONT_MARKUP_RATE));
+    var oldPrice = oldBase > 0 ? roundCharmPrice(Math.round(oldBase * STOREFRONT_MARKUP_RATE)) : price;
     if (oldPrice < price) oldPrice = price;
     return { price: price, oldPrice: oldPrice };
   }
@@ -536,7 +554,9 @@
     client: client,
     getStorageBucket: getStorageBucket,
     normalizeTitleKey: normalizeTitleKey,
+    parseMoneyText: parseMoneyText,
     applyStorefrontMarkupToPrices: applyStorefrontMarkupToPrices,
+    roundCharmPrice: roundCharmPrice,
     storefrontMarkupRate: STOREFRONT_MARKUP_RATE,
     mapAdminPayloadToCatalogItem: mapAdminPayloadToCatalogItem,
     fetchPublicCatalogProducts: fetchPublicCatalogProducts,

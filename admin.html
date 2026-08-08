@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=20260808b">
+  <link rel="stylesheet" href="admin.css?v=20260808e">
   <style>
     /* Старые кэшированные баннеры черновика больше не показываем */
     #productDraftBanner,
@@ -540,6 +540,13 @@
                 <input type="text" id="categoryNameUz" placeholder="Masalan: Smartfonlar">
               </div>
               <div class="form-group">
+                <label for="categoryParentId">Родительская категория</label>
+                <select id="categoryParentId">
+                  <option value="">— Корень (верхний уровень) —</option>
+                </select>
+                <span class="form-hint">Для дерева: например «Умные часы» → родитель «Электроника».</span>
+              </div>
+              <div class="form-group">
                 <label for="categorySortOrder">Порядок</label>
                 <input type="number" id="categorySortOrder" min="1" step="1" value="100">
               </div>
@@ -608,7 +615,7 @@
           </div>
           <table class="admin-table" id="categoriesTable">
             <thead>
-              <tr><th>Название Ru</th><th>Название Uz</th><th>Характеристик</th><th>Порядок</th><th>Статус</th><th>Обновлено</th><th>Действия</th></tr>
+              <tr><th>Название Ru</th><th>Путь / родитель</th><th>Название Uz</th><th>Характеристик</th><th>Порядок</th><th>Статус</th><th>Обновлено</th><th>Действия</th></tr>
             </thead>
             <tbody id="categoriesBody"></tbody>
           </table>
@@ -853,11 +860,29 @@
             <div class="editor-tab-content active" data-tab="basic">
               <div class="editor-section">
                 <div class="form-group">
-                  <label>Категория</label>
-                  <select id="pCategory">
-                    <option value="">Выберите ...</option>
-                  </select>
-                  <small class="form-hint">При выборе категории на вкладке «Характеристики» подставятся поля по умолчанию.</small>
+                  <label class="required">Категория</label>
+                  <div class="category-tree-picker" id="pCategoryPicker">
+                    <input type="hidden" id="pCategory" value="">
+                    <button type="button" class="category-tree-trigger" id="pCategoryTrigger" aria-haspopup="listbox" aria-expanded="false">
+                      <span class="category-tree-path" id="pCategoryPath">Выберите категорию…</span>
+                      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="category-tree-panel" id="pCategoryPanel" hidden>
+                      <div class="category-tree-modes" role="tablist">
+                        <button type="button" class="category-tree-mode is-active" data-cat-mode="search">🔍 Поиск</button>
+                        <button type="button" class="category-tree-mode" data-cat-mode="browse">📂 По шагам</button>
+                      </div>
+                      <div class="category-tree-mode-pane" data-cat-pane="search">
+                        <input type="search" id="pCategorySearch" class="category-tree-search" placeholder="Начните вводить название категории…" autocomplete="off">
+                        <div class="category-tree-results" id="pCategorySearchResults"></div>
+                      </div>
+                      <div class="category-tree-mode-pane" data-cat-pane="browse" hidden>
+                        <div class="category-tree-breadcrumb" id="pCategoryBreadcrumb"></div>
+                        <div class="category-tree-browse" id="pCategoryBrowseList"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <small class="form-hint">Два способа: поиск по названию или вход по дереву шаг за шагом. При выборе подставятся характеристики по умолчанию.</small>
                 </div>
                 <div class="form-group">
                   <label class="required">Название Uz</label>
@@ -1064,23 +1089,29 @@
                   <div class="form-group">
                     <label>Цена закупа (USD)</label>
                     <input type="text" id="pPriceUsd" inputmode="decimal" placeholder="например 1000">
-                    <small class="form-hint">Приоритет для витрины: USD × курс NBU × 1.2</small>
+                    <small class="form-hint">Закуп в USD → сразу считаем сумму на витрине</small>
                   </div>
                   <div class="form-group">
                     <label>Старая цена (USD)</label>
                     <input type="text" id="pOldPriceUsd" inputmode="decimal" placeholder="опционально">
                   </div>
                 </div>
-                <p class="form-hint" id="pStorefrontPreview" style="margin:8px 0 14px;font-size:13px;color:#0f766e;"></p>
-                <div class="form-row">
+                <div class="storefront-price-preview" id="pStorefrontPreview" aria-live="polite">
+                  Укажите цену закупа в USD — увидите расчёт по курсу NBU и +20%.
+                </div>
+                <div class="form-row" style="margin-top:12px;">
                   <div class="form-group">
-                    <label>Цена в сум (вручную)</label>
-                    <input type="text" id="pPrice" placeholder="если без USD">
+                    <label>Цена на витрине (сум)</label>
+                    <input type="text" id="pPrice" inputmode="numeric" placeholder="считается автоматически">
+                    <small class="form-hint">USD × NBU × 1.2, затем как Asaxiy: 3 899 000 / 99 000. Можно изменить вручную.</small>
                   </div>
                   <div class="form-group">
-                    <label>Старая цена (сум)</label>
-                    <input type="text" id="pOldPrice" placeholder="если без USD">
+                    <label>Старая цена на витрине (сум)</label>
+                    <input type="text" id="pOldPrice" inputmode="numeric" placeholder="опционально">
                   </div>
+                </div>
+                <div style="margin:0 0 14px;">
+                  <button type="button" class="btn-filter-reset" id="recalcStorefrontPriceBtn">Пересчитать от USD</button>
                 </div>
                 <div class="form-row">
                   <div class="form-group">
@@ -1368,8 +1399,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase-config.js"></script>
   <script src="supabase-config.prod.js"></script>
-  <script src="emirate-exchange.js"></script>
-  <script src="emirate-supabase-api.js"></script>
+  <script src="emirate-exchange.js?v=20260808e"></script>
+  <script src="emirate-supabase-api.js?v=20260808e"></script>
   <script src="emirate-auth.js"></script>
   <script src="emirate-brands.js"></script>
   <script>
@@ -1383,7 +1414,7 @@
         var gate = document.getElementById("adminAuthGate");
         if (gate) gate.remove();
         var tag = document.createElement("script");
-        tag.src = "admin.js?v=20260808b";
+        tag.src = "admin.js?v=20260808e";
         document.body.appendChild(tag);
       }
 

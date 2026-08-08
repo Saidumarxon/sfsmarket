@@ -937,6 +937,201 @@ body {
   padding: 18px 22px 22px;
 }
 
+.category-path-cell {
+  display: inline-block;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #334155;
+}
+
+.category-tree-picker {
+  position: relative;
+}
+
+.category-tree-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--admin-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-tree-trigger:hover,
+.category-tree-trigger[aria-expanded="true"] {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.category-tree-path {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.category-tree-path.is-placeholder {
+  color: #94a3b8;
+}
+
+.category-tree-panel {
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+}
+
+.category-tree-panel[hidden] {
+  display: none !important;
+}
+
+.category-tree-modes {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.category-tree-mode {
+  flex: 1;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.category-tree-mode.is-active {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.category-tree-mode-pane {
+  padding: 8px;
+}
+
+.category-tree-search {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.category-tree-results,
+.category-tree-browse {
+  max-height: 280px;
+  overflow: auto;
+  display: grid;
+  gap: 4px;
+}
+
+.category-tree-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  font-size: 12px;
+}
+
+.category-tree-crumb {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.category-tree-crumb:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.category-tree-crumb-sep {
+  color: #94a3b8;
+}
+
+.category-tree-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-tree-option:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.category-tree-option.is-active {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.category-tree-option-path {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.category-tree-option-tag {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.category-tree-check {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.category-tree-empty {
+  padding: 18px 12px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
 .category-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2657,5 +2852,50 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: #94a3b8;
+}
+
+.storefront-price-preview {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.storefront-price-preview.is-ready {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.storefront-price-preview-calc {
+  font-size: 13px;
+}
+
+.storefront-price-preview-final {
+  font-size: 16px;
+  font-weight: 700;
+  color: #047857;
+  white-space: nowrap;
+}
+
+.storefront-price-preview-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.storefront-price-preview.is-ready .storefront-price-preview-note {
+  color: #0f766e;
+}
+
+.storefront-price-preview-old {
+  margin-top: 4px;
+  font-size: 12px;
+  text-decoration: line-through;
   color: #94a3b8;
 }

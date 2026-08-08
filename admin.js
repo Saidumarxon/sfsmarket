@@ -728,15 +728,6 @@ function deleteSupplier(supplierId) {
 const ADMIN_CATEGORIES_KEY = 'emirate_admin_categories_v1';
 
 function defaultCategoriesData() {
-  const seed = [
-    { id: 'cat_smartphones', nameRu: 'Смартфоны', nameUz: 'Smartfonlar', sortOrder: 1 },
-    { id: 'cat_laptops', nameRu: 'Ноутбуки', nameUz: 'Noutbuklar', sortOrder: 2 },
-    { id: 'cat_tv', nameRu: 'ТВ и аудио', nameUz: 'TV va audio', sortOrder: 3 },
-    { id: 'cat_appliances', nameRu: 'Бытовая техника', nameUz: 'Maishiy texnika', sortOrder: 4 },
-    { id: 'cat_accessories', nameRu: 'Аксессуары', nameUz: 'Aksessuarlar', sortOrder: 5 },
-    { id: 'cat_home', nameRu: 'Товары для дома', nameUz: 'Uy uchun tovarlar', sortOrder: 6 },
-    { id: 'cat_beauty', nameRu: 'Красота и здоровье', nameUz: 'Go\'zallik va salomatlik', sortOrder: 7 }
-  ];
   const smartphoneSpecs = [
     { keyRu: 'Память', keyUz: 'Xotira', valueRu: '', valueUz: '' },
     { keyRu: 'Экран', keyUz: 'Ekran', valueRu: '', valueUz: '' },
@@ -750,9 +741,31 @@ function defaultCategoriesData() {
     { keyRu: 'Накопитель', keyUz: 'Xotira', valueRu: '', valueUz: '' },
     { keyRu: 'Экран', keyUz: 'Ekran', valueRu: '', valueUz: '' }
   ];
+  const watchSpecs = [
+    { keyRu: 'Экран', keyUz: 'Ekran', valueRu: '', valueUz: '' },
+    { keyRu: 'Совместимость', keyUz: 'Moslik', valueRu: '', valueUz: '' },
+    { keyRu: 'Защита', keyUz: 'Himoya', valueRu: '', valueUz: '' }
+  ];
+  const seed = [
+    { id: 'cat_electronics', nameRu: 'Электроника', nameUz: 'Elektronika', sortOrder: 1, parentId: '' },
+    { id: 'cat_phones', nameRu: 'Телефоны', nameUz: 'Telefonlar', sortOrder: 1, parentId: 'cat_electronics' },
+    { id: 'cat_smartphones', nameRu: 'Смартфоны', nameUz: 'Smartfonlar', sortOrder: 1, parentId: 'cat_phones' },
+    { id: 'cat_wearables', nameRu: 'Умные часы и браслеты', nameUz: 'Aqlli soatlar va brasletlar', sortOrder: 2, parentId: 'cat_phones' },
+    { id: 'cat_smartwatches', nameRu: 'Умные часы', nameUz: 'Aqlli soatlar', sortOrder: 1, parentId: 'cat_wearables' },
+    { id: 'cat_computers', nameRu: 'Компьютерная техника', nameUz: 'Kompyuter texnikasi', sortOrder: 2, parentId: 'cat_electronics' },
+    { id: 'cat_laptops', nameRu: 'Ноутбуки', nameUz: 'Noutbuklar', sortOrder: 1, parentId: 'cat_computers' },
+    { id: 'cat_pc_accessories', nameRu: 'Компьютерные аксессуары', nameUz: 'Kompyuter aksessuarlari', sortOrder: 2, parentId: 'cat_computers' },
+    { id: 'cat_keyboards', nameRu: 'Клавиатуры', nameUz: 'Klaviaturalar', sortOrder: 1, parentId: 'cat_pc_accessories' },
+    { id: 'cat_tv', nameRu: 'ТВ и аудио', nameUz: 'TV va audio', sortOrder: 3, parentId: 'cat_electronics' },
+    { id: 'cat_accessories', nameRu: 'Аксессуары', nameUz: 'Aksessuarlar', sortOrder: 4, parentId: 'cat_electronics' },
+    { id: 'cat_appliances', nameRu: 'Бытовая техника', nameUz: 'Maishiy texnika', sortOrder: 2, parentId: '' },
+    { id: 'cat_home', nameRu: 'Товары для дома', nameUz: 'Uy uchun tovarlar', sortOrder: 3, parentId: '' },
+    { id: 'cat_beauty', nameRu: 'Красота и здоровье', nameUz: 'Go\'zallik va salomatlik', sortOrder: 4, parentId: '' }
+  ];
   const specMap = {
-    'cat_smartphones': smartphoneSpecs,
-    'cat_laptops': laptopSpecs
+    cat_smartphones: smartphoneSpecs,
+    cat_laptops: laptopSpecs,
+    cat_smartwatches: watchSpecs
   };
   return seed.map((item) => ({
     ...item,
@@ -781,11 +794,89 @@ function normalizeCategoryRecord(record) {
     id: category.id || `CAT-${Math.floor(Math.random() * 9000 + 1000)}`,
     nameRu: String(category.nameRu || '').trim(),
     nameUz: String(category.nameUz || '').trim(),
+    parentId: String(category.parentId || '').trim(),
     sortOrder: Number.isFinite(Number(category.sortOrder)) ? Number(category.sortOrder) : 100,
     isActive: category.isActive !== false && category.status !== 'inactive',
     defaultSpecs,
     updatedAt: category.updatedAt || getDateTimeString()
   };
+}
+
+function getCategoryById(id) {
+  const key = String(id || '').trim();
+  if (!key) return null;
+  return categoriesData.find((item) => item.id === key) || null;
+}
+
+function getCategoryChildren(parentId, { activeOnly = false } = {}) {
+  const parent = String(parentId || '').trim();
+  return categoriesData
+    .filter((item) => String(item.parentId || '').trim() === parent)
+    .filter((item) => !activeOnly || item.isActive)
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || a.nameRu.localeCompare(b.nameRu, 'ru'));
+}
+
+function getCategoryPath(categoryOrId) {
+  const start = typeof categoryOrId === 'string' ? getCategoryById(categoryOrId) : categoryOrId;
+  if (!start) return [];
+  const path = [];
+  const seen = new Set();
+  let current = start;
+  while (current && !seen.has(current.id)) {
+    path.unshift(current);
+    seen.add(current.id);
+    current = current.parentId ? getCategoryById(current.parentId) : null;
+  }
+  return path;
+}
+
+function getCategoryPathLabel(categoryOrId, separator = ' · ') {
+  const path = getCategoryPath(categoryOrId);
+  return path.map((item) => item.nameRu).join(separator);
+}
+
+function categoryHasChildren(categoryId) {
+  const id = String(categoryId || '').trim();
+  return categoriesData.some((item) => String(item.parentId || '').trim() === id);
+}
+
+function wouldCreateCategoryCycle(categoryId, parentId) {
+  const id = String(categoryId || '').trim();
+  let current = String(parentId || '').trim();
+  const seen = new Set();
+  while (current) {
+    if (id && current === id) return true;
+    if (seen.has(current)) return true;
+    seen.add(current);
+    const parent = getCategoryById(current);
+    current = parent ? String(parent.parentId || '').trim() : '';
+  }
+  return false;
+}
+
+function syncCategoryParentSelect(selectedValue = '', excludeId = '') {
+  const select = document.getElementById('categoryParentId');
+  if (!select) return;
+  const current = selectedValue != null ? String(selectedValue) : select.value;
+  const exclude = String(excludeId || '').trim();
+  const options = categoriesData
+    .filter((item) => item.id !== exclude)
+    .filter((item) => !exclude || !wouldCreateCategoryCycle(exclude, item.id))
+    .sort((a, b) => getCategoryPathLabel(a).localeCompare(getCategoryPathLabel(b), 'ru'));
+
+  let html = '<option value="">— Корень (верхний уровень) —</option>';
+  options.forEach((item) => {
+    const depth = Math.max(0, getCategoryPath(item).length - 1);
+    const pad = depth ? `${'—'.repeat(depth)} ` : '';
+    const label = pad + item.nameRu + (item.isActive ? '' : ' (неактивна)');
+    html += `<option value="${escapeHtml(item.id)}">${escapeHtml(label)}</option>`;
+  });
+  select.innerHTML = html;
+  if (current && Array.from(select.options).some((opt) => opt.value === current)) {
+    select.value = current;
+  } else {
+    select.value = '';
+  }
 }
 
 function loadCategoriesData() {
@@ -853,14 +944,20 @@ function renderCategories(data = categoriesData) {
   const sorted = [...data].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
   if (!sorted.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px;">Нет категорий</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:20px;">Нет категорий</td></tr>';
     count.textContent = 'Показано 0 из 0';
     return;
   }
 
-  tbody.innerHTML = sorted.map((category) => `
+  tbody.innerHTML = sorted.map((category) => {
+    const pathLabel = getCategoryPathLabel(category, ' › ');
+    const parentLabel = category.parentId
+      ? (getCategoryById(category.parentId)?.nameRu || '—')
+      : 'Корень';
+    return `
     <tr>
       <td><strong>${escapeHtml(category.nameRu)}</strong><div class="product-sku">${escapeHtml(category.id)}</div></td>
+      <td><span class="category-path-cell" title="${escapeHtml(pathLabel)}">${escapeHtml(pathLabel || category.nameRu)}</span><div class="product-sku">${escapeHtml(parentLabel)}</div></td>
       <td>${escapeHtml(category.nameUz || '—')}</td>
       <td>${category.defaultSpecs.length}</td>
       <td>${escapeHtml(String(category.sortOrder))}</td>
@@ -874,7 +971,8 @@ function renderCategories(data = categoriesData) {
         </div>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   count.textContent = `Показано ${sorted.length} из ${categoriesData.length}`;
 }
@@ -894,6 +992,7 @@ function resetCategoryForm() {
   }
   document.getElementById('categoryNameRu')?.closest('.form-group')?.classList.remove('error');
   renderCategorySpecsRows([]);
+  syncCategoryParentSelect('');
 }
 
 function fillCategoryForm(categoryId) {
@@ -904,6 +1003,7 @@ function fillCategoryForm(categoryId) {
   document.getElementById('categoryNameUz').value = category.nameUz;
   document.getElementById('categorySortOrder').value = String(category.sortOrder);
   document.getElementById('categoryStatus').value = category.isActive ? 'active' : 'inactive';
+  syncCategoryParentSelect(category.parentId || '', category.id);
   renderCategorySpecsRows(category.defaultSpecs);
   const saveBtn = document.getElementById('categorySaveBtn');
   if (saveBtn) {
@@ -916,6 +1016,7 @@ function saveCategory(event) {
   const id = document.getElementById('categoryId').value.trim();
   const nameRu = document.getElementById('categoryNameRu').value.trim();
   const nameUz = document.getElementById('categoryNameUz').value.trim();
+  const parentId = document.getElementById('categoryParentId')?.value?.trim() || '';
   const sortOrder = Number(document.getElementById('categorySortOrder').value);
   const isActive = document.getElementById('categoryStatus').value !== 'inactive';
   const defaultSpecs = getCategorySpecsFromEditor();
@@ -925,6 +1026,11 @@ function saveCategory(event) {
   if (nameRu.length < 2) {
     nameGroup?.classList.add('error');
     showCategoryFeedback('Введите корректное название категории (Ru).', 'error', 3200);
+    return;
+  }
+
+  if (wouldCreateCategoryCycle(id, parentId)) {
+    showCategoryFeedback('Нельзя выбрать эту родительскую категорию — получится цикл.', 'error', 3600);
     return;
   }
 
@@ -938,6 +1044,7 @@ function saveCategory(event) {
     id: id || undefined,
     nameRu,
     nameUz,
+    parentId,
     sortOrder,
     isActive,
     defaultSpecs,
@@ -988,27 +1095,277 @@ function getCategoryByProductName(name) {
   return categoriesData.find((item) => item.nameRu === key || item.nameUz === key) || null;
 }
 
-function syncProductCategorySelect(selectedValue = '') {
-  const select = document.getElementById('pCategory');
-  if (!select) return;
-  const current = selectedValue || select.value;
-  const sorted = [...categoriesData].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  const active = sorted.filter((item) => item.isActive);
-  const inactiveSelected = sorted.find((item) => item.nameRu === current && !item.isActive);
+const categoryPickerState = {
+  open: false,
+  mode: 'search',
+  browseParentId: '',
+  browseStack: [],
+  initialized: false,
+};
 
-  let html = '<option value="">Выберите ...</option>';
-  active.forEach((item) => {
-    html += `<option value="${escapeHtml(item.nameRu)}">${escapeHtml(item.nameRu)}</option>`;
+function findCategoryByProductValue(value) {
+  const key = String(value || '').trim();
+  if (!key) return null;
+  return (
+    categoriesData.find((item) => item.id === key) ||
+    categoriesData.find((item) => item.nameRu === key) ||
+    categoriesData.find((item) => item.nameUz === key) ||
+    null
+  );
+}
+
+function setProductCategoryValue(value, { silent = false } = {}) {
+  const input = document.getElementById('pCategory');
+  const pathEl = document.getElementById('pCategoryPath');
+  const trigger = document.getElementById('pCategoryTrigger');
+  if (!input) return;
+
+  const previous = input.value;
+  const category = findCategoryByProductValue(value);
+  const nextValue = category ? category.nameRu : String(value || '').trim();
+  input.value = nextValue;
+
+  if (pathEl) {
+    if (category) {
+      pathEl.textContent = getCategoryPathLabel(category, ' › ');
+      pathEl.classList.remove('is-placeholder');
+    } else if (nextValue) {
+      pathEl.textContent = nextValue;
+      pathEl.classList.remove('is-placeholder');
+    } else {
+      pathEl.textContent = 'Выберите категорию…';
+      pathEl.classList.add('is-placeholder');
+    }
+  }
+  trigger?.classList.toggle('has-value', Boolean(nextValue));
+
+  if (!silent && previous !== nextValue) {
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}
+
+function syncProductCategorySelect(selectedValue = '') {
+  const input = document.getElementById('pCategory');
+  if (!input) return;
+  const current = selectedValue !== undefined && selectedValue !== null && arguments.length
+    ? selectedValue
+    : input.value;
+  setProductCategoryValue(current, { silent: true });
+  if (categoryPickerState.open) {
+    renderCategoryPickerSearchResults(document.getElementById('pCategorySearch')?.value || '');
+    renderCategoryPickerBrowse();
+  }
+}
+
+function closeCategoryPicker() {
+  const panel = document.getElementById('pCategoryPanel');
+  const trigger = document.getElementById('pCategoryTrigger');
+  if (panel) panel.hidden = true;
+  trigger?.setAttribute('aria-expanded', 'false');
+  categoryPickerState.open = false;
+}
+
+function openCategoryPicker() {
+  const panel = document.getElementById('pCategoryPanel');
+  const trigger = document.getElementById('pCategoryTrigger');
+  if (!panel) return;
+  panel.hidden = false;
+  trigger?.setAttribute('aria-expanded', 'true');
+  categoryPickerState.open = true;
+  setCategoryPickerMode(categoryPickerState.mode || 'search');
+  if (categoryPickerState.mode === 'search') {
+    document.getElementById('pCategorySearch')?.focus();
+    renderCategoryPickerSearchResults(document.getElementById('pCategorySearch')?.value || '');
+  } else {
+    renderCategoryPickerBrowse();
+  }
+}
+
+function setCategoryPickerMode(mode) {
+  categoryPickerState.mode = mode === 'browse' ? 'browse' : 'search';
+  document.querySelectorAll('[data-cat-mode]').forEach(function (btn) {
+    btn.classList.toggle('is-active', btn.getAttribute('data-cat-mode') === categoryPickerState.mode);
   });
-  if (inactiveSelected) {
-    html += `<option value="${escapeHtml(inactiveSelected.nameRu)}">${escapeHtml(inactiveSelected.nameRu)} (неактивна)</option>`;
+  document.querySelectorAll('[data-cat-pane]').forEach(function (pane) {
+    pane.hidden = pane.getAttribute('data-cat-pane') !== categoryPickerState.mode;
+  });
+  if (categoryPickerState.mode === 'search') {
+    renderCategoryPickerSearchResults(document.getElementById('pCategorySearch')?.value || '');
+  } else {
+    const selected = findCategoryByProductValue(document.getElementById('pCategory')?.value);
+    if (selected?.parentId) {
+      categoryPickerState.browseParentId = selected.parentId;
+      categoryPickerState.browseStack = getCategoryPath(selected.parentId);
+    } else {
+      categoryPickerState.browseParentId = '';
+      categoryPickerState.browseStack = [];
+    }
+    renderCategoryPickerBrowse();
   }
-  const known = new Set([...active, ...(inactiveSelected ? [inactiveSelected] : [])].map((item) => item.nameRu));
-  if (current && !known.has(current)) {
-    html += `<option value="${escapeHtml(current)}">${escapeHtml(current)}</option>`;
+}
+
+function renderCategoryPickerSearchResults(query) {
+  const box = document.getElementById('pCategorySearchResults');
+  if (!box) return;
+  const q = String(query || '').trim().toLowerCase();
+  const selected = String(document.getElementById('pCategory')?.value || '').trim();
+  const items = categoriesData
+    .filter((item) => item.isActive)
+    .map((item) => ({
+      item,
+      path: getCategoryPathLabel(item, ' · '),
+      leaf: !categoryHasChildren(item.id),
+    }))
+    .filter((entry) => {
+      if (!q) return entry.leaf || categoriesData.length < 20;
+      const hay = (entry.path + ' ' + entry.item.nameRu + ' ' + entry.item.nameUz).toLowerCase();
+      return hay.includes(q);
+    })
+    .sort((a, b) => {
+      if (a.leaf !== b.leaf) return a.leaf ? -1 : 1;
+      return a.path.localeCompare(b.path, 'ru');
+    })
+    .slice(0, 40);
+
+  if (!items.length) {
+    box.innerHTML = `<div class="category-tree-empty">${q ? 'Ничего не найдено' : 'Начните вводить название категории'}</div>`;
+    return;
   }
-  select.innerHTML = html;
-  if (current) select.value = current;
+
+  box.innerHTML = items.map((entry) => {
+    const active = entry.item.nameRu === selected || entry.item.id === selected;
+    return `
+      <button type="button" class="category-tree-option${active ? ' is-active' : ''}" data-category-pick="${escapeHtml(entry.item.id)}">
+        <span class="category-tree-option-path">${escapeHtml(entry.path)}</span>
+        ${entry.leaf ? '' : '<span class="category-tree-option-tag">есть подкатегории</span>'}
+        ${active ? '<span class="category-tree-check">✓</span>' : ''}
+      </button>
+    `;
+  }).join('');
+}
+
+function renderCategoryPickerBrowse() {
+  const list = document.getElementById('pCategoryBrowseList');
+  const crumb = document.getElementById('pCategoryBreadcrumb');
+  if (!list || !crumb) return;
+
+  const parentId = String(categoryPickerState.browseParentId || '');
+  const children = getCategoryChildren(parentId, { activeOnly: true });
+  const selected = String(document.getElementById('pCategory')?.value || '').trim();
+  const stack = categoryPickerState.browseStack || [];
+
+  crumb.innerHTML = `
+    <button type="button" class="category-tree-crumb" data-browse-to="">Все категории</button>
+    ${stack.map((item) => `
+      <span class="category-tree-crumb-sep">›</span>
+      <button type="button" class="category-tree-crumb" data-browse-to="${escapeHtml(item.id)}">${escapeHtml(item.nameRu)}</button>
+    `).join('')}
+  `;
+
+  if (!children.length) {
+    const parent = getCategoryById(parentId);
+    list.innerHTML = parent
+      ? `<button type="button" class="category-tree-option is-leaf" data-category-pick="${escapeHtml(parent.id)}">
+           <span class="category-tree-option-path">Выбрать «${escapeHtml(parent.nameRu)}»</span>
+           <span class="category-tree-check">✓</span>
+         </button>`
+      : '<div class="category-tree-empty">Нет категорий</div>';
+    return;
+  }
+
+  list.innerHTML = children.map((item) => {
+    const hasKids = categoryHasChildren(item.id);
+    const active = item.nameRu === selected || item.id === selected;
+    return `
+      <button type="button" class="category-tree-option${active ? ' is-active' : ''}${hasKids ? '' : ' is-leaf'}"
+        data-browse-item="${escapeHtml(item.id)}"
+        data-has-children="${hasKids ? '1' : '0'}"
+        data-category-pick="${hasKids ? '' : escapeHtml(item.id)}">
+        <span class="category-tree-option-path">${escapeHtml(item.nameRu)}</span>
+        ${hasKids ? '<span class="category-tree-option-tag">далее ›</span>' : '<span class="category-tree-option-tag">выбрать</span>'}
+        ${active ? '<span class="category-tree-check">✓</span>' : ''}
+      </button>
+    `;
+  }).join('');
+}
+
+function pickProductCategoryById(categoryId) {
+  const category = getCategoryById(categoryId);
+  if (!category) return;
+  setProductCategoryValue(category.nameRu);
+  closeCategoryPicker();
+}
+
+function initCategoryTreePicker() {
+  if (categoryPickerState.initialized) return;
+  const picker = document.getElementById('pCategoryPicker');
+  const trigger = document.getElementById('pCategoryTrigger');
+  const panel = document.getElementById('pCategoryPanel');
+  const search = document.getElementById('pCategorySearch');
+  if (!picker || !trigger || !panel) return;
+  categoryPickerState.initialized = true;
+
+  trigger.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (categoryPickerState.open) closeCategoryPicker();
+    else openCategoryPicker();
+  });
+
+  panel.querySelectorAll('[data-cat-mode]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setCategoryPickerMode(btn.getAttribute('data-cat-mode'));
+      if (categoryPickerState.mode === 'search') {
+        search?.focus();
+      }
+    });
+  });
+
+  search?.addEventListener('input', function () {
+    renderCategoryPickerSearchResults(this.value);
+  });
+
+  panel.addEventListener('click', function (e) {
+    const crumb = e.target.closest('[data-browse-to]');
+    if (crumb) {
+      const to = crumb.getAttribute('data-browse-to') || '';
+      categoryPickerState.browseParentId = to;
+      categoryPickerState.browseStack = to ? getCategoryPath(to) : [];
+      renderCategoryPickerBrowse();
+      return;
+    }
+
+    const browseItem = e.target.closest('[data-browse-item]');
+    if (browseItem) {
+      const id = browseItem.getAttribute('data-browse-item');
+      const hasChildren = browseItem.getAttribute('data-has-children') === '1';
+      if (hasChildren) {
+        categoryPickerState.browseParentId = id;
+        categoryPickerState.browseStack = getCategoryPath(id);
+        renderCategoryPickerBrowse();
+      } else {
+        pickProductCategoryById(id);
+      }
+      return;
+    }
+
+    const pick = e.target.closest('[data-category-pick]');
+    if (pick) {
+      const id = pick.getAttribute('data-category-pick');
+      if (id) pickProductCategoryById(id);
+    }
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!categoryPickerState.open) return;
+    if (picker.contains(e.target)) return;
+    closeCategoryPicker();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && categoryPickerState.open) closeCategoryPicker();
+  });
+
+  syncProductCategorySelect();
 }
 
 function applyCategoryDefaultSpecsToProduct(categoryName, { mode = 'replace' } = {}) {
@@ -1572,8 +1929,45 @@ function normalizeProductRecord(product) {
       : Number(String(p.priceUsd || '').replace(/[^\d.]/g, '')) || 0,
     oldPriceUsd: window.emirateExchange?.parseUsdInput
       ? window.emirateExchange.parseUsdInput(p.oldPriceUsd)
-      : Number(String(p.oldPriceUsd || '').replace(/[^\d.]/g, '')) || 0
+      : Number(String(p.oldPriceUsd || '').replace(/[^\d.]/g, '')) || 0,
+    priceIsStorefront: p.priceIsStorefront === true
   };
+}
+
+let storefrontPriceTouched = false;
+let suppressStorefrontPriceSync = false;
+
+function formatUzsInputValue(amount) {
+  const n = Math.round(Number(amount) || 0);
+  if (n <= 0) return '';
+  return n.toLocaleString('ru-RU').replace(/\u00a0/g, ' ');
+}
+
+function parseAdminMoneyInput(value) {
+  if (window.emirateSupabaseApi?.parseMoneyText) {
+    return window.emirateSupabaseApi.parseMoneyText(value);
+  }
+  return Number(String(value || '').replace(/\s+/g, '').replace(/[^\d]/g, '')) || 0;
+}
+
+function charmAdminMoney(amount) {
+  if (window.emirateExchange?.roundCharmPrice) {
+    return window.emirateExchange.roundCharmPrice(amount);
+  }
+  if (window.emirateSupabaseApi?.roundCharmPrice) {
+    return window.emirateSupabaseApi.roundCharmPrice(amount);
+  }
+  const n = Math.round(Number(amount) || 0);
+  if (n <= 0) return 0;
+  if (n < 1000) return Math.max(9, Math.floor(n / 10) * 10 + 9);
+  if (n < 10000) {
+    const k = Math.floor(n / 1000);
+    return Math.max(1000, (k >= 9 ? 9 : k) * 1000);
+  }
+  let tier = Math.round(n / 10000);
+  let charm = tier * 10000 - 1000;
+  if (charm > n) charm = (tier - 1) * 10000 - 1000;
+  return charm >= 9000 ? charm : 9000;
 }
 
 function updateNbuRateLine() {
@@ -1583,7 +1977,7 @@ function updateNbuRateLine() {
   const when = meta.fetchedAt
     ? new Date(meta.fetchedAt).toLocaleString('ru-RU')
     : 'кэш';
-  el.textContent = `Курс NBU (продажа USD): ${meta.rate.toLocaleString('ru-RU')} сум · источник: ${meta.source} · ${when} · на витрине +20%`;
+  el.textContent = `Курс NBU (продажа USD): ${meta.rate.toLocaleString('ru-RU')} сум · источник: ${meta.source} · ${when} · на витрине +20% · цена как Asaxiy (…9000)`;
 }
 
 function updateStorefrontPricePreview() {
@@ -1591,15 +1985,57 @@ function updateStorefrontPricePreview() {
   if (!el || !window.emirateExchange?.previewStorefrontFromUsd) return;
   const usd = window.emirateExchange.parseUsdInput(document.getElementById('pPriceUsd')?.value);
   if (usd <= 0) {
-    el.textContent = 'Укажите цену в USD — на витрине будет: курс NBU (продажа) × USD × 1.2. Или заполните цену в сумах.';
+    el.className = 'storefront-price-preview';
+    el.innerHTML = 'Укажите <strong>цену закупа в USD</strong> — сразу увидите: курс NBU × USD × 1.2, затем округление до …9. Или заполните сумму вручную ниже.';
     return;
   }
   const preview = window.emirateExchange.previewStorefrontFromUsd(
     usd,
     document.getElementById('pOldPriceUsd')?.value
   );
-  el.textContent = `На витрине: ${window.emirateExchange.formatUzs(preview.price)} (база ${window.emirateExchange.formatUzs(preview.base)} + 20%)` +
-    (preview.oldPrice > preview.price ? ` · старая: ${window.emirateExchange.formatUzs(preview.oldPrice)}` : '');
+  const edited = parseAdminMoneyInput(document.getElementById('pPrice')?.value);
+  const shown = edited > 0 ? charmAdminMoney(edited) : preview.price;
+  const oldEdited = parseAdminMoneyInput(document.getElementById('pOldPrice')?.value);
+  const shownOld = oldEdited > 0 ? charmAdminMoney(oldEdited) : preview.oldPrice;
+  el.className = 'storefront-price-preview is-ready';
+  el.innerHTML = `
+    <div class="storefront-price-preview-calc">
+      ${usd.toLocaleString('ru-RU')} USD × ${preview.rate.toLocaleString('ru-RU')} =
+      <strong>${window.emirateExchange.formatUzs(preview.base)}</strong> (закуп)
+      → +20% = ${window.emirateExchange.formatUzs(preview.rawMarked)}
+      → <span class="storefront-price-preview-final">${window.emirateExchange.formatUzs(shown)}</span>
+    </div>
+    <div class="storefront-price-preview-note">Округление как Asaxiy: 3 899 000 / 99 000. Поле ниже можно изменить вручную.</div>
+    ${shownOld > shown ? `<div class="storefront-price-preview-old">Старая на витрине: ${window.emirateExchange.formatUzs(shownOld)}</div>` : ''}
+  `;
+}
+
+function syncStorefrontPricesFromUsd({ force = false } = {}) {
+  if (!window.emirateExchange?.previewStorefrontFromUsd) {
+    updateStorefrontPricePreview();
+    return;
+  }
+  const usd = window.emirateExchange.parseUsdInput(document.getElementById('pPriceUsd')?.value);
+  const oldUsd = window.emirateExchange.parseUsdInput(document.getElementById('pOldPriceUsd')?.value);
+  if (usd <= 0) {
+    updateStorefrontPricePreview();
+    return;
+  }
+  if (!force && storefrontPriceTouched) {
+    updateStorefrontPricePreview();
+    return;
+  }
+  const preview = window.emirateExchange.previewStorefrontFromUsd(usd, oldUsd);
+  suppressStorefrontPriceSync = true;
+  const priceEl = document.getElementById('pPrice');
+  const oldPriceEl = document.getElementById('pOldPrice');
+  if (priceEl) priceEl.value = formatUzsInputValue(preview.price);
+  if (oldPriceEl) {
+    oldPriceEl.value = oldUsd > 0 ? formatUzsInputValue(preview.oldPrice) : '';
+  }
+  suppressStorefrontPriceSync = false;
+  storefrontPriceTouched = false;
+  updateStorefrontPricePreview();
 }
 
 let productsData = loadProductsData().map(normalizeProductRecord).filter((item) => item && item.id);
@@ -2545,7 +2981,9 @@ if (!localStorage.getItem(ADMIN_BRANDS_KEY)) {
 }
 renderCategories();
 syncProductCategorySelect();
+initCategoryTreePicker();
 resetCategoryForm();
+syncCategoryParentSelect();
 renderBrands();
 syncProductBrandSelect();
 resetBrandForm();
@@ -3274,7 +3712,7 @@ function applyProductDraft(draft) {
   clearEditorForm();
   editingProductId = draft.editingProductId || null;
 
-  document.getElementById('pCategory').value = draft.category || '';
+  setProductCategoryValue(draft.category || '', { silent: true });
   document.getElementById('pNameUz').value = draft.nameUz || '';
   document.getElementById('pNameRu').value = draft.nameRu || '';
   document.getElementById('pModel').value = draft.model || '';
@@ -3303,7 +3741,12 @@ function applyProductDraft(draft) {
   if (document.getElementById('pCostPrice')) document.getElementById('pCostPrice').value = draft.costPrice || '';
   if (document.getElementById('pInstallmentMonths')) document.getElementById('pInstallmentMonths').value = draft.installmentMonths || '';
   if (document.getElementById('pVideoUrl')) document.getElementById('pVideoUrl').value = draft.videoUrl || '';
-  updateStorefrontPricePreview();
+  storefrontPriceTouched = !!(draft.price && draft.priceUsd);
+  if (draft.priceUsd && !draft.price) {
+    syncStorefrontPricesFromUsd({ force: true });
+  } else {
+    updateStorefrontPricePreview();
+  }
   renderSpecsRows(Array.isArray(draft.specs) ? draft.specs : []);
 
   productColorVariants = Array.isArray(draft.colors) ? draft.colors.map((item) => ({ ...item })) : [];
@@ -3988,7 +4431,7 @@ function openEditorForProduct(id) {
   clearEditorForm();
 
   // Fill form fields
-  document.getElementById('pCategory').value = p.category || '';
+  setProductCategoryValue(p.category || '', { silent: true });
   document.getElementById('pNameUz').value = p.nameUz || '';
   document.getElementById('pNameRu').value = p.nameRu || '';
   document.getElementById('pModel').value = p.model || '';
@@ -4013,7 +4456,12 @@ function openEditorForProduct(id) {
   document.getElementById('pOldPriceUsd').value = p.oldPriceUsd > 0 ? String(p.oldPriceUsd) : '';
   document.getElementById('pPrice').value = p.price || '';
   document.getElementById('pOldPrice').value = p.oldPrice || '';
-  updateStorefrontPricePreview();
+  storefrontPriceTouched = p.priceIsStorefront === true && !!String(p.price || '').trim();
+  if (p.priceUsd > 0 && !storefrontPriceTouched) {
+    syncStorefrontPricesFromUsd({ force: true });
+  } else {
+    updateStorefrontPricePreview();
+  }
   renderSpecsRows(Array.isArray(p.specs) ? p.specs : []);
   productColorVariants = Array.isArray(p.colors) ? p.colors.map((item) => ({
     id: String(item?.id || `color_${Date.now()}_${Math.floor(Math.random() * 1000)}`),
@@ -4306,7 +4754,7 @@ Object.keys(titleSuggestEls).forEach(function (lang) {
 // Clear all form fields
 function clearEditorForm() {
   resetTitleSuggestPanels();
-  document.getElementById('pCategory').value = '';
+  setProductCategoryValue('', { silent: true });
   document.getElementById('pNameUz').value = '';
   document.getElementById('pNameRu').value = '';
   document.getElementById('pModel').value = '';
@@ -4331,6 +4779,7 @@ function clearEditorForm() {
   document.getElementById('pOldPriceUsd').value = '';
   document.getElementById('pPrice').value = '';
   document.getElementById('pOldPrice').value = '';
+  storefrontPriceTouched = false;
   updateStorefrontPricePreview();
   document.getElementById('pMarginPrice').value = '';
   document.getElementById('pCostPrice').value = '';
@@ -4443,21 +4892,48 @@ document.getElementById('refreshNbuRateBtn')?.addEventListener('click', async fu
       alert('Не удалось обновить курс с nbu.uz. Используется последний сохранённый курс.');
     }
     updateNbuRateLine();
-    updateStorefrontPricePreview();
+    syncStorefrontPricesFromUsd({ force: !storefrontPriceTouched });
   } finally {
     btn.disabled = false;
   }
 });
 
+document.getElementById('recalcStorefrontPriceBtn')?.addEventListener('click', function() {
+  storefrontPriceTouched = false;
+  syncStorefrontPricesFromUsd({ force: true });
+});
+
 ['pPriceUsd', 'pOldPriceUsd'].forEach((id) => {
-  document.getElementById(id)?.addEventListener('input', updateStorefrontPricePreview);
+  document.getElementById(id)?.addEventListener('input', () => {
+    storefrontPriceTouched = false;
+    syncStorefrontPricesFromUsd({ force: true });
+  });
+});
+
+['pPrice', 'pOldPrice'].forEach((id) => {
+  document.getElementById(id)?.addEventListener('input', () => {
+    if (suppressStorefrontPriceSync) return;
+    storefrontPriceTouched = true;
+    updateStorefrontPricePreview();
+  });
+  document.getElementById(id)?.addEventListener('blur', () => {
+    if (suppressStorefrontPriceSync) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    const n = parseAdminMoneyInput(el.value);
+    const hasUsd = window.emirateExchange?.parseUsdInput?.(document.getElementById('pPriceUsd')?.value) > 0;
+    if (n > 0 && hasUsd) {
+      el.value = formatUzsInputValue(charmAdminMoney(n));
+    }
+    updateStorefrontPricePreview();
+  });
 });
 
 void (async () => {
   if (!window.emirateExchange?.refreshNbuUsdSellRate) return;
   await window.emirateExchange.refreshNbuUsdSellRate(false);
   updateNbuRateLine();
-  updateStorefrontPricePreview();
+  syncStorefrontPricesFromUsd({ force: !storefrontPriceTouched });
 })();
 
 document.getElementById('productSaveBtn').addEventListener('click', async function() {
@@ -4484,8 +4960,6 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
   const priority = Number(document.getElementById('pPriority').value);
   const priceUsd = document.getElementById('pPriceUsd').value.trim();
   const oldPriceUsd = document.getElementById('pOldPriceUsd').value.trim();
-  const price = document.getElementById('pPrice').value.trim();
-  const oldPrice = document.getElementById('pOldPrice').value.trim();
   const brand = document.getElementById('pBrand').value;
   const model = document.getElementById('pModel').value.trim();
   const specs = getSpecsFromEditor();
@@ -4548,6 +5022,24 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
   }
 
   const hasUsd = window.emirateExchange?.parseUsdInput?.(priceUsd) > 0;
+  if (hasUsd && parseAdminMoneyInput(document.getElementById('pPrice')?.value) <= 0) {
+    syncStorefrontPricesFromUsd({ force: true });
+  }
+
+  let priceNum = parseAdminMoneyInput(document.getElementById('pPrice')?.value);
+  let oldPriceNum = parseAdminMoneyInput(document.getElementById('pOldPrice')?.value);
+  if (hasUsd && priceNum > 0) {
+    priceNum = charmAdminMoney(priceNum);
+    if (oldPriceNum > 0) oldPriceNum = charmAdminMoney(oldPriceNum);
+    if (oldPriceNum > 0 && oldPriceNum < priceNum) oldPriceNum = priceNum;
+  }
+  const price = priceNum > 0 ? formatUzsInputValue(priceNum) : String(document.getElementById('pPrice')?.value || '').trim();
+  const oldPrice = oldPriceNum > 0 ? formatUzsInputValue(oldPriceNum) : String(document.getElementById('pOldPrice')?.value || '').trim();
+  const priceIsStorefront = hasUsd && priceNum > 0;
+
+  if (document.getElementById('pPrice') && price) document.getElementById('pPrice').value = price;
+  if (document.getElementById('pOldPrice') && oldPrice) document.getElementById('pOldPrice').value = oldPrice;
+
   if (!hasUsd && !price) {
     alert('Укажите цену в USD или цену в сумах.');
     editorTabs.forEach(t => t.classList.remove('active'));
@@ -4596,6 +5088,7 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
         oldPriceUsd,
         price,
         oldPrice,
+        priceIsStorefront,
         brand,
         model,
         date: dateStr,
@@ -4617,6 +5110,7 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
       oldPriceUsd,
       price,
       oldPrice,
+      priceIsStorefront,
       status,
       installmentStatus,
       promo,
