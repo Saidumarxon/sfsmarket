@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=20260808g">
+  <link rel="stylesheet" href="admin.css?v=20260810a">
   <style>
     /* Старые кэшированные баннеры черновика больше не показываем */
     #productDraftBanner,
@@ -92,6 +92,11 @@
       <a class="sidebar-link" data-page="brands">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
         Бренды
+      </a>
+
+      <a class="sidebar-link" data-page="catalogs">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Каталоги
       </a>
 
       <a class="sidebar-link" data-page="banners">
@@ -707,6 +712,97 @@
           </table>
           <div class="table-footer">
             <span id="brandsCount">Показано 0</span>
+            <div class="pagination"><button class="active">1</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== CATALOGS ==================== -->
+      <div class="admin-page" id="page-catalogs">
+        <div class="table-card category-editor-card">
+          <div class="table-card-header">
+            <h3>Каталог (витрина)</h3>
+          </div>
+          <div class="category-feedback" id="catalogFeedback" hidden></div>
+          <form id="catalogForm" class="category-form">
+            <input type="hidden" id="catalogId">
+
+            <div class="category-grid">
+              <div class="form-group">
+                <label class="required" for="catalogNameRu">Название Ru</label>
+                <input type="text" id="catalogNameRu" placeholder="Напр. Электроника" required>
+              </div>
+              <div class="form-group">
+                <label for="catalogNameUz">Название Uz</label>
+                <input type="text" id="catalogNameUz" placeholder="Masalan: Elektronika">
+              </div>
+              <div class="form-group">
+                <label for="catalogSlug">URL (slug)</label>
+                <input type="text" id="catalogSlug" placeholder="elektronika">
+                <span class="form-hint">Ссылка: catalog.html?catalog=elektronika</span>
+              </div>
+              <div class="form-group">
+                <label for="catalogSortOrder">Порядок</label>
+                <input type="number" id="catalogSortOrder" min="1" step="1" value="100">
+              </div>
+              <div class="form-group">
+                <label for="catalogStatus">Статус</label>
+                <select id="catalogStatus">
+                  <option value="active">Активен</option>
+                  <option value="inactive">Неактивен</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="brand-logo-block">
+              <div class="brand-logo-preview-wrap">
+                <img class="brand-logo-preview" id="catalogImagePreview" src="" alt="" hidden>
+                <div class="brand-logo-placeholder" id="catalogImagePlaceholder">IMG</div>
+              </div>
+              <div class="brand-logo-actions">
+                <label class="btn-add btn-sm brand-logo-upload">
+                  <input type="file" id="catalogImageInput" accept="image/png,image/jpeg,image/webp" hidden>
+                  Загрузить фото
+                </label>
+                <button type="button" class="btn-filter-reset btn-sm" id="catalogImageClearBtn">Удалить фото</button>
+                <p class="form-hint">Карточка каталога на сайте (как на Ozon).</p>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top:14px;">
+              <label>Категории в каталоге</label>
+              <p class="form-hint" style="margin:0 0 8px;">Отметьте категории — товары из них (и дочерних) появятся в этом каталоге.</p>
+              <div class="catalog-category-picker" id="catalogCategoryPicker"></div>
+            </div>
+
+            <div class="category-form-actions">
+              <button type="button" class="btn-filter-reset" id="catalogResetBtn">Очистить</button>
+              <button type="submit" class="btn-add" id="catalogSaveBtn">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Создать каталог
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3>Каталоги</h3>
+            <div class="table-toolbar">
+              <button class="btn-add" id="addCatalogBtn" type="button">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Новый каталог
+              </button>
+            </div>
+          </div>
+          <table class="admin-table" id="catalogsTable">
+            <thead>
+              <tr><th>Фото</th><th>Название</th><th>Slug</th><th>Категории</th><th>Порядок</th><th>Статус</th><th>Действия</th></tr>
+            </thead>
+            <tbody id="catalogsBody"></tbody>
+          </table>
+          <div class="table-footer">
+            <span id="catalogsCount">Показано 0</span>
             <div class="pagination"><button class="active">1</button></div>
           </div>
         </div>
@@ -1353,6 +1449,7 @@
   <script src="emirate-supabase-api.js?v=20260808e"></script>
   <script src="emirate-auth.js"></script>
   <script src="emirate-brands.js"></script>
+  <script src="emirate-catalogs.js"></script>
   <script>
     (async function emirateAdminEntry() {
       function denyAdminAccess() {
@@ -1364,7 +1461,7 @@
         var gate = document.getElementById("adminAuthGate");
         if (gate) gate.remove();
         var tag = document.createElement("script");
-        tag.src = "admin.js?v=20260808i";
+        tag.src = "admin.js?v=20260808j";
         document.body.appendChild(tag);
       }
 

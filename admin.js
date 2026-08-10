@@ -38,6 +38,7 @@ const pageTitles = {
   finance: 'Финансы',
   categories: 'Категории',
   brands: 'Бренды',
+  catalogs: 'Каталоги',
   'product-editor': 'Продукты › Добавить',
 };
 
@@ -75,6 +76,11 @@ function switchPage(pageName) {
 
   if (pageName === 'products') {
     updateProductDraftUi();
+  }
+
+  if (pageName === 'catalogs') {
+    renderCatalogCategoryPicker();
+    renderStoreCatalogs();
   }
 
   if (pageTitle) pageTitle.textContent = pageTitles[pageName] || pageName;
@@ -1610,6 +1616,255 @@ function deleteBrand(brandId) {
   showBrandFeedback('Бренд удалён.', 'success');
 }
 
+// ===== STOREFRONT CATALOGS (Ozon tiles) =====
+const ADMIN_CATALOGS_KEY = window.emirateCatalogs?.ADMIN_CATALOGS_KEY || 'emirate_admin_catalogs_v1';
+let storeCatalogsData = (window.emirateCatalogs?.loadCatalogsData?.() || []).map(function (item) {
+  return window.emirateCatalogs?.normalizeCatalogRecord?.(item) || item;
+});
+let catalogFeedbackTimer = null;
+let pendingCatalogImageData = null;
+
+function persistStoreCatalogsData() {
+  if (window.emirateCatalogs?.persistCatalogsData) {
+    window.emirateCatalogs.persistCatalogsData(storeCatalogsData);
+  } else {
+    localStorage.setItem(ADMIN_CATALOGS_KEY, JSON.stringify(storeCatalogsData));
+  }
+}
+
+function showCatalogFeedback(message, type = 'success', timeoutMs = 2800) {
+  const node = document.getElementById('catalogFeedback');
+  if (!node) return;
+  node.textContent = message;
+  node.classList.remove('success', 'error');
+  node.classList.add(type === 'error' ? 'error' : 'success');
+  node.removeAttribute('hidden');
+  if (catalogFeedbackTimer) clearTimeout(catalogFeedbackTimer);
+  catalogFeedbackTimer = setTimeout(() => {
+    node.setAttribute('hidden', 'hidden');
+    node.classList.remove('success', 'error');
+  }, timeoutMs);
+}
+
+function setCatalogImagePreview(url) {
+  const img = document.getElementById('catalogImagePreview');
+  const placeholder = document.getElementById('catalogImagePlaceholder');
+  if (!img || !placeholder) return;
+  if (url) {
+    img.src = url;
+    img.hidden = false;
+    placeholder.hidden = true;
+  } else {
+    img.hidden = true;
+    img.removeAttribute('src');
+    placeholder.hidden = false;
+  }
+}
+
+function getSelectedCatalogCategoryIds() {
+  return [...document.querySelectorAll('#catalogCategoryPicker input[type="checkbox"]:checked')]
+    .map((el) => String(el.value || '').trim())
+    .filter(Boolean);
+}
+
+function renderCatalogCategoryPicker(selectedIds = null) {
+  const box = document.getElementById('catalogCategoryPicker');
+  if (!box) return;
+  const selected = Array.isArray(selectedIds)
+    ? selectedIds
+    : getSelectedCatalogCategoryIds();
+  const selectedSet = new Set(selected.map(String));
+  const items = [...categoriesData]
+    .filter((item) => item.isActive !== false)
+    .sort((a, b) => getCategoryPath(a.id).localeCompare(getCategoryPath(b.id), 'ru'));
+
+  if (!items.length) {
+    box.innerHTML = '<p class="form-hint">Сначала создайте категории.</p>';
+    return;
+  }
+
+  box.innerHTML = items.map((cat) => {
+    const path = getCategoryPath(cat.id) || cat.nameRu;
+    const checked = selectedSet.has(String(cat.id)) ? ' checked' : '';
+    return `<label class="catalog-category-option">
+      <input type="checkbox" value="${escapeHtml(cat.id)}"${checked}>
+      <span>${escapeHtml(path)}</span>
+    </label>`;
+  }).join('');
+}
+
+function renderStoreCatalogs(data = storeCatalogsData) {
+  const tbody = document.getElementById('catalogsBody');
+  const count = document.getElementById('catalogsCount');
+  if (!tbody || !count) return;
+
+  const sorted = [...data].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  if (!sorted.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px;">Нет каталогов</td></tr>';
+    count.textContent = 'Показано 0 из 0';
+    return;
+  }
+
+  tbody.innerHTML = sorted.map((catalog) => {
+    const img = catalog.imageUrl
+      ? `<img class="brand-table-logo" src="${escapeHtml(catalog.imageUrl)}" alt="">`
+      : '<span class="brand-table-logo brand-table-logo--empty">—</span>';
+    const catNames = (catalog.categoryIds || [])
+      .map((id) => getCategoryPath(id) || id)
+      .filter(Boolean);
+    const catsLabel = catNames.length
+      ? catNames.slice(0, 3).map((name) => escapeHtml(name)).join('<br>') + (catNames.length > 3 ? `<br>+${catNames.length - 3}` : '')
+      : '—';
+    return `
+    <tr>
+      <td>${img}</td>
+      <td><strong>${escapeHtml(catalog.nameRu)}</strong><div class="product-sku">${escapeHtml(catalog.nameUz || '')}</div></td>
+      <td>${escapeHtml(catalog.slug || '—')}</td>
+      <td style="font-size:12px;line-height:1.35;">${catsLabel}</td>
+      <td>${escapeHtml(String(catalog.sortOrder))}</td>
+      <td><span class="status-badge ${catalog.isActive ? 'active' : 'inactive'}"><span class="status-dot"></span>${catalog.isActive ? 'Активен' : 'Неактивен'}</span></td>
+      <td>
+        <div class="action-btns">
+          <button class="action-btn" title="Редактировать" data-action="edit-catalog" data-catalog-id="${escapeHtml(catalog.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="action-btn" title="Вкл/выкл" data-action="toggle-catalog" data-catalog-id="${escapeHtml(catalog.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg></button>
+          <button class="action-btn delete" title="Удалить" data-action="delete-catalog" data-catalog-id="${escapeHtml(catalog.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  count.textContent = `Показано ${sorted.length} из ${storeCatalogsData.length}`;
+}
+
+function resetCatalogForm() {
+  document.getElementById('catalogForm')?.reset();
+  document.getElementById('catalogId').value = '';
+  document.getElementById('catalogStatus').value = 'active';
+  document.getElementById('catalogSortOrder').value = '100';
+  pendingCatalogImageData = null;
+  setCatalogImagePreview('');
+  renderCatalogCategoryPicker([]);
+  const saveBtn = document.getElementById('catalogSaveBtn');
+  if (saveBtn) {
+    saveBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Создать каталог';
+  }
+  document.getElementById('catalogNameRu')?.closest('.form-group')?.classList.remove('error');
+}
+
+function fillCatalogForm(catalogId) {
+  const catalog = storeCatalogsData.find((item) => item.id === catalogId);
+  if (!catalog) return;
+  document.getElementById('catalogId').value = catalog.id;
+  document.getElementById('catalogNameRu').value = catalog.nameRu;
+  document.getElementById('catalogNameUz').value = catalog.nameUz || '';
+  document.getElementById('catalogSlug').value = catalog.slug || '';
+  document.getElementById('catalogSortOrder').value = String(catalog.sortOrder || 100);
+  document.getElementById('catalogStatus').value = catalog.isActive ? 'active' : 'inactive';
+  pendingCatalogImageData = catalog.imageUrl || null;
+  setCatalogImagePreview(catalog.imageUrl || '');
+  renderCatalogCategoryPicker(catalog.categoryIds || []);
+  const saveBtn = document.getElementById('catalogSaveBtn');
+  if (saveBtn) {
+    saveBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Сохранить изменения';
+  }
+}
+
+function saveStoreCatalog(event) {
+  event.preventDefault();
+  const id = document.getElementById('catalogId').value.trim();
+  const nameRu = document.getElementById('catalogNameRu').value.trim();
+  const nameUz = document.getElementById('catalogNameUz').value.trim();
+  const slugInput = document.getElementById('catalogSlug').value.trim();
+  const sortOrder = Number(document.getElementById('catalogSortOrder').value);
+  const isActive = document.getElementById('catalogStatus').value !== 'inactive';
+  const categoryIds = getSelectedCatalogCategoryIds();
+  const nameGroup = document.getElementById('catalogNameRu').closest('.form-group');
+  nameGroup?.classList.remove('error');
+
+  if (nameRu.length < 2) {
+    nameGroup?.classList.add('error');
+    showCatalogFeedback('Введите название каталога (Ru).', 'error', 3200);
+    return;
+  }
+  if (!categoryIds.length) {
+    showCatalogFeedback('Выберите хотя бы одну категорию.', 'error', 3200);
+    return;
+  }
+
+  const slug = slugInput || (window.emirateCatalogs?.slugifyCatalog?.(nameRu) || nameRu.toLowerCase());
+  const duplicate = storeCatalogsData.find(
+    (item) => item.nameRu.toLowerCase() === nameRu.toLowerCase() && item.id !== id
+  );
+  if (duplicate) {
+    showCatalogFeedback('Каталог с таким названием уже есть.', 'error', 3200);
+    return;
+  }
+
+  const categoryNames = window.emirateCatalogs?.getLinkedCategoryNames
+    ? window.emirateCatalogs.getLinkedCategoryNames({ categoryIds }, categoriesData)
+    : categoryIds.map((catId) => categoriesData.find((item) => item.id === catId)?.nameRu).filter(Boolean);
+
+  const draft = window.emirateCatalogs?.normalizeCatalogRecord
+    ? window.emirateCatalogs.normalizeCatalogRecord({
+        id: id || undefined,
+        nameRu,
+        nameUz: nameUz || nameRu,
+        slug,
+        imageUrl: pendingCatalogImageData || '',
+        categoryIds,
+        categoryNames,
+        sortOrder,
+        isActive,
+        updatedAt: getDateTimeString(),
+      })
+    : {
+        id: id || `catalog_${Date.now()}`,
+        nameRu,
+        nameUz: nameUz || nameRu,
+        slug,
+        imageUrl: pendingCatalogImageData || '',
+        categoryIds,
+        categoryNames,
+        sortOrder,
+        isActive,
+        updatedAt: getDateTimeString(),
+      };
+
+  const existingIndex = storeCatalogsData.findIndex((item) => item.id === draft.id);
+  if (existingIndex === -1) {
+    storeCatalogsData.unshift(draft);
+    showCatalogFeedback('Каталог создан.', 'success');
+  } else {
+    storeCatalogsData[existingIndex] = draft;
+    showCatalogFeedback('Каталог обновлён.', 'success');
+  }
+
+  persistStoreCatalogsData();
+  renderStoreCatalogs();
+  fillCatalogForm(draft.id);
+}
+
+function toggleStoreCatalogStatus(catalogId) {
+  const catalog = storeCatalogsData.find((item) => item.id === catalogId);
+  if (!catalog) return;
+  catalog.isActive = !catalog.isActive;
+  catalog.updatedAt = getDateTimeString();
+  persistStoreCatalogsData();
+  renderStoreCatalogs();
+  showCatalogFeedback(`Каталог ${catalog.isActive ? 'активирован' : 'деактивирован'}.`, 'success');
+}
+
+function deleteStoreCatalog(catalogId) {
+  const catalog = storeCatalogsData.find((item) => item.id === catalogId);
+  if (!catalog) return;
+  if (!confirm(`Удалить каталог «${catalog.nameRu}»?`)) return;
+  storeCatalogsData = storeCatalogsData.filter((item) => item.id !== catalogId);
+  persistStoreCatalogsData();
+  renderStoreCatalogs();
+  resetCatalogForm();
+  showCatalogFeedback('Каталог удалён.', 'success');
+}
+
 function syncProductBrandSelect(selectedValue = '') {
   const select = document.getElementById('pBrand');
   if (!select) return;
@@ -2953,6 +3208,9 @@ if (!localStorage.getItem(ADMIN_CATEGORIES_KEY)) {
 if (!localStorage.getItem(ADMIN_BRANDS_KEY)) {
   persistBrandsData();
 }
+if (!localStorage.getItem(ADMIN_CATALOGS_KEY)) {
+  persistStoreCatalogsData();
+}
 renderCategories();
 syncProductCategorySelect();
 initCategoryTreePicker();
@@ -2961,6 +3219,9 @@ syncCategoryParentSelect();
 renderBrands();
 syncProductBrandSelect();
 resetBrandForm();
+renderCatalogCategoryPicker([]);
+renderStoreCatalogs();
+resetCatalogForm();
 renderProducts();
 renderBanners();
 renderIntake();
@@ -3275,6 +3536,71 @@ document.getElementById('brandsBody')?.addEventListener('click', function(e) {
   }
   if (action === 'delete-brand') {
     deleteBrand(brandId);
+  }
+});
+
+document.getElementById('catalogForm')?.addEventListener('submit', saveStoreCatalog);
+
+document.getElementById('addCatalogBtn')?.addEventListener('click', function() {
+  switchPage('catalogs');
+  resetCatalogForm();
+  document.getElementById('catalogNameRu')?.focus();
+  showCatalogFeedback('Режим создания каталога.', 'success');
+});
+
+document.getElementById('catalogResetBtn')?.addEventListener('click', function() {
+  resetCatalogForm();
+  showCatalogFeedback('Форма очищена.', 'success');
+});
+
+document.getElementById('catalogImageClearBtn')?.addEventListener('click', function() {
+  pendingCatalogImageData = null;
+  setCatalogImagePreview('');
+});
+
+document.getElementById('catalogImageInput')?.addEventListener('change', function() {
+  const file = this.files && this.files[0];
+  if (!file) return;
+  if (file.size > 1024 * 1024 * 3) {
+    showCatalogFeedback('Фото слишком большое. Максимум 3 МБ.', 'error', 3200);
+    this.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function () {
+    pendingCatalogImageData = String(reader.result || '');
+    setCatalogImagePreview(pendingCatalogImageData);
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('catalogNameRu')?.addEventListener('blur', function() {
+  const slugInput = document.getElementById('catalogSlug');
+  if (!slugInput || slugInput.value.trim()) return;
+  const name = this.value.trim();
+  if (!name || !window.emirateCatalogs?.slugifyCatalog) return;
+  slugInput.value = window.emirateCatalogs.slugifyCatalog(name);
+});
+
+document.getElementById('catalogsBody')?.addEventListener('click', function(e) {
+  const button = e.target.closest('button[data-action]');
+  if (!button) return;
+  const action = button.getAttribute('data-action');
+  const catalogId = button.getAttribute('data-catalog-id');
+  if (!catalogId) return;
+
+  if (action === 'edit-catalog') {
+    switchPage('catalogs');
+    fillCatalogForm(catalogId);
+    showCatalogFeedback('Каталог загружен в форму.', 'success');
+    return;
+  }
+  if (action === 'toggle-catalog') {
+    toggleStoreCatalogStatus(catalogId);
+    return;
+  }
+  if (action === 'delete-catalog') {
+    deleteStoreCatalog(catalogId);
   }
 });
 

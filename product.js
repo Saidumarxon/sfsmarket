@@ -76,16 +76,46 @@ function escapeHtml(value) {
 
 function renderDescriptionBlock(descriptionText, aboutTitle) {
   if (!descriptionText) return "";
+  const lang = getActiveLang();
+  const moreLabel = lang === "uz" ? "Batafsil" : "Подробнее";
+  const lessLabel = lang === "uz" ? "Yopish" : "Свернуть";
+  let bodyHtml = "";
   if (/<[a-z][\s\S]*>/i.test(descriptionText)) {
-    return `<h3>${escapeHtml(aboutTitle)}</h3>${descriptionText}`;
+    bodyHtml = descriptionText;
+  } else {
+    bodyHtml = descriptionText
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => `<p>${escapeHtml(line)}</p>`)
+      .join("");
   }
-  const paragraphs = descriptionText
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => `<p>${escapeHtml(line)}</p>`)
-    .join("");
-  return `<h3>${escapeHtml(aboutTitle)}</h3>${paragraphs}`;
+  return `
+    <h3>${escapeHtml(aboutTitle)}</h3>
+    <div class="product-desc-clamp" id="productDescClamp">
+      <div class="product-desc-body">${bodyHtml}</div>
+    </div>
+    <button type="button" class="product-desc-more" id="productDescMoreBtn" data-more="${escapeHtml(moreLabel)}" data-less="${escapeHtml(lessLabel)}" hidden>${escapeHtml(moreLabel)}</button>
+  `;
+}
+
+function setupDescriptionClamp() {
+  const clamp = document.getElementById("productDescClamp");
+  const btn = document.getElementById("productDescMoreBtn");
+  if (!clamp || !btn) return;
+  clamp.classList.remove("is-expanded");
+  // Measure after paint
+  requestAnimationFrame(() => {
+    const overflows = clamp.scrollHeight > clamp.clientHeight + 8;
+    btn.hidden = !overflows;
+    btn.textContent = btn.getAttribute("data-more") || "Подробнее";
+    btn.onclick = () => {
+      const expanded = clamp.classList.toggle("is-expanded");
+      btn.textContent = expanded
+        ? (btn.getAttribute("data-less") || "Свернуть")
+        : (btn.getAttribute("data-more") || "Подробнее");
+    };
+  });
 }
 
 function getActiveLang() {
@@ -410,6 +440,7 @@ function renderThumbs(photos, title) {
       </button>
     `)
     .join("");
+  renderGalleryDots(0);
 }
 
 function setActiveThumb(index) {
@@ -418,6 +449,22 @@ function setActiveThumb(index) {
     const thumbIndex = Number(item.getAttribute("data-idx") || -1);
     item.classList.toggle("active", thumbIndex === index);
   });
+  renderGalleryDots(index);
+}
+
+function renderGalleryDots(activeIndex = activePhotoIndex) {
+  const dotsEl = document.getElementById("productGalleryDots");
+  if (!dotsEl) return;
+  const count = currentPhotos.length;
+  if (count < 2) {
+    dotsEl.hidden = true;
+    dotsEl.innerHTML = "";
+    return;
+  }
+  dotsEl.hidden = false;
+  dotsEl.innerHTML = currentPhotos
+    .map((_, idx) => `<button type="button" class="product-gallery-dot ${idx === activeIndex ? "is-active" : ""}" data-idx="${idx}" aria-label="Фото ${idx + 1}"></button>`)
+    .join("");
 }
 
 function getPhotoAt(index) {
@@ -656,8 +703,10 @@ function hydratePageProduct(product) {
     const aboutTitle = window.emirateT?.("product.aboutTitle") || (lang === "uz" ? "Mahsulot haqida" : "О товаре");
     if (descriptionText) {
       descriptionTabEl.innerHTML = renderDescriptionBlock(descriptionText, aboutTitle);
+      setupDescriptionClamp();
     } else {
       descriptionTabEl.innerHTML = defaultDescriptionHtml;
+      setupDescriptionClamp();
     }
   }
 
@@ -887,6 +936,11 @@ addToCartBtn?.addEventListener("click", () => {
     </svg>
     Добавлено (${qty})
   `;
+  const stickyAdd = document.getElementById("stickyAddToCartBtn");
+  if (stickyAdd) {
+    stickyAdd.classList.add("added");
+    stickyAdd.textContent = `Добавлено (${qty})`;
+  }
   setTimeout(() => {
     addToCartBtn.classList.remove("added");
     addToCartBtn.innerHTML = `
@@ -896,7 +950,18 @@ addToCartBtn?.addEventListener("click", () => {
       </svg>
       В корзину
     `;
+    if (stickyAdd) {
+      stickyAdd.classList.remove("added");
+      stickyAdd.textContent = window.emirateT?.("product.addCart") || "В корзину";
+    }
   }, 1500);
+});
+
+document.getElementById("stickyBuyNowBtn")?.addEventListener("click", () => {
+  buyNowBtn?.click();
+});
+document.getElementById("stickyAddToCartBtn")?.addEventListener("click", () => {
+  addToCartBtn?.click();
 });
 
 buyNowBtn?.addEventListener("click", () => {
@@ -922,33 +987,63 @@ productThumbsEl?.addEventListener("click", (event) => {
 
 mainImageEl?.addEventListener("pointerdown", (event) => {
   if (!currentPhotos.length || currentPhotos.length < 2) return;
+  if (event.pointerType === "mouse" && event.button !== 0) return;
   dragStartX = event.clientX;
   dragStartIndex = activePhotoIndex;
   isDraggingPhoto = true;
   mainImageEl.classList.add("is-dragging");
-  mainImageEl.setPointerCapture?.(event.pointerId);
+  try {
+    mainImageEl.setPointerCapture?.(event.pointerId);
+  } catch (_) {}
 });
 
 mainImageEl?.addEventListener("pointermove", (event) => {
-  if (!isDraggingPhoto || !currentPhotos.length || currentPhotos.length < 2) return;
+  if (!isDraggingPhoto) return;
+  // Preview offset lightly without changing frame until release
   const shift = event.clientX - dragStartX;
-  const stepPx = Math.max(36, mainImageEl.clientWidth / Math.max(2, currentPhotos.length - 1));
-  const frameShift = Math.round(shift / stepPx);
-  const target = dragStartIndex + frameShift;
-  setPhotoFrame(target, { animate: true });
+  const photo = mainImageEl.querySelector(".product-main-photo");
+  if (photo && Math.abs(shift) > 4) {
+    photo.style.transform = `translateX(${shift * 0.35}px)`;
+    photo.style.transition = "none";
+  }
 });
 
-function releasePhotoDrag(pointerId) {
+function releasePhotoDrag(event) {
+  if (!isDraggingPhoto) return;
+  const clientX = event?.clientX ?? dragStartX;
+  const shift = clientX - dragStartX;
+  const photo = mainImageEl?.querySelector(".product-main-photo");
+  if (photo) {
+    photo.style.transform = "";
+    photo.style.transition = "";
+  }
   isDraggingPhoto = false;
   mainImageEl?.classList.remove("is-dragging");
-  if (pointerId !== undefined) {
-    mainImageEl?.releasePointerCapture?.(pointerId);
+  if (event?.pointerId !== undefined) {
+    try {
+      mainImageEl?.releasePointerCapture?.(event.pointerId);
+    } catch (_) {}
+  }
+  if (!currentPhotos.length || currentPhotos.length < 2) return;
+  if (Math.abs(shift) < 40) return;
+  if (shift < 0) {
+    setPhotoFrame(Math.min(currentPhotos.length - 1, dragStartIndex + 1), { animate: true });
+  } else {
+    setPhotoFrame(Math.max(0, dragStartIndex - 1), { animate: true });
   }
 }
 
-mainImageEl?.addEventListener("pointerup", (event) => releasePhotoDrag(event.pointerId));
-mainImageEl?.addEventListener("pointercancel", (event) => releasePhotoDrag(event.pointerId));
-mainImageEl?.addEventListener("pointerleave", () => releasePhotoDrag());
+mainImageEl?.addEventListener("pointerup", releasePhotoDrag);
+mainImageEl?.addEventListener("pointercancel", releasePhotoDrag);
+mainImageEl?.addEventListener("pointerleave", (event) => {
+  if (isDraggingPhoto) releasePhotoDrag(event);
+});
+
+document.getElementById("productGalleryDots")?.addEventListener("click", (event) => {
+  const dot = event.target.closest(".product-gallery-dot");
+  if (!dot) return;
+  setPhotoFrame(Number(dot.getAttribute("data-idx") || 0), { animate: true });
+});
 
 document.querySelectorAll(".option-row").forEach((row) => {
   if (row.getAttribute("data-role") === "color-options" && currentColorVariants.length) return;

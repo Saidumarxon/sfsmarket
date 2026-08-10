@@ -35,7 +35,26 @@ const isCartMode = new URLSearchParams(window.location.search).get("cart") === "
 const isPhotoSearchMode = new URLSearchParams(window.location.search).get("photo") === "1";
 const textSearchQuery = (new URLSearchParams(window.location.search).get("q") || "").trim().toLowerCase();
 const categoryFilter = (new URLSearchParams(window.location.search).get("category") || "").trim();
+const catalogFilterRaw = (new URLSearchParams(window.location.search).get("catalog") || "").trim();
 const brandFilterRaw = (new URLSearchParams(window.location.search).get("brand") || "").trim();
+let activeStoreCatalog = catalogFilterRaw
+  ? window.emirateCatalogs?.getCatalogBySlug?.(catalogFilterRaw) || null
+  : null;
+let catalogLinkedCategoryNames = [];
+
+function refreshCatalogLinkedCategories() {
+  if (!activeStoreCatalog || !window.emirateCatalogs?.getLinkedCategoryNames) {
+    catalogLinkedCategoryNames = [];
+    return;
+  }
+  const categories =
+    window.emirateCatalogs.loadAdminCategoriesForResolve?.() || [];
+  catalogLinkedCategoryNames = window.emirateCatalogs.getLinkedCategoryNames(
+    activeStoreCatalog,
+    categories
+  );
+}
+refreshCatalogLinkedCategories();
 const brandFilterBrand = window.emirateBrands?.resolveBrandFilterParam?.(brandFilterRaw) || null;
 const brandFilter = brandFilterBrand?.nameRu || brandFilterRaw;
 let photoSearchList = null;
@@ -459,7 +478,11 @@ function applyFiltersAndSort() {
       ? (window.emirateGetCartItems?.() || [])
       : sourceProducts.filter(p => {
           if (!matchesTextSearch(p)) return false;
-          if (categories.length && !categories.includes(p.category)) return false;
+          if (catalogLinkedCategoryNames.length) {
+            if (!catalogLinkedCategoryNames.includes(String(p.category || "").trim())) return false;
+          } else if (categories.length && !categories.includes(p.category)) {
+            return false;
+          }
           if (brands.length && !brands.includes(p.brand)) return false;
           if (min !== null && p.price < min) return false;
           if (max !== null && p.price > max) return false;
@@ -740,6 +763,12 @@ function updateCartItemCard(productId) {
 }
 
 function applyCategoryFilterFromUrl() {
+  if (catalogLinkedCategoryNames.length) {
+    document.querySelectorAll(".filter-category").forEach((item) => {
+      item.checked = catalogLinkedCategoryNames.includes(item.value);
+    });
+    return;
+  }
   if (!categoryFilter || brandFilter) return;
   document.querySelectorAll(".filter-category").forEach((item) => {
     item.checked = item.value === categoryFilter;
@@ -752,24 +781,47 @@ function applyCategoryFilterFromUrl() {
 function renderCatalogBrandHero() {
   const hero = document.getElementById("catalogBrandHero");
   const defaultTitle = document.getElementById("catalogDefaultTitle");
-  if (!brandFilter || !hero) return;
+  if (!hero) return;
 
-  const brand = brandFilterBrand || window.emirateBrands?.getBrandByName?.(brandFilter);
   const lang = window.emirateLang?.() || "ru";
-  const title =
-    window.emirateBrands?.getBrandDisplayName?.(brand || { nameRu: brandFilter, nameUz: brandFilter }, lang) ||
-    brandFilter;
+  let title = "";
+  let imageUrl = "";
+  let kicker = "";
+
+  if (activeStoreCatalog) {
+    title =
+      window.emirateCatalogs?.getCatalogDisplayName?.(activeStoreCatalog, lang) ||
+      activeStoreCatalog.nameRu ||
+      catalogFilterRaw;
+    imageUrl = activeStoreCatalog.imageUrl || "";
+    kicker = lang === "uz" ? "Katalog" : "Каталог";
+  } else if (brandFilter) {
+    const brand = brandFilterBrand || window.emirateBrands?.getBrandByName?.(brandFilter);
+    title =
+      window.emirateBrands?.getBrandDisplayName?.(brand || { nameRu: brandFilter, nameUz: brandFilter }, lang) ||
+      brandFilter;
+    imageUrl = brand?.logoUrl || "";
+    kicker = lang === "uz" ? "Brend" : "Бренд";
+  } else {
+    return;
+  }
 
   hero.hidden = false;
   if (defaultTitle) defaultTitle.hidden = true;
+
+  const kickerEl = hero.querySelector(".catalog-brand-hero-kicker");
+  if (kickerEl) {
+    kickerEl.removeAttribute("data-i18n");
+    kickerEl.textContent = kicker;
+  }
 
   const titleEl = document.getElementById("catalogBrandHeroTitle");
   if (titleEl) titleEl.textContent = title;
 
   const logoEl = document.getElementById("catalogBrandHeroLogo");
   if (logoEl) {
-    if (brand?.logoUrl) {
-      logoEl.src = brand.logoUrl;
+    if (imageUrl) {
+      logoEl.src = imageUrl;
       logoEl.alt = title;
       logoEl.hidden = false;
     } else {
@@ -781,7 +833,16 @@ function renderCatalogBrandHero() {
   const breadCatalogEl = document.querySelector('.breadcrumbs [data-i18n="catalog.breadCatalog"]');
   if (breadCatalogEl) {
     breadCatalogEl.removeAttribute("data-i18n");
-    breadCatalogEl.textContent = title;
+    if (activeStoreCatalog) {
+      breadCatalogEl.textContent = "";
+      const link = document.createElement("a");
+      link.href = "catalogs.html";
+      link.textContent = lang === "uz" ? "Katalog" : "Каталог";
+      breadCatalogEl.appendChild(link);
+      breadCatalogEl.appendChild(document.createTextNode(" / " + title));
+    } else {
+      breadCatalogEl.textContent = title;
+    }
   }
 }
 
@@ -816,8 +877,10 @@ function renderBrandFilters() {
 }
 
 function applyBrandFilterFromUrl() {
+  if (activeStoreCatalog || brandFilter) {
+    renderCatalogBrandHero();
+  }
   if (!brandFilter) return;
-  renderCatalogBrandHero();
   document.querySelectorAll(".filter-brand").forEach((item) => {
     item.checked = item.value === brandFilter;
   });

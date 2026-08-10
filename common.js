@@ -287,7 +287,7 @@ function getMobileNavItemKey(href) {
   } catch (_) {}
 
   if (href.includes("login.html") || href.endsWith("/login")) return "profile";
-  if (href.includes("catalog.html") || href.endsWith("/catalog")) return "catalog";
+  if (href.includes("catalogs.html") || href.endsWith("/catalogs") || href.includes("catalog.html") || href.endsWith("/catalog")) return "catalog";
   if (href.includes("index.html") || href === "/" || href.endsWith("/")) return "home";
   return "";
 }
@@ -1299,7 +1299,7 @@ function renderCatalogMegaPanel(menuItem) {
     groupsHtml +
     "</div>" +
     '<div class="catalog-mega-footer">' +
-    '<a class="catalog-mega-all" href="catalog.html" data-i18n="mega.viewAll">' +
+    '<a class="catalog-mega-all" href="catalogs.html" data-i18n="mega.viewAll">' +
     catalogMenuLabel("mega.viewAll", "Смотреть весь каталог →") +
     "</a>" +
     "</div>";
