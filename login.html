@@ -507,14 +507,62 @@
         loginOtpPhone = "";
         if (loginPhoneForm) loginPhoneForm.hidden = false;
         if (loginOtpStep) loginOtpStep.hidden = true;
+        if (loginForm) loginForm.hidden = true;
+        loginModal.classList.remove("is-admin-auth");
+        var title = document.getElementById("loginSheetTitle");
+        if (title) {
+          title.setAttribute("data-i18n", "profile.loginTitle");
+          title.textContent = (window.emirateT && window.emirateT("profile.loginTitle")) || "Вход";
+        }
+        var divider = document.querySelector(".profile-auth-divider");
+        var googleBtn = document.getElementById("profileGoogleBtn");
+        if (divider) divider.hidden = false;
+        if (googleBtn) googleBtn.hidden = false;
         var phoneErr = document.getElementById("loginPhoneError");
         var otpErr = document.getElementById("loginOtpError");
         if (phoneErr) phoneErr.hidden = true;
         if (otpErr) otpErr.hidden = true;
+        var loginErr = document.getElementById("loginError");
+        if (loginErr) loginErr.classList.remove("visible");
         var otpCode = document.getElementById("loginOtpCode");
         if (otpCode) otpCode.value = "";
         var otpHint = document.getElementById("loginOtpHint");
         if (otpHint) otpHint.textContent = "";
+        var phoneInput = document.getElementById("loginPhone");
+        if (phoneInput) phoneInput.value = "";
+        var emailInput = document.getElementById("loginEmail");
+        var passInput = document.getElementById("loginPass");
+        if (emailInput) emailInput.value = "";
+        if (passInput) passInput.value = "";
+      }
+
+      function isAdminSecretPhoneValue(value) {
+        if (window.emirateIsAdminSecretPhone) return window.emirateIsAdminSecretPhone(value);
+        var digits = String(value || "").replace(/\D/g, "");
+        if (digits === "998000000000") return true;
+        if (digits.indexOf("998") === 0) digits = digits.slice(3);
+        return digits === "000000000";
+      }
+
+      function showAdminLoginForm(seedValue) {
+        if (loginPhoneForm) loginPhoneForm.hidden = true;
+        if (loginOtpStep) loginOtpStep.hidden = true;
+        if (loginForm) loginForm.hidden = false;
+        loginModal.classList.add("is-admin-auth");
+        var title = document.getElementById("loginSheetTitle");
+        if (title) {
+          title.removeAttribute("data-i18n");
+          title.textContent = (window.emirateT && window.emirateT("auth.emailLogin")) || "Вход в админ-панель";
+        }
+        var divider = document.querySelector(".profile-auth-divider");
+        var googleBtn = document.getElementById("profileGoogleBtn");
+        if (divider) divider.hidden = true;
+        if (googleBtn) googleBtn.hidden = true;
+        var emailInput = document.getElementById("loginEmail");
+        var seed = String(seedValue || "").trim();
+        if (emailInput && seed.indexOf("@") !== -1) emailInput.value = seed;
+        if (emailInput) emailInput.focus();
+        else document.getElementById("loginPass")?.focus();
       }
 
       function showLoginPhoneError(message) {
@@ -614,12 +662,20 @@
 
       document.getElementById("loginPhone")?.addEventListener("input", function () {
         this.value = formatUzPhone(this.value);
+        if (isAdminSecretPhoneValue(this.value)) {
+          showAdminLoginForm("");
+        }
       });
 
       loginPhoneForm?.addEventListener("submit", async function (e) {
         e.preventDefault();
         showLoginPhoneError("");
-        var digits = String(document.getElementById("loginPhone").value || "").replace(/\D/g, "");
+        var rawPhone = document.getElementById("loginPhone").value || "";
+        if (isAdminSecretPhoneValue(rawPhone)) {
+          showAdminLoginForm("");
+          return;
+        }
+        var digits = String(rawPhone).replace(/\D/g, "");
         if (digits.indexOf("998") === 0) digits = digits.slice(3);
         if (digits.length !== 9) {
           showLoginPhoneError((window.emirateT && window.emirateT("auth.phoneInvalid")) || "Введите номер в формате +998");

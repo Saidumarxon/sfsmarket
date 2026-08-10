@@ -2364,6 +2364,8 @@ window.emirateIsNativeApp = isNativeApp;
 window.emirateOpenAuthModal = openAuthModal;
 window.emirateCloseAuthModal = closeAuthModal;
 window.emirateShouldUseDesktopAuthModal = shouldUseDesktopAuthModal;
+window.emirateIsAdminSecretPhone = isAdminSecretPhone;
+window.emirateIsAdminSecretEmail = isAdminSecretEmail;
 
 /* ===== Photo search (visual) ===== */
 function loadScriptOnce(src) {
