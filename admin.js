@@ -27,6 +27,62 @@ const ADMIN_SUPPLIERS_KEY = 'emirate_admin_suppliers_v2';
 const sidebarLinks = document.querySelectorAll('.sidebar-link[data-page]');
 const pages = document.querySelectorAll('.admin-page');
 const pageTitle = document.getElementById('pageTitle');
+const adminSidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const adminMenuBtn = document.getElementById('adminMenuBtn');
+const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+
+function isAdminMobileNav() {
+  return window.matchMedia('(max-width: 1024px)').matches;
+}
+
+function setAdminSidebarOpen(open) {
+  if (!adminSidebar) return;
+  const shouldOpen = !!open && isAdminMobileNav();
+  adminSidebar.classList.toggle('open', shouldOpen);
+  document.body.classList.toggle('admin-sidebar-open', shouldOpen);
+  if (sidebarOverlay) {
+    sidebarOverlay.classList.toggle('is-visible', shouldOpen);
+    sidebarOverlay.hidden = !shouldOpen;
+    sidebarOverlay.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+  }
+  if (adminMenuBtn) adminMenuBtn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+}
+
+function closeAdminSidebar() {
+  setAdminSidebarOpen(false);
+}
+
+function toggleAdminSidebar() {
+  if (!adminSidebar) return;
+  setAdminSidebarOpen(!adminSidebar.classList.contains('open'));
+}
+
+if (adminMenuBtn) {
+  adminMenuBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    toggleAdminSidebar();
+  });
+}
+
+if (sidebarCloseBtn) {
+  sidebarCloseBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    closeAdminSidebar();
+  });
+}
+
+if (sidebarOverlay) {
+  sidebarOverlay.addEventListener('click', closeAdminSidebar);
+}
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') closeAdminSidebar();
+});
+
+window.addEventListener('resize', function () {
+  if (!isAdminMobileNav()) closeAdminSidebar();
+});
 
 const pageTitles = {
   dashboard: 'Дашборд',
@@ -94,6 +150,8 @@ function switchPage(pageName) {
   }
 
   syncOrdersPolling(pageName);
+
+  closeAdminSidebar();
 
   // Scroll to top
   window.scrollTo(0, 0);

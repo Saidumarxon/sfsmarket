@@ -53,6 +53,51 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  position: relative;
+}
+
+.sidebar-close-btn {
+  display: none;
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+  color: #e2e8f0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-close-btn:hover {
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+}
+
+.admin-sidebar-overlay {
+  display: none;
+}
+
+.admin-menu-btn {
+  display: none;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #334155;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--admin-transition);
+}
+
+.admin-menu-btn:hover {
+  background: #e2e8f0;
+  color: var(--admin-accent);
 }
 
 .sidebar-logo-img {
@@ -2700,16 +2745,72 @@ body {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .admin-menu-btn {
+    display: inline-flex;
+  }
+
+  .sidebar-close-btn {
+    display: inline-flex;
+  }
+
   .admin-sidebar {
-    transform: translateX(-100%);
+    width: min(288px, 86vw);
+    transform: translateX(-105%);
+    box-shadow: none;
   }
 
   .admin-sidebar.open {
     transform: translateX(0);
+    box-shadow: 8px 0 32px rgba(15, 23, 42, 0.28);
+  }
+
+  .admin-sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(15, 23, 42, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .admin-sidebar-overlay.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  body.admin-sidebar-open {
+    overflow: hidden;
   }
 
   .admin-main {
     margin-left: 0;
+    width: 100%;
+  }
+
+  .admin-header {
+    padding: 0 12px 0 12px;
+    gap: 10px;
+  }
+
+  .admin-header-title {
+    font-size: 17px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .admin-header-search {
+    display: none;
+  }
+
+  .sidebar-nav {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
   }
 }
 
@@ -2767,7 +2868,7 @@ body {
   }
 
   .admin-header {
-    padding: 0 16px;
+    padding: 0 12px;
   }
 
   .form-row, .form-row-3, .form-row-5 {
@@ -2784,6 +2885,11 @@ body {
 
   .editor-section {
     padding: 18px 16px;
+  }
+
+  .admin-header-actions .admin-header-btn {
+    width: 36px;
+    height: 36px;
   }
 }
 
