@@ -189,6 +189,14 @@ html.capacitor-app.app-hide-tabbar .scroll-top {
   bottom: calc(24px + var(--safe-bottom));
 }
 
+/* Slim horizontal chrome: full-width containers with app-style padding
+   (web keeps 94vw + 16px). */
+html.capacitor-app .container {
+  width: 100%;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
 /* ===== Home carousels: frameless, larger items (native shop style) =====
    No card box around each item — just the image on its surface, then
    price/title/actions below. ~2.3 items visible, horizontally snapped. */
@@ -199,8 +207,8 @@ html.capacitor-app .carousel-track {
 
 /* 3 items visible: (viewport - container padding - 2 gaps) / 3 */
 html.capacitor-app .carousel-track .product-card {
-  flex: 0 0 calc((100vw - 56px) / 3);
-  max-width: calc((100vw - 56px) / 3);
+  flex: 0 0 calc((100vw - 48px) / 3);
+  max-width: calc((100vw - 48px) / 3);
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -209,7 +217,7 @@ html.capacitor-app .carousel-track .product-card {
 }
 
 html.capacitor-app .carousel-track .product-image {
-  height: calc((100vw - 56px) / 3);
+  height: calc((100vw - 48px) / 3);
   background: var(--white, #fff);
   border-radius: 14px;
   margin-bottom: 8px;
