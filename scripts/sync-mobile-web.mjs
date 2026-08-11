@@ -11,11 +11,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const www = path.join(root, "www");
 
-const HTML_PAGES = ["index.html", "catalog.html", "product.html", "checkout.html", "login.html", "auth-callback.html"];
+const HTML_PAGES = [
+  "index.html",
+  "catalog.html",
+  "catalogs.html",
+  "product.html",
+  "checkout.html",
+  "login.html",
+  "auth-callback.html",
+  "delivery.html",
+];
+
+/** Admin panel — copied as-is (no storefront mobile fix injection). */
+const ADMIN_HTML_PAGES = ["admin.html"];
 
 const JS_FILES = [
   "app.js",
   "catalog.js",
+  "catalogs.js",
   "product.js",
   "checkout.js",
   "common.js",
@@ -27,8 +40,14 @@ const JS_FILES = [
   "emirate-seo.js",
   "emirate-seo-config.js",
   "emirate-auth.js",
+  "emirate-brands.js",
+  "emirate-catalogs.js",
+  "emirate-telegram-config.js",
+  "admin.js",
   "supabase-config.prod.js",
 ];
+
+const ADMIN_CSS_FILES = ["admin.css"];
 
 const STATIC_FILES = ["mobile.css", "manifest.webmanifest"];
 
@@ -108,13 +127,40 @@ copyFile(path.join(root, "mobile", "mobile-storefront-fix.js"), path.join(www, "
 
 for (const file of HTML_PAGES) {
   const srcPath = path.join(root, file);
+  if (!fs.existsSync(srcPath)) {
+    console.warn("[mobile] skip missing page:", file);
+    continue;
+  }
   let html = fs.readFileSync(srcPath, "utf8");
   html = injectMobileStorefrontFix(html);
   fs.writeFileSync(path.join(www, file), html, "utf8");
 }
 
+for (const file of ADMIN_HTML_PAGES) {
+  const srcPath = path.join(root, file);
+  if (!fs.existsSync(srcPath)) {
+    console.warn("[mobile] skip missing admin page:", file);
+    continue;
+  }
+  copyFile(srcPath, path.join(www, file));
+}
+
 for (const file of JS_FILES) {
-  copyFile(path.join(root, file), path.join(www, file));
+  const srcPath = path.join(root, file);
+  if (!fs.existsSync(srcPath)) {
+    console.warn("[mobile] skip missing script:", file);
+    continue;
+  }
+  copyFile(srcPath, path.join(www, file));
+}
+
+for (const file of ADMIN_CSS_FILES) {
+  const srcPath = path.join(root, file);
+  if (!fs.existsSync(srcPath)) {
+    console.warn("[mobile] skip missing css:", file);
+    continue;
+  }
+  copyFile(srcPath, path.join(www, file));
 }
 
 copyFile(path.join(root, "supabase-config.prod.js"), path.join(www, "supabase-config.js"));
@@ -145,4 +191,5 @@ for (const file of HTML_PAGES) {
 writeMobileConfig();
 writeCapacitorConfig();
 
-console.log("[mobile] www/ ready (" + HTML_PAGES.length + " pages)");
+const pageCount = HTML_PAGES.length + ADMIN_HTML_PAGES.length;
+console.log("[mobile] www/ ready (" + pageCount + " pages, incl. admin/catalogs/delivery)");
