@@ -3,6 +3,7 @@
   "appName": "Emirate Co",
   "webDir": "www",
   "bundledWebRuntime": false,
+  "backgroundColor": "#f0f2f5",
   "server": {
     "androidScheme": "https",
     "iosScheme": "https"

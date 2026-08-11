@@ -336,6 +336,18 @@ img { max-width: 100%; display: block; }
   font-weight: 600;
 }
 
+/* Cross-document view transitions: browsers that support this keep the old
+   page on screen and crossfade to the new one, removing the blank flash
+   between page navigations. Older engines ignore it. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.18s;
+}
+
 /* ===== Page shell loading (home / catalog / info) ===== */
 html.home-shell-loading,
 html.catalog-shell-loading,
@@ -359,7 +371,7 @@ html.info-shell-loading::before {
   background: #f0f2f5;
   pointer-events: none;
   opacity: 1;
-  transition: opacity 0.24s ease;
+  transition: opacity 0.15s ease;
 }
 
 html[data-theme="dark"].home-shell-loading::before,
@@ -378,7 +390,7 @@ html.home-shell-loading > body > main,
 html.catalog-shell-loading .catalog-page,
 html.info-shell-loading .info-page {
   opacity: 0;
-  transition: opacity 0.24s ease;
+  transition: opacity 0.15s ease;
 }
 
 html.home-shell-ready > body > main,
@@ -3644,6 +3656,11 @@ body.home-storefront-loading .carousel-track {
   align-items: center;
   gap: 18px;
   margin-bottom: 12px;
+}
+
+/* display: flex above would override the hidden attribute */
+.catalog-brand-hero[hidden] {
+  display: none;
 }
 
 .catalog-brand-hero-logo {

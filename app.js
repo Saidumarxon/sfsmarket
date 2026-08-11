@@ -727,10 +727,10 @@ function escapeHtml(value) {
 }
 
 async function initHomeStorefront() {
-  if (window.emirateBrands?.refreshPublicBrandsFromRemote) {
-    await window.emirateBrands.refreshPublicBrandsFromRemote();
-  }
   renderHomeBrands();
+  if (window.emirateBrands?.refreshPublicBrandsFromRemote) {
+    void window.emirateBrands.refreshPublicBrandsFromRemote().then(renderHomeBrands);
+  }
   if (!isLiveStorefront()) {
     applyLocalAdminProductsToHome();
     rebuildAllProductsIndex();
@@ -742,6 +742,33 @@ async function initHomeStorefront() {
     return;
   }
 
+  const api = window.emirateSupabaseApi;
+
+  // Warm SWR cache: render everything synchronously so the content is part
+  // of the page's very first paint (and of the view-transition snapshot).
+  const warmProducts = api.readCachedProducts ? api.readCachedProducts() : null;
+  if (Array.isArray(warmProducts) && warmProducts.length) {
+    const warmBanners = api.readCachedBanners ? api.readCachedBanners() : null;
+    if (Array.isArray(warmBanners) && warmBanners.length) {
+      remoteHomeBannersCache = warmBanners;
+    }
+    replaceHomeProductsFromRemote(warmProducts);
+    rebuildAllProductsIndex();
+    homeStorefrontReady = true;
+    renderHeroBanners();
+    renderInitialCarousels();
+    updateCategorySectionsVisibility();
+    if (typeof translatePage === "function") {
+      translatePage();
+    }
+    finishHomeShellMode();
+    // Triggers background revalidation when stale; changes come back
+    // through the "emirate:data-updated" listener.
+    void api.fetchPublicHomeBanners();
+    void api.fetchPublicCatalogProducts();
+    return;
+  }
+
   setHomeStorefrontLoading(true);
   productData.smartphones = [];
   productData.laptops = [];
@@ -749,7 +776,6 @@ async function initHomeStorefront() {
   productData.accessories = [];
   renderHomeCarouselSkeletons();
 
-  const api = window.emirateSupabaseApi;
   try {
     const [remoteBanners, remoteProducts] = await Promise.all([
       api.fetchPublicHomeBanners(),
@@ -788,9 +814,41 @@ function finishHomeShellMode() {
   }, 260);
 }
 
-window.setTimeout(finishHomeShellMode, 3500);
+document.addEventListener("DOMContentLoaded", finishHomeShellMode);
+window.setTimeout(finishHomeShellMode, 600);
 
 void initHomeStorefront();
+
+async function refreshHomeStorefrontSilently() {
+  const api = window.emirateSupabaseApi;
+  if (!api || !api.isConfigured()) return;
+  try {
+    const [remoteBanners, remoteProducts] = await Promise.all([
+      api.fetchPublicHomeBanners(),
+      api.fetchPublicCatalogProducts()
+    ]);
+    if (Array.isArray(remoteBanners) && remoteBanners.length) {
+      remoteHomeBannersCache = remoteBanners;
+    }
+    if (Array.isArray(remoteProducts) && remoteProducts.length) {
+      replaceHomeProductsFromRemote(remoteProducts);
+      rebuildAllProductsIndex();
+    }
+    renderHeroBanners();
+    renderInitialCarousels();
+    updateCategorySectionsVisibility();
+    if (typeof translatePage === "function") {
+      translatePage();
+    }
+  } catch (err) {
+    console.warn("[Supabase] home silent refresh", err);
+  }
+}
+
+window.addEventListener("emirate:data-updated", function (event) {
+  var key = event && event.detail && event.detail.key;
+  if (key === "products" || key === "banners") void refreshHomeStorefrontSilently();
+});
 
 // ===== LAZY LOADING — product feed via IntersectionObserver =====
 const feedSection = document.getElementById("feedSection");

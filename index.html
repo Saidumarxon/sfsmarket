@@ -1,6 +1,7 @@
 ﻿<!doctype html>
 <html lang="ru" data-seo-path="/" data-seo-title="Emirate Co — интернет-магазин электроники" data-seo-description="Emirate Co — интернет-магазин электроники, бытовой техники и аксессуаров. Доставка по Узбекистану, рассрочка." data-seo-org="1">
 <head>
+  <script src="mobile-head.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0f172a">
@@ -32,7 +33,9 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"></noscript>
+  <link rel="preconnect" href="https://efoujwgalbnfrodgkqyl.supabase.co" crossorigin>
   <link rel="stylesheet" href="styles.css?v=20260810d">
   <link rel="stylesheet" href="mobile.css">
   <!-- Optional: <script src="emirate-seo-config.js"></script> for Google/Yandex verification -->
@@ -40,7 +43,17 @@
   <script src="emirate-seo.js"></script>
   <script src="theme.js"></script>
   <script>
-    document.documentElement.classList.add("home-shell-loading");
+    (function () {
+      /* Cold start only: with a warm products cache the page renders its
+         full content before first paint, so the loading overlay would just
+         add a gray flash to every tab switch. */
+      var warm = false;
+      try {
+        var swr = JSON.parse(localStorage.getItem("emirate_swr_products_v1") || "null");
+        warm = !!(swr && Array.isArray(swr.data) && swr.data.length);
+      } catch (_) {}
+      if (!warm) document.documentElement.classList.add("home-shell-loading");
+    })();
   </script>
 </head>
 <body>
@@ -305,11 +318,11 @@
   <script src="translations.js"></script>
   <script src="emirate-telegram-config.js"></script>
   <script src="common.js?v=20260719"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="vendor/supabase.js"></script>
   <script src="supabase-config.js"></script>
   <script src="supabase-config.prod.js"></script>
   <script src="emirate-exchange.js?v=20260808e"></script>
-  <script src="emirate-supabase-api.js?v=20260808e"></script>
+  <script src="emirate-supabase-api.js?v=20260811a"></script>
   <script src="emirate-brands.js"></script>
   <script src="emirate-auth.js?v=20260719"></script>
   <script src="app.js"></script>

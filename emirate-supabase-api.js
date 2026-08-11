@@ -213,7 +213,80 @@
     return mapAdminPayloadToCatalogItem(merged);
   }
 
-  async function fetchPublicCatalogProducts() {
+  /* ===== Stale-while-revalidate cache for public storefront data =====
+     Every bottom-nav switch is a full page load, so without a cache each
+     switch refetches everything and the UI rebuilds from skeletons.
+     Fresh cache (< TTL) is served with no network at all; stale cache is
+     still served instantly, then revalidated in the background.
+     "emirate:data-updated" fires only when revalidation found changes. */
+  var SWR_TTL_MS = 3 * 60 * 1000;
+  var swrInflight = {};
+
+  function swrStorageKey(name) {
+    return "emirate_swr_" + name + "_v1";
+  }
+
+  function swrRead(name) {
+    try {
+      var raw = localStorage.getItem(swrStorageKey(name));
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.data) || !parsed.data.length) return null;
+      return parsed;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function swrWrite(name, data) {
+    try {
+      localStorage.setItem(swrStorageKey(name), JSON.stringify({ t: Date.now(), data: data }));
+    } catch (_) {}
+  }
+
+  function swrRevalidate(name, fetcher, prevData) {
+    if (swrInflight[name]) return;
+    swrInflight[name] = Promise.resolve()
+      .then(fetcher)
+      .then(function (fresh) {
+        delete swrInflight[name];
+        if (!Array.isArray(fresh) || !fresh.length) return;
+        var changed = JSON.stringify(fresh) !== JSON.stringify(prevData);
+        swrWrite(name, fresh);
+        if (changed) {
+          try {
+            window.dispatchEvent(new CustomEvent("emirate:data-updated", { detail: { key: name } }));
+          } catch (_) {}
+        }
+      })
+      .catch(function () {
+        delete swrInflight[name];
+      });
+  }
+
+  function swrFetch(name, fetcher) {
+    var cached = swrRead(name);
+    if (cached) {
+      if (Date.now() - cached.t > SWR_TTL_MS) swrRevalidate(name, fetcher, cached.data);
+      return Promise.resolve(cached.data);
+    }
+    if (!swrInflight[name]) {
+      swrInflight[name] = Promise.resolve()
+        .then(fetcher)
+        .then(function (fresh) {
+          delete swrInflight[name];
+          if (Array.isArray(fresh) && fresh.length) swrWrite(name, fresh);
+          return fresh;
+        })
+        .catch(function (err) {
+          delete swrInflight[name];
+          throw err;
+        });
+    }
+    return swrInflight[name];
+  }
+
+  async function fetchPublicCatalogProductsRemote() {
     var sb = client();
     if (!sb) return [];
     var res = await sb
@@ -229,6 +302,22 @@
       .map(rowToCatalogItem)
       .filter(Boolean);
     return list;
+  }
+
+  function fetchPublicCatalogProducts() {
+    return swrFetch("products", fetchPublicCatalogProductsRemote);
+  }
+
+  /* Synchronous cache readers: let pages render cached content during the
+     initial script run, before first paint, instead of in a later microtask. */
+  function readCachedProducts() {
+    var cached = swrRead("products");
+    return cached ? cached.data : null;
+  }
+
+  function readCachedBanners() {
+    var cached = swrRead("banners");
+    return cached ? cached.data : null;
   }
 
   async function fetchProductForPageByTitle(title) {
@@ -341,7 +430,7 @@
     return merged;
   }
 
-  async function fetchPublicHomeBanners() {
+  async function fetchPublicHomeBannersRemote() {
     var sb = client();
     if (!sb) return [];
     var res = await sb
@@ -354,6 +443,10 @@
       return [];
     }
     return (res.data || []).map(rowToHomeBanner).filter(Boolean);
+  }
+
+  function fetchPublicHomeBanners() {
+    return swrFetch("banners", fetchPublicHomeBannersRemote);
   }
 
   async function pullAdminBannersRaw() {
@@ -560,6 +653,8 @@
     storefrontMarkupRate: STOREFRONT_MARKUP_RATE,
     mapAdminPayloadToCatalogItem: mapAdminPayloadToCatalogItem,
     fetchPublicCatalogProducts: fetchPublicCatalogProducts,
+    readCachedProducts: readCachedProducts,
+    readCachedBanners: readCachedBanners,
     fetchProductForPageByTitle: fetchProductForPageByTitle,
     insertOrder: insertOrder,
     pullAdminOrdersRaw: pullAdminOrdersRaw,

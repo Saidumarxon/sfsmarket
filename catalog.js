@@ -725,6 +725,14 @@ async function runPhotoSearch() {
   }
 }
 
+window.addEventListener("emirate:data-updated", function (event) {
+  var key = event && event.detail && event.detail.key;
+  if (key !== "products") return;
+  refreshCatalogFromRemote().then(function () {
+    applyFiltersAndSort();
+  });
+});
+
 async function refreshCatalogFromRemote() {
   const api = window.emirateSupabaseApi;
   if (!api || !api.isConfigured()) return;
@@ -911,7 +919,8 @@ function finishCatalogShellMode() {
   }, 260);
 }
 
-window.setTimeout(finishCatalogShellMode, 3500);
+document.addEventListener("DOMContentLoaded", finishCatalogShellMode);
+window.setTimeout(finishCatalogShellMode, 600);
 
 // Init
 if (isFavoritesMode || isCartMode || isPhotoSearchMode) {
@@ -932,6 +941,21 @@ syncCatalogPageLabels();
 if (textSearchQuery && !categoryFilter && !isPhotoSearchMode && !isCartMode && !isFavoritesMode) {
   const searchInput = document.querySelector('.search-bar input[type="search"]');
   if (searchInput) searchInput.value = textSearchQuery;
+}
+
+// Warm SWR cache: build and render the catalog synchronously so content is
+// part of the first paint (and of the view-transition snapshot). The async
+// init below refines it (brands, URL filters, revalidation).
+const warmCatalogProducts = window.emirateSupabaseApi?.readCachedProducts?.() || null;
+if (Array.isArray(warmCatalogProducts) && warmCatalogProducts.length && !isPhotoSearchMode) {
+  sourceProducts = buildSourceProducts(warmCatalogProducts);
+  if (!isCartMode && !isFavoritesMode) {
+    renderBrandFilters();
+    applyCategoryFilterFromUrl();
+    applyBrandFilterFromUrl();
+  }
+  applyFiltersAndSort();
+  finishCatalogShellMode();
 }
 
 if (isPhotoSearchMode) {

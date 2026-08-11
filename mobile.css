@@ -38,8 +38,210 @@ html.capacitor-app .header {
   transform: translateZ(0);
 }
 
+/* In the native app the header must be fully opaque: translucent blur
+   surfaces glitch in WebView compositing during scroll and let content
+   show through in the status bar zone. */
+html.capacitor-app .header {
+  background: #ffffff;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html[data-theme="dark"].capacitor-app .header {
+  background: #0b0f17;
+}
+
+/* Paint the system status bar strip with the toolbar surface so scrolled
+   content never shows through above the header. background: inherit keeps
+   it in sync with the header in both themes. */
+html.capacitor-app .header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(-1 * var(--safe-top));
+  height: var(--safe-top);
+  background: inherit;
+}
+
 html.capacitor-app .mobile-nav {
   padding-bottom: calc(8px + var(--safe-bottom));
+}
+
+/* ===== Real-app chrome =====
+   The native app should not look like a website: no marketing footer,
+   no breadcrumbs, and sub-pages get a compact "back + title" bar instead
+   of the full logo + search toolbar. Web layout is unaffected. */
+html.capacitor-app .footer {
+  display: none;
+}
+
+html.capacitor-app .breadcrumbs {
+  display: none;
+}
+
+html.capacitor-app main {
+  padding-bottom: calc(84px + var(--safe-bottom));
+}
+
+/* Compact sub-page header: back button + page title */
+html.capacitor-app .app-subheader {
+  display: none;
+}
+
+html.capacitor-app.app-compact-header .header-inner {
+  display: none;
+}
+
+html.capacitor-app.app-compact-header .app-subheader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 56px;
+  padding: 4px 10px;
+}
+
+html.capacitor-app .app-subheader-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  color: var(--text, #0f172a);
+  cursor: pointer;
+}
+
+html.capacitor-app .app-subheader-back:active {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="dark"].capacitor-app .app-subheader-back:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+html.capacitor-app .app-subheader-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tab root pages (catalogs / favorites / cart): no top bar at all — the
+   page content carries its own title. A fixed strip keeps the status bar
+   zone opaque so scrolled content never shows through it. */
+html.capacitor-app.app-no-header .header {
+  display: none;
+}
+
+html.capacitor-app.app-no-header body:not(.profile-page) {
+  padding-top: calc(var(--safe-top) + 8px);
+}
+
+html.capacitor-app.app-no-header body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--safe-top);
+  background: #f0f2f5;
+  z-index: 210;
+  pointer-events: none;
+}
+
+html[data-theme="dark"].capacitor-app.app-no-header body::before {
+  background: #0b0f17;
+}
+
+/* Profile page ships its own web-only chrome (header, breadcrumb,
+   sidebar) tagged with this class — never show it in the app. */
+html.capacitor-app .profile-web-only {
+  display: none !important;
+}
+
+/* Sub-pages (product, listings, checkout, info): hide the bottom tab bar —
+   it belongs to root tabs only. The product buy bar drops to the bottom. */
+html.capacitor-app.app-hide-tabbar .mobile-nav {
+  display: none;
+}
+
+html.capacitor-app.app-hide-tabbar main {
+  padding-bottom: calc(24px + var(--safe-bottom));
+}
+
+html.capacitor-app.app-hide-tabbar main.product-page {
+  padding-bottom: calc(96px + var(--safe-bottom));
+}
+
+html.capacitor-app.app-hide-tabbar .product-sticky-buy {
+  bottom: 0;
+}
+
+html.capacitor-app.app-hide-tabbar .scroll-top {
+  bottom: calc(24px + var(--safe-bottom));
+}
+
+/* ===== Directional navigation animation =====
+   Drill-down (push) slides the new page in from the right; back (pop)
+   slides it in from the left. Bottom-nav tab switches keep the quick
+   crossfade. Engines without view transitions simply ignore this. */
+@keyframes app-nav-enter-right {
+  from {
+    transform: translateX(32px);
+    opacity: 0.3;
+  }
+}
+
+@keyframes app-nav-exit-left {
+  to {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+}
+
+@keyframes app-nav-enter-left {
+  from {
+    transform: translateX(-32px);
+    opacity: 0.3;
+  }
+}
+
+@keyframes app-nav-exit-right {
+  to {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+html.capacitor-app.app-nav-push::view-transition-new(root) {
+  animation: app-nav-enter-right 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+html.capacitor-app.app-nav-push::view-transition-old(root) {
+  animation: app-nav-exit-left 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+html.capacitor-app.app-nav-pop::view-transition-new(root) {
+  animation: app-nav-enter-left 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+html.capacitor-app.app-nav-pop::view-transition-old(root) {
+  animation: app-nav-exit-right 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Bottom-nav tab switches: no animation at all — instant swap.
+   Performance beats decoration for the most frequent navigation. */
+html.capacitor-app.app-nav-tab::view-transition-old(root),
+html.capacitor-app.app-nav-tab::view-transition-new(root) {
+  animation: none;
 }
 
 html.capacitor-app .mobile-nav-item {

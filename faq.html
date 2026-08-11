@@ -24,7 +24,9 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"></noscript>
+  <link rel="preconnect" href="https://efoujwgalbnfrodgkqyl.supabase.co" crossorigin>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="mobile.css">
   <script src="emirate-seo.js"></script>
@@ -225,7 +227,7 @@
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
       <span data-i18n="mobnav.home">Главная</span>
     </a>
-    <a href="catalog.html" class="mobile-nav-item">
+    <a href="catalogs.html" class="mobile-nav-item">
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       <span data-i18n="mobnav.catalog">Каталог</span>
     </a>
@@ -249,7 +251,7 @@
 
   <script src="mobile-config.js"></script>
   <script src="mobile-bridge.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="vendor/supabase.js"></script>
   <script src="supabase-config.js"></script>
   <script src="supabase-config.prod.js"></script>
   <script src="emirate-exchange.js"></script>

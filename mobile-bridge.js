@@ -6,6 +6,19 @@
 
   document.documentElement.classList.add("capacitor-app");
 
+  /* ===== Directional navigation animation =====
+     The departing page records how the navigation happened (push = drill
+     down, pop = back, tab = bottom-nav switch); the arriving page reads
+     the flag in mobile-head.js before its first paint. */
+  function markNav(kind) {
+    try {
+      sessionStorage.setItem("emirateNavKind", kind);
+    } catch (_) {}
+  }
+  window.emirateMarkNavPop = function () {
+    markNav("pop");
+  };
+
   function syncCapacitorHeaderInset() {
     var header = document.querySelector(".header");
     if (!header) return;
@@ -42,12 +55,21 @@
     }
   }
 
-  if (StatusBar && StatusBar.setStyle) {
-    void StatusBar.setStyle({ style: "LIGHT" });
+  function syncStatusBar() {
+    var dark = document.documentElement.getAttribute("data-theme") === "dark";
+    if (StatusBar && StatusBar.setStyle) {
+      void StatusBar.setStyle({ style: dark ? "DARK" : "LIGHT" });
+    }
+    if (StatusBar && StatusBar.setBackgroundColor) {
+      void StatusBar.setBackgroundColor({ color: dark ? "#0b0f17" : "#ffffff" });
+    }
   }
-  if (StatusBar && StatusBar.setBackgroundColor) {
-    void StatusBar.setBackgroundColor({ color: "#ffffff" });
-  }
+
+  syncStatusBar();
+  new MutationObserver(syncStatusBar).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
   function hideSplash() {
     if (SplashScreen && SplashScreen.hide) {
       void SplashScreen.hide();
@@ -69,11 +91,24 @@
     "click",
     function (event) {
       var link = event.target.closest("a[href]");
-      if (!link || !Browser || !Browser.open) return;
+      if (!link) return;
       var href = link.getAttribute("href");
-      if (!isExternalHref(href)) return;
-      event.preventDefault();
-      void Browser.open({ url: href });
+      if (isExternalHref(href)) {
+        if (!Browser || !Browser.open) return;
+        event.preventDefault();
+        void Browser.open({ url: href });
+        return;
+      }
+      if (!href || href.charAt(0) === "#" || href.indexOf("javascript:") === 0) return;
+      markNav(link.closest(".mobile-nav") ? "tab" : "push");
+    },
+    true
+  );
+
+  document.addEventListener(
+    "submit",
+    function () {
+      markNav("push");
     },
     true
   );
@@ -81,6 +116,7 @@
   if (App && App.addListener) {
     App.addListener("backButton", function (payload) {
       if (payload && payload.canGoBack) {
+        markNav("pop");
         history.back();
         return;
       }

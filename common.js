@@ -268,6 +268,7 @@ function getMobileNavActiveKey() {
     if (params.get("cart") === "1") return "cart";
     return "catalog";
   }
+  if (page === "catalogs") return "catalog";
   if (page === "product" || page === "checkout") return "catalog";
   return "";
 }
@@ -2699,4 +2700,5 @@ function initInfoPageShell() {
 }
 
 initInfoPageShell();
-window.setTimeout(finishInfoShellMode, 3500);
+document.addEventListener("DOMContentLoaded", finishInfoShellMode);
+window.setTimeout(finishInfoShellMode, 600);

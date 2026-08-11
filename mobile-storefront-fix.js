@@ -75,6 +75,90 @@
     patchLegacyHeroSlides();
   }
 
+  /* ===== Real-app page chrome =====
+     Root pages (home, catalogs tab, profile) keep the full toolbar.
+     Favorites / cart tabs get a plain title bar; every other page
+     (product, catalog listing, checkout, info pages) gets a compact
+     "back + title" bar like a native app. Runs at script eval so the
+     compact bar is part of the page's first paint. */
+  function setupAppChrome() {
+    var page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+    if (!page) page = "index.html";
+    var params = new URLSearchParams(location.search);
+    /* Only the home tab keeps the full logo + search toolbar.
+       (Class logic mirrors mobile-head.js, which runs pre-paint.) */
+    var SKIP_PAGES = { "index.html": 1, "auth-callback.html": 1, "admin.html": 1 };
+    if (SKIP_PAGES[page]) return;
+
+    var isCart = page === "catalog.html" && params.get("cart") === "1";
+    var isFavorites = page === "catalog.html" && params.get("favorites") === "1";
+    var isTabRoot = isCart || isFavorites || page === "catalogs.html" || page === "login.html";
+    var root = document.documentElement;
+
+    /* Tab root pages already show their title in the content — no top bar
+       at all, content starts right below the status bar. */
+    if (isTabRoot) {
+      root.classList.add("app-no-header");
+      return;
+    }
+
+    var header = document.querySelector(".header");
+    if (!header || header.querySelector(".app-subheader")) return;
+
+    root.classList.add("app-compact-header");
+    root.classList.add("app-hide-tabbar");
+
+    function pickTitleSource() {
+      if (page === "product.html") return document.querySelector(".product-detail-title");
+      if (page === "catalog.html") {
+        if (params.get("brand") || params.get("catalog")) {
+          return document.getElementById("catalogBrandHeroTitle");
+        }
+        return document.getElementById("catalogDefaultTitle") || document.querySelector("main h1");
+      }
+      return document.querySelector("main h1") || document.querySelector(".section-head h2");
+    }
+
+    var bar = document.createElement("div");
+    bar.className = "app-subheader";
+
+    var back = document.createElement("button");
+    back.type = "button";
+    back.className = "app-subheader-back";
+    back.setAttribute("aria-label", "Назад");
+    back.innerHTML =
+      '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>';
+    back.addEventListener("click", function () {
+      if (typeof window.emirateMarkNavPop === "function") window.emirateMarkNavPop();
+      if (history.length > 1) history.back();
+      else location.href = "index.html";
+    });
+
+    var title = document.createElement("div");
+    title.className = "app-subheader-title";
+
+    bar.appendChild(back);
+    bar.appendChild(title);
+    header.appendChild(bar);
+
+    var titleEl = pickTitleSource();
+    function syncTitle() {
+      var text = titleEl && titleEl.textContent ? titleEl.textContent.trim() : "";
+      if (!text || text === "—") text = document.title || "";
+      title.textContent = text;
+    }
+    syncTitle();
+    if (titleEl && window.MutationObserver) {
+      new MutationObserver(syncTitle).observe(titleEl, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+    }
+  }
+
+  setupAppChrome();
+
   function boot() {
     syncBottomNav();
     if (document.querySelector(".hero-slider")) {

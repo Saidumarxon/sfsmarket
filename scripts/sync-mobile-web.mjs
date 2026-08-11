@@ -89,6 +89,7 @@ function writeCapacitorConfig() {
     appName: "Emirate Co",
     webDir: "www",
     bundledWebRuntime: false,
+    backgroundColor: "#f0f2f5",
     server: {
       androidScheme: "https",
       iosScheme: "https",
@@ -118,12 +119,21 @@ function injectMobileStorefrontFix(html) {
   return html.replace("</body>", `  ${tag}\n</body>`);
 }
 
+/* Head script must run before first paint so app chrome classes apply to
+   the very first frame (prevents website-toolbar flash on navigation). */
+function injectMobileHead(html) {
+  const tag = '<script src="mobile-head.js"></script>';
+  if (html.includes("mobile-head.js")) return html;
+  return html.replace(/<head>/i, `<head>\n  ${tag}`);
+}
+
 console.log("[mobile] Preparing www/ …");
 rmDir(www);
 fs.mkdirSync(www, { recursive: true });
 
 copyFile(path.join(root, "mobile", "mobile-bridge.js"), path.join(www, "mobile-bridge.js"));
 copyFile(path.join(root, "mobile", "mobile-storefront-fix.js"), path.join(www, "mobile-storefront-fix.js"));
+copyFile(path.join(root, "mobile", "mobile-head.js"), path.join(www, "mobile-head.js"));
 
 for (const file of HTML_PAGES) {
   const srcPath = path.join(root, file);
@@ -132,6 +142,7 @@ for (const file of HTML_PAGES) {
     continue;
   }
   let html = fs.readFileSync(srcPath, "utf8");
+  html = injectMobileHead(html);
   html = injectMobileStorefrontFix(html);
   fs.writeFileSync(path.join(www, file), html, "utf8");
 }
@@ -172,6 +183,7 @@ for (const file of STATIC_FILES) {
 }
 
 copyDir(path.join(root, "images"), path.join(www, "images"));
+copyDir(path.join(root, "vendor"), path.join(www, "vendor"));
 copyDir(path.join(root, "mobile", "icons"), path.join(www, "icons"));
 
 for (const file of STATIC_FILES) {
@@ -179,12 +191,13 @@ for (const file of STATIC_FILES) {
 }
 copyFile(path.join(root, "mobile", "mobile-bridge.js"), path.join(root, "mobile-bridge.js"));
 copyFile(path.join(root, "mobile", "mobile-storefront-fix.js"), path.join(root, "mobile-storefront-fix.js"));
+copyFile(path.join(root, "mobile", "mobile-head.js"), path.join(root, "mobile-head.js"));
 copyDir(path.join(root, "mobile", "icons"), path.join(root, "icons"));
 
 for (const file of HTML_PAGES) {
   const srcPath = path.join(root, file);
   let html = fs.readFileSync(srcPath, "utf8");
-  const patched = injectMobileStorefrontFix(html);
+  const patched = injectMobileStorefrontFix(injectMobileHead(html));
   if (patched !== html) fs.writeFileSync(srcPath, patched, "utf8");
 }
 
