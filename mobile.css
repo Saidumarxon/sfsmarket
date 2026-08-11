@@ -197,6 +197,23 @@ html.capacitor-app .container {
   padding-right: 12px;
 }
 
+/* Hero banner: inset rounded card instead of full-bleed (native style).
+   Aspect ratio of the banner artwork is preserved. */
+html.capacitor-app .hero.hero--full.container {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+html.capacitor-app .hero.hero--full .hero-main {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+html.capacitor-app .hero-slider,
+html.capacitor-app .hero-slider--carousel {
+  border-radius: 16px;
+}
+
 /* ===== Home carousels: frameless, larger items (native shop style) =====
    No card box around each item — just the image on its surface, then
    price/title/actions below. ~2.3 items visible, horizontally snapped. */
