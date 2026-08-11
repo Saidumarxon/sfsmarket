@@ -3240,6 +3240,8 @@ body.home-storefront-loading .carousel-track {
   object-fit: contain;
   border-radius: inherit;
   display: block;
+  /* alt text of a failed image must not render as visible content */
+  color: transparent;
 }
 
 /* Product Badges */

@@ -1,3 +1,18 @@
+/* Broken product images must never distort card layout: when an <img>
+   fails to load, hide it (the styled box stays) instead of letting the
+   browser render alt text / broken-image glyph at full size. Capture
+   phase catches errors from images added at any point. */
+document.addEventListener(
+  "error",
+  function (event) {
+    var el = event.target;
+    if (!el || el.tagName !== "IMG" || el.dataset.brokenHidden) return;
+    el.dataset.brokenHidden = "1";
+    el.style.visibility = "hidden";
+  },
+  true
+);
+
 const cartCountEl = document.getElementById("cartCount");
 const catalogBtn = document.getElementById("catalogBtn");
 const catalogControl = document.getElementById("catalogControl");
