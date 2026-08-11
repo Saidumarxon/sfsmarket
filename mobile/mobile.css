@@ -193,13 +193,14 @@ html.capacitor-app.app-hide-tabbar .scroll-top {
    No card box around each item — just the image on its surface, then
    price/title/actions below. ~2.3 items visible, horizontally snapped. */
 html.capacitor-app .carousel-track {
-  gap: 16px;
+  gap: 12px;
   padding: 4px 0 8px;
 }
 
+/* 3 items visible: (viewport - container padding - 2 gaps) / 3 */
 html.capacitor-app .carousel-track .product-card {
-  flex: 0 0 42vw;
-  max-width: 42vw;
+  flex: 0 0 calc((100vw - 56px) / 3);
+  max-width: calc((100vw - 56px) / 3);
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -208,10 +209,15 @@ html.capacitor-app .carousel-track .product-card {
 }
 
 html.capacitor-app .carousel-track .product-image {
-  height: 42vw;
+  height: calc((100vw - 56px) / 3);
   background: var(--white, #fff);
-  border-radius: 16px;
-  margin-bottom: 10px;
+  border-radius: 14px;
+  margin-bottom: 8px;
+}
+
+/* Touch scrolling only — no arrow buttons in the app */
+html.capacitor-app .carousel-arrow {
+  display: none !important;
 }
 
 /* Product page: the stock badge above the price duplicates the
