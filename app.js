@@ -694,7 +694,8 @@ function renderInitialCarousels() {
 
   for (const [key, el] of Object.entries(map)) {
     if (el && productData[key]) {
-      el.innerHTML = productData[key].map(renderProductCard).join("");
+      // Carousels show at most 10 items; "Все товары" leads to the rest
+      el.innerHTML = productData[key].slice(0, 10).map(renderProductCard).join("");
       window.emirateSyncFavoritesUI?.(el);
       initCarousel(el);
     }

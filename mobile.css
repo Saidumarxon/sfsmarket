@@ -189,6 +189,37 @@ html.capacitor-app.app-hide-tabbar .scroll-top {
   bottom: calc(24px + var(--safe-bottom));
 }
 
+/* ===== Home carousels: frameless, larger items (native shop style) =====
+   No card box around each item — just the image on its surface, then
+   price/title/actions below. ~2.3 items visible, horizontally snapped. */
+html.capacitor-app .carousel-track {
+  gap: 16px;
+  padding: 4px 0 8px;
+}
+
+html.capacitor-app .carousel-track .product-card {
+  flex: 0 0 42vw;
+  max-width: 42vw;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+html.capacitor-app .carousel-track .product-image {
+  height: 42vw;
+  background: var(--white, #fff);
+  border-radius: 16px;
+  margin-bottom: 10px;
+}
+
+/* Product page: the stock badge above the price duplicates the
+   "Статус" row below — hide it in the app. */
+html.capacitor-app .product-info-meta .stock-chip {
+  display: none;
+}
+
 /* ===== Directional navigation animation =====
    Drill-down (push) slides the new page in from the right; back (pop)
    slides it in from the left. Bottom-nav tab switches keep the quick
