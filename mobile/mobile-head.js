@@ -33,4 +33,15 @@
       root.classList.add("app-nav-" + navKind);
     }
   } catch (_) {}
+
+  /* Native apps don't pinch-zoom their UI — pinning the scale also stops
+     the OS from zooming the page when an input gets focus. App only;
+     the website keeps its accessible zoomable viewport. */
+  var viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport) {
+    var content = viewport.getAttribute("content") || "";
+    if (content.indexOf("maximum-scale") === -1) {
+      viewport.setAttribute("content", content + ", maximum-scale=1.0, user-scalable=no");
+    }
+  }
 })();

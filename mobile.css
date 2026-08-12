@@ -189,6 +189,14 @@ html.capacitor-app.app-hide-tabbar .scroll-top {
   bottom: calc(24px + var(--safe-bottom));
 }
 
+/* Inputs below 16px make the OS zoom the page on focus — normalize all
+   form fields in the app. */
+html.capacitor-app input,
+html.capacitor-app select,
+html.capacitor-app textarea {
+  font-size: 16px !important;
+}
+
 /* The page itself must never scroll or rubber-band horizontally —
    rows that need it (carousels, brands) scroll inside their own boxes. */
 html.capacitor-app,
