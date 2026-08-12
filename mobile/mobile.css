@@ -204,7 +204,12 @@ html.capacitor-app .brands-grid {
   flex-wrap: nowrap;
   overflow-x: auto;
   gap: 10px;
-  padding-bottom: 4px;
+  /* full-bleed: scroll under the screen edges, not clipped at the
+     container padding; 12px inner padding keeps leading alignment */
+  margin-left: -12px;
+  margin-right: -12px;
+  padding: 0 12px 4px;
+  scroll-padding-left: 12px;
   scrollbar-width: none;
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
@@ -251,7 +256,11 @@ html.capacitor-app .hero-slider--carousel {
    price/title/actions below. ~2.3 items visible, horizontally snapped. */
 html.capacitor-app .carousel-track {
   gap: 12px;
-  padding: 4px 0 8px;
+  /* full-bleed scroll like the brands row */
+  margin-left: -12px;
+  margin-right: -12px;
+  padding: 4px 12px 8px;
+  scroll-padding-left: 12px;
 }
 
 /* 3 items visible: (viewport - container padding - 2 gaps) / 3 */
