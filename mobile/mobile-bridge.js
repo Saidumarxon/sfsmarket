@@ -113,6 +113,39 @@
     true
   );
 
+  /* ===== Native-style keyboard dismissal =====
+     Tapping or dragging outside the focused field blurs it, which
+     closes the on-screen keyboard — like a native app. */
+  function focusedFormField() {
+    var el = document.activeElement;
+    if (!el) return null;
+    var tag = el.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable) return el;
+    return null;
+  }
+
+  document.addEventListener(
+    "touchstart",
+    function (event) {
+      var field = focusedFormField();
+      if (!field) return;
+      var target = event.target;
+      if (field === target || field.contains(target)) return;
+      if (target.closest && target.closest("input, textarea, select")) return;
+      field.blur();
+    },
+    { capture: true, passive: true }
+  );
+
+  document.addEventListener(
+    "touchmove",
+    function () {
+      var field = focusedFormField();
+      if (field) field.blur();
+    },
+    { capture: true, passive: true }
+  );
+
   if (App && App.addListener) {
     App.addListener("backButton", function (payload) {
       if (payload && payload.canGoBack) {
