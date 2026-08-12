@@ -189,6 +189,38 @@ html.capacitor-app.app-hide-tabbar .scroll-top {
   bottom: calc(24px + var(--safe-bottom));
 }
 
+/* The page itself must never scroll or rubber-band horizontally —
+   rows that need it (carousels, brands) scroll inside their own boxes. */
+html.capacitor-app,
+html.capacitor-app body {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+/* Popular brands: one horizontally scrollable row with all brands.
+   (The web's repeat(8, 1fr) grid overflows narrow screens.) */
+html.capacitor-app .brands-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 10px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.capacitor-app .brands-grid::-webkit-scrollbar {
+  display: none;
+}
+
+html.capacitor-app .brand-card {
+  flex: 0 0 auto;
+  min-width: 104px;
+  min-height: 76px;
+  padding: 14px 18px;
+}
+
 /* Slim horizontal chrome: full-width containers with app-style padding
    (web keeps 94vw + 16px). */
 html.capacitor-app .container {
