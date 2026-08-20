@@ -11,6 +11,7 @@
  */
 (function () {
   var CUSTOMER_KEY = "emirate_customer";
+  var otpSendLocks = {};
 
   function siteOrigin() {
     return String(window.EMIRATE_SITE_URL || window.location.origin).replace(/\/+$/, "");
@@ -374,28 +375,44 @@
     if (normalized.length !== 9) {
       return { ok: false, error: "invalid_phone" };
     }
-    try {
-      var res = await fetch("/api/auth-send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: normalized, purpose: purpose || "login" }),
-      });
-      var data = await res.json().catch(function () {
-        return {};
-      });
-      if (!res.ok || !data.ok) {
-        return {
-          ok: false,
-          error: data.error || "send_failed",
-          retry_after_sec: data.retry_after_sec,
-          debug_code: data.debug_code,
-          details: data.details || null,
-        };
-      }
-      return { ok: true, phone: data.phone, expires_in: data.expires_in, test_mode: data.test_mode, debug_code: data.debug_code };
-    } catch (err) {
-      return { ok: false, error: err && err.message ? err.message : "network_error" };
+    var lockKey = normalized + ":" + String(purpose || "login");
+    if (otpSendLocks[lockKey]) {
+      return otpSendLocks[lockKey];
     }
+    otpSendLocks[lockKey] = (async function () {
+      try {
+        var res = await fetch("/api/auth-send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: normalized, purpose: purpose || "login" }),
+        });
+        var data = await res.json().catch(function () {
+          return {};
+        });
+        if (!res.ok || !data.ok) {
+          return {
+            ok: false,
+            error: data.error || "send_failed",
+            retry_after_sec: data.retry_after_sec,
+            debug_code: data.debug_code,
+            details: data.details || null,
+          };
+        }
+        return {
+          ok: true,
+          phone: data.phone,
+          expires_in: data.expires_in,
+          test_mode: data.test_mode,
+          debug_code: data.debug_code,
+          already_sent: data.already_sent === true,
+        };
+      } catch (err) {
+        return { ok: false, error: err && err.message ? err.message : "network_error" };
+      }
+    })().finally(function () {
+      delete otpSendLocks[lockKey];
+    });
+    return otpSendLocks[lockKey];
   }
 
   async function verifyPhoneOtp(phone, code, purpose) {

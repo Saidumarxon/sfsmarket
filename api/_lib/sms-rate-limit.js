@@ -10,6 +10,7 @@ const SUPABASE_SERVICE = String(
 
 const PHONE_WINDOW_MS = 15 * 60 * 1000;
 const PHONE_MAX_HITS = 3;
+const PHONE_COOLDOWN_MS = 55 * 1000;
 const IP_WINDOW_MS = 60 * 60 * 1000;
 const IP_MAX_HITS = 20;
 
@@ -91,6 +92,11 @@ async function consumeQuota(clientKey, maxHits, windowMs) {
   return consumeFromMemory(clientKey, maxHits, windowMs);
 }
 
+async function consumeSmsCooldown(phone) {
+  const normalized = String(phone || "").replace(/\D/g, "");
+  return consumeQuota("sms:cooldown:" + normalized, 1, PHONE_COOLDOWN_MS);
+}
+
 async function consumeSmsSendQuota(req, phone) {
   const normalized = String(phone || "").replace(/\D/g, "");
   const phoneKey = "sms:phone:" + normalized;
@@ -118,5 +124,6 @@ function applyRateLimitHeaders(res, quota) {
 
 module.exports = {
   consumeSmsSendQuota: consumeSmsSendQuota,
+  consumeSmsCooldown: consumeSmsCooldown,
   applyRateLimitHeaders: applyRateLimitHeaders,
 };

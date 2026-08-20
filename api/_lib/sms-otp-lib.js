@@ -18,6 +18,7 @@ const OTP_LENGTH = Math.min(8, Math.max(4, Number(process.env.SMS_OTP_LENGTH || 
 const MAX_VERIFY_ATTEMPTS = 5;
 
 const memoryOtps = new Map();
+const issueLocks = new Map();
 
 function corsJson(res, status, payload) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -223,7 +224,7 @@ async function upsertCustomerProfile(user, phone) {
   }).catch(function () {});
 }
 
-async function issueOtp(phone, purpose) {
+async function issueOtpUncapped(phone, purpose) {
   const normalized = eskiz.normalizeUzPhone(phone);
   if (!normalized) {
     return { ok: false, error: "invalid_phone" };
@@ -263,6 +264,19 @@ async function issueOtp(phone, purpose) {
     payload.debug_code = code;
   }
   return payload;
+}
+
+async function issueOtp(phone, purpose) {
+  const normalized = eskiz.normalizeUzPhone(phone);
+  const lockKey = (normalized || String(phone || "")) + ":" + String(purpose || "login");
+  if (issueLocks.has(lockKey)) {
+    return issueLocks.get(lockKey);
+  }
+  const pending = issueOtpUncapped(phone, purpose).finally(function () {
+    issueLocks.delete(lockKey);
+  });
+  issueLocks.set(lockKey, pending);
+  return pending;
 }
 
 async function completeOtpLogin(phone, code, purpose) {

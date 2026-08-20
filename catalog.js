@@ -255,7 +255,7 @@ function renderProduct(product, options = {}) {
     photos: product.photos || []
   };
   const imageHtml = media.image
-    ? `<img class="product-image-real" src="${escapeHtmlAttr(media.image)}" alt="${escapeHtmlAttr(product.title)}" loading="lazy" decoding="async">`
+    ? `<img class="product-image-real" src="${escapeHtmlAttr(media.image)}" alt="" loading="lazy" decoding="async" onerror="window.emirateOnProductImageError&&window.emirateOnProductImageError(this)">`
     : `<div class="product-image-placeholder">
             <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
               <rect x="3" y="3" width="18" height="18" rx="2"/>

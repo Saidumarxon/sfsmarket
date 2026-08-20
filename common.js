@@ -389,7 +389,7 @@ function emirateParsePriceValue(value) {
 }
 
 function emirateFormatPriceParts(value) {
-  const amount = emirateParsePriceValue(value);
+  const amount = Math.round(emirateParsePriceValue(value));
   return {
     amount: amount.toLocaleString("ru-RU"),
     currency: "сум"
@@ -507,8 +507,16 @@ function emirateProductInstallmentHtml(product, installmentValue) {
   if (product && product.installmentStatus === "inactive") {
     return `<div class="product-installment product-installment--muted">Без рассрочки</div>`;
   }
-  const part = emirateFormatPriceParts(installmentValue);
+  const part = emirateFormatPriceParts(Math.round(emirateParsePriceValue(installmentValue)));
   return `<div class="product-installment"><span class="product-installment-value">${part.amount} ${part.currency}</span><span class="product-installment-term">× 12 мес</span></div>`;
+}
+
+function emirateOnProductImageError(img) {
+  if (!img || img.dataset.broken === "1") return;
+  img.dataset.broken = "1";
+  img.removeAttribute("alt");
+  img.alt = "";
+  img.classList.add("is-broken");
 }
 
 function emirateProductActionsHtml(productHref, safeProductId) {
@@ -552,7 +560,7 @@ function emirateRenderProductCard(product) {
     photos: product.photos || []
   };
   const imageHtml = media.image
-    ? '<img class="product-image-real" src="' + emirateEscapeHtmlAttr(media.image) + '" alt="' + emirateEscapeHtmlAttr(product.title) + '" loading="lazy" decoding="async">'
+    ? '<img class="product-image-real" src="' + emirateEscapeHtmlAttr(media.image) + '" alt="" loading="lazy" decoding="async" onerror="window.emirateOnProductImageError&&window.emirateOnProductImageError(this)">'
     : `<div class="product-image-placeholder">
             <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
               <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -621,6 +629,7 @@ window.emirateResolveProductMedia = emirateResolveProductMedia;
 window.emirateFallbackProductPhotos = emirateFallbackProductPhotos;
 window.emirateProductPriceHtml = emirateProductPriceHtml;
 window.emirateProductInstallmentHtml = emirateProductInstallmentHtml;
+window.emirateOnProductImageError = emirateOnProductImageError;
 window.emirateProductActionsHtml = emirateProductActionsHtml;
 window.emirateRenderProductCard = emirateRenderProductCard;
 window.emirateEscapeHtmlAttr = emirateEscapeHtmlAttr;
@@ -1747,7 +1756,10 @@ function showAuthOtpStep(modal, phone, meta) {
   }
 }
 
+var authPhoneOtpBusy = false;
+
 async function submitAuthPhoneOtp() {
+  if (authPhoneOtpBusy) return;
   var modal = document.getElementById("authModal");
   var phoneInput = document.getElementById("authPhone");
   if (!phoneInput) return;
@@ -1764,8 +1776,17 @@ async function submitAuthPhoneOtp() {
   if (!window.emirateAuth) {
     await loadScriptOnce("emirate-auth.js");
   }
+  authPhoneOtpBusy = true;
+  var submitBtn = modal && modal.querySelector("#authPhoneSubmit");
+  if (submitBtn) submitBtn.disabled = true;
   showAuthMessage(t("auth.sendingCode") || "Отправляем код…");
-  var res = await window.emirateAuth.requestPhoneOtp(digits, "login");
+  var res;
+  try {
+    res = await window.emirateAuth.requestPhoneOtp(digits, "login");
+  } finally {
+    authPhoneOtpBusy = false;
+    if (submitBtn) submitBtn.disabled = false;
+  }
   if (!res.ok) {
     if (res.error === "rate_limited") {
       var wait = res.retry_after_sec ? " (" + res.retry_after_sec + "s)" : "";

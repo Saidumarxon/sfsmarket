@@ -20,6 +20,17 @@ async function handleSend(req, res, body) {
     return otpLib.corsJson(res, 503, { ok: false, error: "eskiz_not_configured" });
   }
 
+  const cooldown = await rateLimit.consumeSmsCooldown(normalized);
+  if (!cooldown.allowed) {
+    return otpLib.corsJson(res, 200, {
+      ok: true,
+      phone: normalized,
+      expires_in: otpLib.OTP_TTL_SEC,
+      already_sent: true,
+      retry_after_sec: cooldown.retryAfterSec,
+    });
+  }
+
   const quotaCheck = await rateLimit.consumeSmsSendQuota(req, normalized);
   if (!quotaCheck.allowed) {
     rateLimit.applyRateLimitHeaders(res, quotaCheck.quota);

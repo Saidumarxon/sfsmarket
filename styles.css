@@ -3142,32 +3142,33 @@ body.home-storefront-loading .carousel-track {
   }
 }
 
-/* 3 cards on mobile (Asaxiy-style) */
+/* 2 readable cards on mobile, slight peek of the next */
 @media (max-width: 680px) {
   .carousel-track {
-    gap: 8px;
+    gap: 10px;
+    padding: 2px 2px 10px;
   }
 
   .carousel-track .product-card {
-    flex: 0 0 calc((100% - 16px) / 3);
+    flex: 0 0 calc((100% - 10px) / 2);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 10px 10px 12px;
+    border-radius: 16px;
+  }
+
+  .carousel-track .product-actions {
+    margin-top: auto;
   }
 
   .carousel-arrow {
-    width: 36px;
-    height: 36px;
-  }
-
-  .carousel-arrow--left {
-    left: 0;
-  }
-
-  .carousel-arrow--right {
-    right: 0;
+    display: none;
   }
 
   .carousel-wrapper {
-    padding: 0 18px;
-    margin: 0 -18px;
+    padding: 0;
+    margin: 0;
   }
 }
 
@@ -3243,6 +3244,11 @@ body.home-storefront-loading .carousel-track {
   object-fit: contain;
   border-radius: inherit;
   display: block;
+  color: transparent;
+}
+
+.product-image-real.is-broken {
+  display: none;
 }
 
 /* Product Badges */
@@ -4275,15 +4281,56 @@ body.home-storefront-loading .carousel-track {
     gap: 8px;
   }
 
-  .product-card,
-  .carousel-track .product-card {
+  .product-card {
     padding: 8px;
+  }
+
+  .carousel-track .product-card {
+    padding: 10px 10px 12px;
   }
 
   .product-image {
     height: 140px;
     margin-bottom: 8px;
     border-radius: 10px;
+  }
+
+  .carousel-track .product-image {
+    height: 148px;
+    margin-bottom: 10px;
+  }
+
+  .carousel-track .product-title {
+    font-size: 13px;
+    min-height: 34px;
+    margin-bottom: 6px;
+    line-height: 1.35;
+  }
+
+  .carousel-track .product-price {
+    font-size: 15px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  .carousel-track .product-price-value,
+  .carousel-track .product-price-currency {
+    white-space: nowrap;
+  }
+
+  .carousel-track .product-installment {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 11px;
+    padding: 6px 8px;
+    margin-bottom: 10px;
+    gap: 2px 6px;
+  }
+
+  .carousel-track .product-buy-btn,
+  .carousel-track .product-cart-icon-btn {
+    height: 36px;
+    font-size: 13px;
   }
 
   .product-title {

@@ -608,7 +608,7 @@ function renderProductCard(product) {
     photos: product.photos || []
   };
   const imageHtml = media.image
-    ? `<img class="product-image-real" src="${escapeHtmlAttr(media.image)}" alt="${escapeHtmlAttr(product.title)}" loading="lazy" decoding="async">`
+    ? `<img class="product-image-real" src="${escapeHtmlAttr(media.image)}" alt="" loading="lazy" decoding="async" onerror="window.emirateOnProductImageError&&window.emirateOnProductImageError(this)">`
     : `<div class="product-image-placeholder">
             <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
               <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -617,6 +617,9 @@ function renderProductCard(product) {
             </svg>
             Фото
             </div>`;
+
+  const priceValue = window.emirateParsePriceValue?.(product.price) || 0;
+  const installmentValue = Math.round(priceValue / 12);
 
   return `
     <article class="product-card" data-product-title="${safeProductId}">
@@ -636,7 +639,7 @@ function renderProductCard(product) {
       <h3 class="product-title"><a class="product-link" href="${productHref}">${product.title}</a></h3>
       ${ratingHtml ? `<div class="product-rating">${ratingHtml}</div>` : ""}
       ${window.emirateProductPriceHtml?.(product.price, product.oldPrice) || ""}
-      ${window.emirateProductInstallmentHtml?.(product, window.emirateParsePriceValue?.(product.price) / 12 || product.installment) || ""}
+      ${window.emirateProductInstallmentHtml?.(product, installmentValue) || ""}
       ${window.emirateProductActionsHtml?.(productHref, safeProductId) || ""}
     </article>
   `;
@@ -655,7 +658,8 @@ function initCarousel(trackEl) {
   function getScrollAmount() {
     const card = trackEl.querySelector(".product-card");
     if (!card) return 280;
-    return card.offsetWidth + 16; // card width + gap
+    const gap = parseFloat(getComputedStyle(trackEl).gap) || 16;
+    return card.offsetWidth + gap;
   }
 
   function updateArrows() {
