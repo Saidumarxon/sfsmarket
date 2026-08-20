@@ -721,6 +721,67 @@ function renderHomeBrands() {
       return `<a href="${escapeHtmlAttr(url)}" class="brand-card">${logo}<span>${escapeHtml(brand.nameRu)}</span></a>`;
     })
     .join("");
+
+  setupHomeMarquee(grid, Math.max(24, Math.min(48, brands.length * 3.4)));
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function setupHomeMarquee(container, durationSec) {
+  if (!container || prefersReducedMotion()) return;
+
+  const items = Array.from(container.children).filter(function (el) {
+    return !el.classList.contains("marquee-track");
+  });
+  if (items.length < 2) return;
+
+  const track = document.createElement("div");
+  track.className = "marquee-track";
+  const group = document.createElement("div");
+  group.className = "marquee-group";
+  items.forEach(function (el) {
+    group.appendChild(el);
+  });
+  const clone = group.cloneNode(true);
+  clone.setAttribute("aria-hidden", "true");
+  clone.querySelectorAll("a, button").forEach(function (el) {
+    el.setAttribute("tabindex", "-1");
+  });
+  track.appendChild(group);
+  track.appendChild(clone);
+  container.appendChild(track);
+  container.classList.add("is-marquee");
+  container.style.setProperty("--marquee-duration", (durationSec || 32) + "s");
+
+  if (container.dataset.marqueeBound === "1") return;
+  container.dataset.marqueeBound = "1";
+
+  let resumeTimer = 0;
+  const pause = function () {
+    container.classList.add("is-paused");
+    window.clearTimeout(resumeTimer);
+  };
+  const resume = function () {
+    window.clearTimeout(resumeTimer);
+    resumeTimer = window.setTimeout(function () {
+      container.classList.remove("is-paused");
+    }, 1400);
+  };
+  container.addEventListener("pointerdown", pause);
+  container.addEventListener("pointerup", resume);
+  container.addEventListener("pointercancel", resume);
+  container.addEventListener("mouseleave", resume);
+
+  if (!window.emirateMarqueeObserver) {
+    window.emirateMarqueeObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        entry.target.classList.toggle("is-offscreen", !entry.isIntersecting);
+      });
+    }, { threshold: 0.12 });
+  }
+  window.emirateMarqueeObserver.observe(container);
 }
 
 function escapeHtml(value) {
@@ -795,6 +856,7 @@ function finishHomeShellMode() {
 window.setTimeout(finishHomeShellMode, 3500);
 
 void initHomeStorefront();
+setupHomeMarquee(document.querySelector(".perks-row"), 22);
 
 // ===== LAZY LOADING — product feed via IntersectionObserver =====
 const feedSection = document.getElementById("feedSection");

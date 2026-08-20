@@ -3692,6 +3692,50 @@ body.home-storefront-loading .carousel-track {
   max-width: 100%;
 }
 
+.brands-row.is-marquee {
+  overflow: hidden;
+  scroll-snap-type: none;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: emirate-marquee var(--marquee-duration, 32s) linear infinite;
+}
+
+.marquee-group {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  padding-right: 10px;
+}
+
+.brands-row.is-marquee.is-paused .marquee-track,
+.brands-row.is-marquee.is-offscreen .marquee-track,
+.perks-row.is-marquee.is-paused .marquee-track,
+.perks-row.is-marquee.is-offscreen .marquee-track {
+  animation-play-state: paused;
+}
+
+@media (hover: hover) {
+  .brands-row.is-marquee:hover .marquee-track,
+  .perks-row.is-marquee:hover .marquee-track {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes emirate-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
 .catalog-brand-hero {
   display: flex;
   align-items: center;
@@ -3887,6 +3931,20 @@ body.home-storefront-loading .carousel-track {
 
 .perk-copy {
   min-width: 0;
+}
+
+.perks-row.is-marquee {
+  overflow: hidden;
+  scroll-snap-type: none;
+}
+
+.perks-row.is-marquee .marquee-group {
+  gap: 12px;
+  padding-right: 12px;
+}
+
+.perks-row.is-marquee .perk-card {
+  flex: 0 0 260px;
 }
 
 /* ========================================
@@ -4515,6 +4573,11 @@ body.home-storefront-loading .carousel-track {
     height: 36px;
   }
 
+  .brands-row.is-marquee .marquee-group {
+    gap: 8px;
+    padding-right: 8px;
+  }
+
   .section--brands {
     margin-top: 18px;
   }
@@ -4543,6 +4606,15 @@ body.home-storefront-loading .carousel-track {
     text-align: left;
     gap: 12px;
     padding: 14px 14px;
+  }
+
+  .perks-row.is-marquee .perk-card {
+    flex: 0 0 min(280px, 78vw);
+  }
+
+  .perks-row.is-marquee .marquee-group {
+    gap: 10px;
+    padding-right: 10px;
   }
 
   .perks-row .perk-card:hover {
