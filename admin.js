@@ -2748,8 +2748,8 @@ function getBannerPreviewDataFromForm() {
     secondaryTextUz: bannerSecondaryTextUzInput?.value || '',
     image: bannerFormImage || existing?.image || '',
     imageMobile: bannerFormImageMobile || existing?.imageMobile || '',
-    imageUz: bannerFormImageUz || existing?.imageUz || '',
-    imageMobileUz: bannerFormImageMobileUz || existing?.imageMobileUz || '',
+    imageUz: bannerFormImageUz || existing?.imageUz || bannerFormImage || existing?.image || '',
+    imageMobileUz: bannerFormImageMobileUz || existing?.imageMobileUz || bannerFormImageMobile || existing?.imageMobile || '',
     isActive: bannerActiveSelect?.value !== 'false',
     priority: Number.isFinite(priority) ? priority : 100
   });
@@ -2784,12 +2784,23 @@ function validateBannerLangFields(draft, lang) {
 
 function validateBannerDraft(draft) {
   const primaryUrl = sanitizeBannerUrl(draft.primaryUrl || '#');
+  const title = String(draft.title || '').trim();
+  const titleUz = String(draft.titleUz || '').trim();
+  const image = String(draft.image || '').trim();
+  const imageMobile = String(draft.imageMobile || '').trim();
 
-  const ruError = validateBannerLangFields(draft, 'ru');
-  if (ruError) return ruError;
-  const uzError = validateBannerLangFields(draft, 'uz');
-  if (uzError) return uzError;
-
+  if (!image && !imageMobile) {
+    return 'Загрузите одно изображение: для компьютера (1200×430) или для телефона (750×360). Для узбекской версии те же фото подставятся сами.';
+  }
+  if (title.length < BANNER_TITLE_MIN || title.length > BANNER_TITLE_MAX) {
+    return `Название слайда должно быть от ${BANNER_TITLE_MIN} до ${BANNER_TITLE_MAX} символов.`;
+  }
+  if (titleUz && (titleUz.length < BANNER_TITLE_MIN || titleUz.length > BANNER_TITLE_MAX)) {
+    return `Название на узбекском должно быть от ${BANNER_TITLE_MIN} до ${BANNER_TITLE_MAX} символов.`;
+  }
+  if (hasBlockedPhrases(draft.tag, title, draft.desc, draft.tagUz, titleUz, draft.descUz)) {
+    return 'Обнаружены запрещенные фразы в тексте баннера.';
+  }
   if (!isAllowedBannerUrl(primaryUrl)) {
     return 'Разрешены только внутренние ссылки: #, /path, catalog.html, product.html.';
   }
@@ -2972,10 +2983,10 @@ function resetBannerForm() {
   if (bannerIdInput) bannerIdInput.value = '';
   if (bannerPriorityInput) bannerPriorityInput.value = '100';
   if (bannerActiveSelect) bannerActiveSelect.value = 'true';
-  if (bannerImageMeta) bannerImageMeta.textContent = 'Рекомендуется 1200×430 px (широкий баннер)';
-  if (bannerImageMetaUz) bannerImageMetaUz.textContent = 'Tavsiya: 1200×430 px';
-  if (bannerImageMobileMeta) bannerImageMobileMeta.textContent = 'Рекомендуется 750×360 px. Если пусто — на телефоне покажется компьютерная версия.';
-  if (bannerImageMobileMetaUz) bannerImageMobileMetaUz.textContent = 'Tavsiya: 750×360 px';
+  if (bannerImageMeta) bannerImageMeta.textContent = 'Размер: 1200×430 px, горизонтальный баннер. JPG или PNG.';
+  if (bannerImageMetaUz) bannerImageMetaUz.textContent = 'Если пусто — берётся общее фото для компьютера.';
+  if (bannerImageMobileMeta) bannerImageMobileMeta.textContent = 'Размер: 750×360 px. Если пусто — на телефоне покажется компьютерная версия.';
+  if (bannerImageMobileMetaUz) bannerImageMobileMetaUz.textContent = 'Если пусто — берётся общее фото для телефона.';
   if (bannerImageInput) bannerImageInput.value = '';
   if (bannerImageInputUz) bannerImageInputUz.value = '';
   if (bannerImageMobileInput) bannerImageMobileInput.value = '';
@@ -2985,6 +2996,8 @@ function resetBannerForm() {
   bannerFormImageMobile = '';
   bannerFormImageUz = '';
   bannerFormImageMobileUz = '';
+  const uzDetails = document.getElementById('bannerUzImagesDetails');
+  if (uzDetails) uzDetails.open = false;
   setBannerPreviewMode('desktop');
   setBannerFormLang('ru');
   renderBannerPreview(defaultBannersData()[0], 'ru');
@@ -3029,15 +3042,23 @@ function fillBannerForm(bannerId) {
   if (bannerSecondaryTextUzInput) bannerSecondaryTextUzInput.value = banner.secondaryTextUz;
   if (bannerPriorityInput) bannerPriorityInput.value = String(banner.priority);
   if (bannerActiveSelect) bannerActiveSelect.value = banner.isActive ? 'true' : 'false';
-  if (bannerImageMeta) bannerImageMeta.textContent = banner.image ? 'Компьютерное изображение загружено' : 'Рекомендуется 1200×430 px (широкий баннер)';
-  if (bannerImageMetaUz) bannerImageMetaUz.textContent = banner.imageUz ? 'Kompyuter rasmi yuklangan' : 'Tavsiya: 1200×430 px';
-  if (bannerImageMobileMeta) bannerImageMobileMeta.textContent = banner.imageMobile ? 'Мобильное изображение загружено' : 'Рекомендуется 750×360 px. Если пусто — на телефоне покажется компьютерная версия.';
-  if (bannerImageMobileMetaUz) bannerImageMobileMetaUz.textContent = banner.imageMobileUz ? 'Mobil rasm yuklangan' : 'Tavsiya: 750×360 px';
+  if (bannerImageMeta) bannerImageMeta.textContent = banner.image ? 'Компьютерное изображение загружено (ориентир 1200×430 px)' : 'Размер: 1200×430 px, горизонтальный баннер. JPG или PNG.';
+  if (bannerImageMetaUz) bannerImageMetaUz.textContent = banner.imageUz && banner.imageUz !== banner.image ? 'Отдельное UZ-фото для компьютера загружено' : 'Если пусто — берётся общее фото для компьютера.';
+  if (bannerImageMobileMeta) bannerImageMobileMeta.textContent = banner.imageMobile ? 'Мобильное изображение загружено (ориентир 750×360 px)' : 'Размер: 750×360 px. Если пусто — на телефоне покажется компьютерная версия.';
+  if (bannerImageMobileMetaUz) bannerImageMobileMetaUz.textContent = banner.imageMobileUz && banner.imageMobileUz !== banner.imageMobile ? 'Отдельное UZ-фото для телефона загружено' : 'Если пусто — берётся общее фото для телефона.';
 
   bannerFormImage = banner.image || '';
   bannerFormImageMobile = banner.imageMobile || '';
   bannerFormImageUz = banner.imageUz || '';
   bannerFormImageMobileUz = banner.imageMobileUz || '';
+  const uzDetails = document.getElementById('bannerUzImagesDetails');
+  if (uzDetails) {
+    const hasSeparateUz = Boolean(
+      (banner.imageUz && banner.imageUz !== banner.image) ||
+      (banner.imageMobileUz && banner.imageMobileUz !== banner.imageMobile)
+    );
+    uzDetails.open = hasSeparateUz;
+  }
   renderBannerPreview(banner, bannerFormLang);
 }
 
@@ -3868,7 +3889,7 @@ document.getElementById('addBannerBtn')?.addEventListener('click', function() {
   }
   switchPage('banners');
   resetBannerForm();
-  document.getElementById('bannerTag')?.focus();
+  document.getElementById('bannerTitle')?.focus();
   showBannerFeedback('Режим создания нового слайда включен.', 'success');
 });
 
@@ -3958,7 +3979,7 @@ document.getElementById('bannerImageInput')?.addEventListener('change', function
   void handleBannerImageUpload(file, this, {
     imageKey: 'RU desktop',
     metaEl: document.getElementById('bannerImageMeta'),
-    emptyMetaText: 'Рекомендуется 1200×430 px (широкий баннер)',
+    emptyMetaText: 'Размер: 1200×430 px, горизонтальный баннер. JPG или PNG.',
     successPrefix: 'Загружено',
     ratioMin: BANNER_IMAGE_RATIO_MIN,
     ratioMax: BANNER_IMAGE_RATIO_MAX,
@@ -3975,7 +3996,7 @@ document.getElementById('bannerImageMobileInput')?.addEventListener('change', fu
   void handleBannerImageUpload(file, this, {
     imageKey: 'RU mobile',
     metaEl: document.getElementById('bannerImageMobileMeta'),
-    emptyMetaText: 'Рекомендуется 750×360 px. Если пусто — на телефоне покажется компьютерная версия.',
+    emptyMetaText: 'Размер: 750×360 px. Если пусто — на телефоне покажется компьютерная версия.',
     successPrefix: 'Мобильное загружено',
     ratioMin: BANNER_MOBILE_RATIO_MIN,
     ratioMax: BANNER_MOBILE_RATIO_MAX,
@@ -3992,7 +4013,7 @@ document.getElementById('bannerImageInputUz')?.addEventListener('change', functi
   void handleBannerImageUpload(file, this, {
     imageKey: 'UZ desktop',
     metaEl: document.getElementById('bannerImageMetaUz'),
-    emptyMetaText: 'Tavsiya: 1200×430 px',
+    emptyMetaText: 'Если пусто — берётся общее фото для компьютера.',
     successPrefix: 'Yuklandi',
     ratioMin: BANNER_IMAGE_RATIO_MIN,
     ratioMax: BANNER_IMAGE_RATIO_MAX,
@@ -4009,7 +4030,7 @@ document.getElementById('bannerImageMobileInputUz')?.addEventListener('change', 
   void handleBannerImageUpload(file, this, {
     imageKey: 'UZ mobile',
     metaEl: document.getElementById('bannerImageMobileMetaUz'),
-    emptyMetaText: 'Tavsiya: 750×360 px',
+    emptyMetaText: 'Если пусто — берётся общее фото для телефона.',
     successPrefix: 'Mobil yuklandi',
     ratioMin: BANNER_MOBILE_RATIO_MIN,
     ratioMax: BANNER_MOBILE_RATIO_MAX,

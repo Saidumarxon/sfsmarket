@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=20260820a">
+  <link rel="stylesheet" href="admin.css?v=20260820e">
   <style>
     /* Старые кэшированные баннеры черновика больше не показываем */
     #productDraftBanner,
@@ -420,54 +420,56 @@
             <form class="banner-form" id="bannerForm" novalidate>
               <input type="hidden" id="bannerId">
 
-              <div class="banner-lang-tabs" role="tablist" aria-label="Язык баннера">
-                <button type="button" class="banner-lang-tab is-active" data-banner-lang="ru" role="tab" aria-selected="true">Русский</button>
-                <button type="button" class="banner-lang-tab" data-banner-lang="uz" role="tab" aria-selected="false">O'zbek</button>
+              <div class="banner-images-block">
+                <h4 class="banner-lang-panel-title">Изображения</h4>
+                <p class="form-hint">Одни фото для русского и узбекского. Второй язык отдельно загружать не нужно.</p>
+                <div class="form-group">
+                  <label class="required" for="bannerImageInput">Для компьютера <span class="banner-size-badge">1200 × 430 px</span></label>
+                  <input type="file" id="bannerImageInput" accept="image/*">
+                  <span class="form-hint banner-image-hint" id="bannerImageMeta">Размер: 1200×430 px, горизонтальный баннер. JPG или PNG.</span>
+                </div>
+                <div class="form-group">
+                  <label for="bannerImageMobileInput">Для телефона <span class="banner-size-badge">750 × 360 px</span></label>
+                  <input type="file" id="bannerImageMobileInput" accept="image/*">
+                  <span class="form-hint banner-image-hint" id="bannerImageMobileMeta">Размер: 750×360 px. Если пусто — на телефоне покажется компьютерная версия.</span>
+                </div>
               </div>
 
-              <div class="banner-lang-panel" data-banner-lang-panel="ru">
-                <h4 class="banner-lang-panel-title">Баннер на русском</h4>
+              <div class="form-row">
                 <div class="form-group">
-                  <label class="required" for="bannerTitle">Название слайда (для админки)</label>
+                  <label class="required" for="bannerTitle">Название (русский)</label>
                   <input type="text" id="bannerTitle" placeholder="Большая распродажа">
                 </div>
                 <div class="form-group">
-                  <label class="required" for="bannerImageInput">Изображение для компьютера</label>
-                  <input type="file" id="bannerImageInput" accept="image/*">
-                  <span class="form-hint banner-image-hint" id="bannerImageMeta">Рекомендуется 1200×430 px (широкий баннер)</span>
+                  <label for="bannerTitleUz">Название (o‘zbek)</label>
+                  <input type="text" id="bannerTitleUz" placeholder="как на русском, если пусто">
+                  <span class="form-hint">Необязательно — подставится русское название.</span>
                 </div>
-                <div class="form-group">
-                  <label for="bannerImageMobileInput">Изображение для телефона</label>
-                  <input type="file" id="bannerImageMobileInput" accept="image/*">
-                  <span class="form-hint banner-image-hint" id="bannerImageMobileMeta">Рекомендуется 750×360 px. Если пусто — на телефоне покажется компьютерная версия.</span>
-                </div>
-                <input type="hidden" id="bannerTag" value="Акция">
-                <input type="hidden" id="bannerDesc" value=" ">
-                <input type="hidden" id="bannerPrimaryText" value="">
-                <input type="hidden" id="bannerSecondaryText" value="">
               </div>
 
-              <div class="banner-lang-panel" data-banner-lang-panel="uz" hidden>
-                <h4 class="banner-lang-panel-title">Banner o'zbek tilida</h4>
+              <details class="banner-uz-images" id="bannerUzImagesDetails">
+                <summary>Другие фото только для узбекской версии — не обязательно</summary>
+                <p class="form-hint">Нужно, только если на картинке другой текст на узбекском. Иначе оставьте пустым.</p>
                 <div class="form-group">
-                  <label for="bannerTitleUz">Slayd nomi (admin uchun)</label>
-                  <input type="text" id="bannerTitleUz" placeholder="Katta chegirma">
-                </div>
-                <div class="form-group">
-                  <label for="bannerImageInputUz">Kompyuter uchun rasm</label>
+                  <label for="bannerImageInputUz">UZ, компьютер <span class="banner-size-badge">1200 × 430 px</span></label>
                   <input type="file" id="bannerImageInputUz" accept="image/*">
-                  <span class="form-hint banner-image-hint" id="bannerImageMetaUz">Tavsiya: 1200×430 px</span>
+                  <span class="form-hint banner-image-hint" id="bannerImageMetaUz">Если пусто — берётся общее фото для компьютера.</span>
                 </div>
                 <div class="form-group">
-                  <label for="bannerImageMobileInputUz">Telefon uchun rasm</label>
+                  <label for="bannerImageMobileInputUz">UZ, телефон <span class="banner-size-badge">750 × 360 px</span></label>
                   <input type="file" id="bannerImageMobileInputUz" accept="image/*">
-                  <span class="form-hint banner-image-hint" id="bannerImageMobileMetaUz">Tavsiya: 750×360 px</span>
+                  <span class="form-hint banner-image-hint" id="bannerImageMobileMetaUz">Если пусто — берётся общее фото для телефона.</span>
                 </div>
-                <input type="hidden" id="bannerTagUz" value="Aksiya">
-                <input type="hidden" id="bannerDescUz" value=" ">
-                <input type="hidden" id="bannerPrimaryTextUz" value="">
-                <input type="hidden" id="bannerSecondaryTextUz" value="">
-              </div>
+              </details>
+
+              <input type="hidden" id="bannerTag" value="Акция">
+              <input type="hidden" id="bannerDesc" value=" ">
+              <input type="hidden" id="bannerPrimaryText" value="">
+              <input type="hidden" id="bannerSecondaryText" value="">
+              <input type="hidden" id="bannerTagUz" value="Aksiya">
+              <input type="hidden" id="bannerDescUz" value=" ">
+              <input type="hidden" id="bannerPrimaryTextUz" value="">
+              <input type="hidden" id="bannerSecondaryTextUz" value="">
 
               <div class="form-row banner-shared-fields">
                 <div class="form-group">
@@ -1469,7 +1471,7 @@
         var gate = document.getElementById("adminAuthGate");
         if (gate) gate.remove();
         var tag = document.createElement("script");
-        tag.src = "admin.js?v=20260820c";
+        tag.src = "admin.js?v=20260820e";
         document.body.appendChild(tag);
       }
 

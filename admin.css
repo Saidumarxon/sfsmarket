@@ -1531,6 +1531,57 @@ body {
   color: #64748b;
 }
 
+.banner-size-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  vertical-align: middle;
+}
+
+.banner-images-block {
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+}
+
+.banner-uz-images {
+  margin: 4px 0 14px;
+  padding: 10px 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.banner-uz-images summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  list-style: none;
+}
+
+.banner-uz-images summary::-webkit-details-marker {
+  display: none;
+}
+
+.banner-uz-images summary::before {
+  content: '▸ ';
+  color: #94a3b8;
+}
+
+.banner-uz-images[open] summary::before {
+  content: '▾ ';
+}
+
+.banner-uz-images .form-hint {
+  margin: 8px 0 10px;
+}
+
 .banner-form-actions {
   display: flex;
   justify-content: flex-end;
