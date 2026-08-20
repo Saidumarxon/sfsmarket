@@ -20,7 +20,8 @@ if (!adminSession) {
 }
 
 const adminIdentity = String(adminSession?.role || adminSession?.user || '').toLowerCase();
-const canManageBanners = /admin/.test(adminIdentity);
+// Anyone who passed admin.html auth gate can manage banners (role/email may not contain "admin").
+const canManageBanners = !!adminSession;
 const ADMIN_SUPPLIERS_KEY = 'emirate_admin_suppliers_v2';
 
 // ===== SIDEBAR NAV =====
@@ -1948,16 +1949,17 @@ function syncProductBrandSelect(selectedValue = '') {
 
 const ADMIN_PRODUCTS_KEY = 'emirate_admin_products';
 const ADMIN_BANNERS_KEY = 'emirate_home_banners';
-const BANNER_TITLE_MIN = 8;
+const BANNER_TITLE_MIN = 2;
 const BANNER_TITLE_MAX = 90;
 const BANNER_DESC_MIN = 20;
 const BANNER_DESC_MAX = 220;
 const BANNER_TAG_MAX = 40;
 const BANNER_BTN_MAX = 30;
-const BANNER_IMAGE_RATIO_MIN = 2.2;
-const BANNER_IMAGE_RATIO_MAX = 3.4;
-const BANNER_MOBILE_RATIO_MIN = 1.7;
-const BANNER_MOBILE_RATIO_MAX = 2.6;
+// Soft limits — warn only; do not block upload (many banners are not exactly 1200×430).
+const BANNER_IMAGE_RATIO_MIN = 1.4;
+const BANNER_IMAGE_RATIO_MAX = 4.5;
+const BANNER_MOBILE_RATIO_MIN = 1.0;
+const BANNER_MOBILE_RATIO_MAX = 3.5;
 const BANNER_BLOCKED_PHRASES = [
   'всем пока',
   'нету скидок',
@@ -1979,7 +1981,23 @@ function setAssetUploadState(isUploading) {
   const saveBtn = document.getElementById('productSaveBtn');
   if (!saveBtn) return;
   saveBtn.disabled = activeAssetUploads > 0;
-  saveBtn.textContent = activeAssetUploads > 0 ? 'Загрузка фото...' : 'Сохранить товар';
+  const label = saveBtn.querySelector('span') || saveBtn;
+  if (activeAssetUploads > 0) {
+    saveBtn.dataset.busy = '1';
+    saveBtn.textContent = 'Загрузка фото...';
+  } else if (saveBtn.dataset.busy === '1') {
+    saveBtn.dataset.busy = '';
+    saveBtn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Сохранить';
+  }
+}
+
+function resetAssetUploadState() {
+  activeAssetUploads = 0;
+  const saveBtn = document.getElementById('productSaveBtn');
+  if (!saveBtn) return;
+  saveBtn.disabled = false;
+  saveBtn.dataset.busy = '';
+  saveBtn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Сохранить';
 }
 
 function collectProductMediaUrls(product) {
@@ -2941,6 +2959,14 @@ async function saveBanner(event) {
     alert('Недостаточно прав для изменения баннера.');
     return;
   }
+
+  // If UZ title empty — copy from RU so hidden tab doesn't block save.
+  const titleRuEl = document.getElementById('bannerTitle');
+  const titleUzEl = document.getElementById('bannerTitleUz');
+  if (titleUzEl && titleRuEl && !String(titleUzEl.value || '').trim()) {
+    titleUzEl.value = String(titleRuEl.value || '').trim();
+  }
+
   const draft = getBannerPreviewDataFromForm();
   const validationError = validateBannerDraft(draft);
   if (validationError) {
@@ -3288,6 +3314,7 @@ syncIntakeCounterpartyControls();
 resetBannerForm();
 setBannerReadonlyMode();
 resetSupplierForm();
+resetAssetUploadState();
 
 function readLocalProductsCache() {
   try {
@@ -3791,13 +3818,14 @@ async function handleBannerImageUpload(file, inputEl, options) {
     inputEl.value = '';
     return;
   }
+  let uploadLocked = false;
   try {
     const optimized = await prepareImageForUpload(file, { maxSide: 2400, skipIfUnderBytes: 600 * 1024 });
     let imageSrc = '';
     if (window.emirateSupabaseApi?.isConfigured?.() && window.emirateSupabaseApi?.uploadAdminAsset) {
       setAssetUploadState(true);
+      uploadLocked = true;
       const uploadRes = await window.emirateSupabaseApi.uploadAdminAsset(optimized, { folder: 'banners' });
-      setAssetUploadState(false);
       if (!uploadRes?.ok || !uploadRes.url) {
         throw new Error(uploadRes?.error || 'storage upload failed');
       }
@@ -3808,11 +3836,13 @@ async function handleBannerImageUpload(file, inputEl, options) {
     const meta = await getImageMeta(imageSrc);
     const minRatio = ratioMin ?? BANNER_IMAGE_RATIO_MIN;
     const maxRatio = ratioMax ?? BANNER_IMAGE_RATIO_MAX;
+    // Soft warning only — still accept the image so banners can be saved.
     if (meta.ratio < minRatio || meta.ratio > maxRatio) {
-      showBannerFeedback('Неверная пропорция изображения для баннера.', 'error', 3800);
-      alert(`Неверная пропорция (${meta.width}×${meta.height}). ${ratioHint || 'Используйте горизонтальный баннер.'}`);
-      if (metaEl) metaEl.textContent = emptyMetaText;
-      return;
+      showBannerFeedback(
+        `Пропорция ${meta.width}×${meta.height} неидеальна (${ratioHint || 'лучше горизонтальный баннер'}), но файл принят.`,
+        'success',
+        4500
+      );
     }
     options.setImage(imageSrc);
     const sizeNote = optimized.size < file.size
@@ -3821,9 +3851,12 @@ async function handleBannerImageUpload(file, inputEl, options) {
     if (metaEl) metaEl.textContent = `${successPrefix}: ${file.name} (${meta.width}×${meta.height}${sizeNote})`;
     renderBannerPreview(getBannerPreviewDataFromForm(), bannerFormLang);
     showBannerFeedback(`Изображение загружено (${imageKey}): ${file.name}.`, 'success');
-  } catch (_) {
-    showBannerFeedback('Не удалось обработать изображение.', 'error', 3200);
-    alert('Не удалось обработать изображение.');
+  } catch (err) {
+    const reason = err?.message || String(err || '');
+    showBannerFeedback('Не удалось загрузить изображение: ' + reason, 'error', 5000);
+    alert('Не удалось загрузить изображение баннера.\n\n' + reason + '\n\nПроверьте Storage bucket product-media и политики в Supabase.');
+  } finally {
+    if (uploadLocked) setAssetUploadState(false);
   }
 }
 
@@ -4743,25 +4776,32 @@ editorTabs.forEach(tab => {
 });
 
 // Open editor for new product
-document.getElementById('addProductBtn').addEventListener('click', function() {
-  // Есть черновик нового товара — тихо продолжаем без всплывающих окон
-  const draft = readProductDraft();
-  if (isProductEditorMeaningful(draft) && !draft.editingProductId) {
-    openProductEditorFromDraft();
-    return;
-  }
+document.getElementById('addProductBtn')?.addEventListener('click', function(e) {
+  e.preventDefault();
+  try {
+    // Есть черновик нового товара — тихо продолжаем без всплывающих окон
+    const draft = readProductDraft();
+    if (isProductEditorMeaningful(draft) && !draft.editingProductId) {
+      openProductEditorFromDraft();
+      return;
+    }
 
-  editingProductId = null;
-  clearEditorForm();
-  document.getElementById('editorBreadcrumb').textContent = 'Добавить';
-  pageTitle.textContent = 'Продукты › Добавить';
-  switchPage('product-editor');
-  // Reset to first tab
-  editorTabs.forEach(t => t.classList.remove('active'));
-  editorTabContents.forEach(c => c.classList.remove('active'));
-  editorTabs[0].classList.add('active');
-  editorTabContents[0].classList.add('active');
-  updateProductDraftUi();
+    editingProductId = null;
+    clearEditorForm();
+    const crumb = document.getElementById('editorBreadcrumb');
+    if (crumb) crumb.textContent = 'Добавить';
+    if (pageTitle) pageTitle.textContent = 'Продукты › Добавить';
+    switchPage('product-editor');
+    // Reset to first tab
+    editorTabs.forEach(t => t.classList.remove('active'));
+    editorTabContents.forEach(c => c.classList.remove('active'));
+    editorTabs[0]?.classList.add('active');
+    editorTabContents[0]?.classList.add('active');
+    updateProductDraftUi();
+  } catch (err) {
+    console.error('[admin] open product editor failed', err);
+    alert('Не удалось открыть редактор товара. Обновите страницу (Ctrl+F5) и попробуйте снова.\n\n' + (err?.message || err));
+  }
 });
 
 // Open editor for existing product
@@ -5104,32 +5144,38 @@ Object.keys(titleSuggestEls).forEach(function (lang) {
 function clearEditorForm() {
   resetTitleSuggestPanels();
   setProductCategoryValue('', { silent: true });
-  document.getElementById('pNameUz').value = '';
-  document.getElementById('pNameRu').value = '';
-  document.getElementById('pModel').value = '';
-  document.getElementById('pBrand').value = '';
-  document.getElementById('pStatus').value = 'active';
-  document.getElementById('pPriority').value = '300';
-  document.getElementById('pDescUz').value = '';
-  document.getElementById('pDescRu').value = '';
+  const setVal = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+  };
+  setVal('pNameUz', '');
+  setVal('pNameRu', '');
+  setVal('pModel', '');
+  setVal('pBrand', '');
+  setVal('pStatus', 'active');
+  setVal('pCondition', 'Есть в наличии');
+  setVal('pPriority', '300');
+  setVal('pDescUz', '');
+  setVal('pDescRu', '');
   syncDescEditorFromField('uz');
   syncDescEditorFromField('ru');
-  document.getElementById('pSeoTitleRu').value = '';
-  document.getElementById('pSeoTitleUz').value = '';
-  document.getElementById('pSeoDescRu').value = '';
-  document.getElementById('pSeoDescUz').value = '';
+  setVal('pSeoTitleRu', '');
+  setVal('pSeoTitleUz', '');
+  setVal('pSeoDescRu', '');
+  setVal('pSeoDescUz', '');
   setDescAiStatus('');
-  document.getElementById('pPriceUsd').value = '';
-  document.getElementById('pOldPriceUsd').value = '';
-  document.getElementById('pPrice').value = '';
-  document.getElementById('pOldPrice').value = '';
+  setVal('pPriceUsd', '');
+  setVal('pOldPriceUsd', '');
+  setVal('pPrice', '');
+  setVal('pOldPrice', '');
   storefrontPriceTouched = false;
   updateStorefrontPricePreview();
-  document.getElementById('pMarginPrice').value = '';
-  document.getElementById('pCostPrice').value = '';
-  document.getElementById('pInstallmentMonths').value = '';
-  document.getElementById('pVideoUrl').value = '';
-  document.getElementById('videoPreview').innerHTML = '';
+  setVal('pMarginPrice', '');
+  setVal('pCostPrice', '');
+  setVal('pInstallmentMonths', '');
+  setVal('pVideoUrl', '');
+  const videoPreview = document.getElementById('videoPreview');
+  if (videoPreview) videoPreview.innerHTML = '';
   uploadedPhotos = [];
   renderPhotoPreviews();
 
@@ -5340,8 +5386,18 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
     // Switch to basic tab
     editorTabs.forEach(t => t.classList.remove('active'));
     editorTabContents.forEach(c => c.classList.remove('active'));
-    editorTabs[0].classList.add('active');
-    editorTabContents[0].classList.add('active');
+    editorTabs[0]?.classList.add('active');
+    editorTabContents[0]?.classList.add('active');
+    alert('Заполните название товара на русском и узбекском.');
+    return;
+  }
+
+  if (!String(category || '').trim()) {
+    alert('Выберите категорию товара.');
+    editorTabs.forEach(t => t.classList.remove('active'));
+    editorTabContents.forEach(c => c.classList.remove('active'));
+    editorTabs[0]?.classList.add('active');
+    editorTabContents[0]?.classList.add('active');
     return;
   }
 
