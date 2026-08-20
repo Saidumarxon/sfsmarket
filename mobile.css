@@ -11,9 +11,13 @@
 
 html.capacitor-app {
   -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 html.capacitor-app body {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
 }

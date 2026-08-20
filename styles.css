@@ -268,7 +268,11 @@ html[data-theme="dark"] .theme-icon-moon {
 /* ===== RESET ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -276,6 +280,15 @@ body {
   background: var(--bg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  max-width: 100%;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+
+@supports not (overflow-x: clip) {
+  html, body {
+    overflow-x: hidden;
+  }
 }
 
 a { text-decoration: none; color: inherit; }
@@ -2519,6 +2532,7 @@ body.home-storefront-loading .carousel-track {
   position: relative;
   border-radius: var(--radius-xl);
   overflow: hidden;
+  overscroll-behavior-x: contain;
   min-height: 340px;
   background: linear-gradient(135deg, #0b1120 0%, #0f2847 40%, #0c3d6b 70%, #134e7a 100%);
   box-shadow: var(--shadow-xl);
@@ -3102,6 +3116,7 @@ body.home-storefront-loading .carousel-track {
   scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
   padding: 4px 0 12px;
 
   /* hide scrollbar */
@@ -4135,14 +4150,24 @@ body.home-storefront-loading .carousel-track {
   }
 
   .hero.hero--full.container {
+    width: 100%;
+    max-width: 100%;
     padding-left: 0;
     padding-right: 0;
+    margin-left: 0;
+    margin-right: 0;
     margin-top: 8px;
   }
 
   .hero.hero--full .hero-main {
-    margin-left: calc(-1 * var(--container-padding, 16px));
-    margin-right: calc(-1 * var(--container-padding, 16px));
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .category-section {
+    overflow-x: clip;
   }
 
   .hero-slide {
