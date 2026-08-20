@@ -203,32 +203,51 @@
     };
   }
 
+  function parseProductPayload(raw) {
+    if (typeof raw === "string") {
+      try { raw = JSON.parse(raw); } catch (_) { return {}; }
+    }
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    return Object.assign({}, raw);
+  }
+
+  function mapProductAdminRow(row) {
+    if (!row) return null;
+    var p = parseProductPayload(row.payload);
+    p.id = String(row.admin_id || p.id || "").trim();
+    if (!p.id) return null;
+    if (row.status != null) p.status = row.status;
+    if (row.priority != null) p.priority = row.priority;
+    if (row.title && !p.nameRu && !p.nameUz) p.nameRu = row.title;
+    return p;
+  }
+
   function rowToCatalogItem(row) {
-    if (!row || !row.payload) return null;
-    var merged = Object.assign({}, row.payload, {
-      id: row.admin_id,
-      status: row.status != null ? row.status : row.payload.status,
-      priority: row.priority != null ? row.priority : row.payload.priority
-    });
+    var merged = mapProductAdminRow(row);
+    if (!merged) return null;
     return mapAdminPayloadToCatalogItem(merged);
+  }
+
+  async function selectProductRows(activeOnly) {
+    var sb = client();
+    if (!sb) return { error: { message: "no_client" }, data: null };
+    var query = sb
+      .from("products")
+      .select("admin_id,title,status,priority,payload")
+      .order("priority", { ascending: true });
+    if (activeOnly) query = query.eq("status", "active");
+    return query;
   }
 
   async function fetchPublicCatalogProducts() {
     var sb = client();
     if (!sb) return [];
-    var res = await sb
-      .from("products")
-      .select("admin_id,title,status,priority,payload")
-      .eq("status", "active")
-      .order("priority", { ascending: true });
+    var res = await selectProductRows(true);
     if (res.error) {
       console.warn("[Supabase] fetchPublicCatalogProducts", res.error);
       return [];
     }
-    var list = (res.data || [])
-      .map(rowToCatalogItem)
-      .filter(Boolean);
-    return list;
+    return (res.data || []).map(rowToCatalogItem).filter(Boolean);
   }
 
   async function fetchProductForPageByTitle(title) {
@@ -289,23 +308,17 @@
   async function pullAdminProductsRaw() {
     var sb = client();
     if (!sb) return null;
-    var sessionRes = await sb.auth.getSession();
-    if (!sessionRes.data || !sessionRes.data.session) return null;
-    var res = await sb
-      .from("products")
-      .select("admin_id,status,priority,payload")
-      .order("priority", { ascending: true });
-    if (res.error) {
-      console.warn("[Supabase] pullAdminProductsRaw", res.error);
-      return null;
+    var res = await selectProductRows(false);
+    if (res.error || !(res.data && res.data.length)) {
+      if (res.error) console.warn("[Supabase] pullAdminProductsRaw", res.error);
+      var pub = await selectProductRows(true);
+      if (pub.error) {
+        console.warn("[Supabase] pullAdminProductsRaw public fallback", pub.error);
+        return res.error ? null : [];
+      }
+      res = pub;
     }
-    return (res.data || []).map(function (row) {
-      var p = row.payload && typeof row.payload === "object" ? Object.assign({}, row.payload) : {};
-      p.id = row.admin_id;
-      p.status = row.status || p.status || "active";
-      p.priority = row.priority != null ? row.priority : p.priority;
-      return p;
-    });
+    return (res.data || []).map(mapProductAdminRow).filter(Boolean);
   }
 
   async function pushAdminProductsPayload(productsArray) {

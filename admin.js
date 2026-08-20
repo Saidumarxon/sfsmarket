@@ -165,6 +165,55 @@ sidebarLinks.forEach(link => {
   });
 });
 
+function activateEditorBasicTab() {
+  document.querySelectorAll('.editor-tab').forEach((t) => t.classList.remove('active'));
+  document.querySelectorAll('.editor-tab-content').forEach((c) => c.classList.remove('active'));
+  document.querySelector('.editor-tab[data-tab="basic"]')?.classList.add('active');
+  document.querySelector('.editor-tab-content[data-tab="basic"]')?.classList.add('active');
+}
+
+function openNewProductEditor() {
+  try {
+    const draft = typeof readProductDraft === 'function' ? readProductDraft() : null;
+    if (
+      typeof isProductEditorMeaningful === 'function' &&
+      isProductEditorMeaningful(draft) &&
+      draft &&
+      !draft.editingProductId &&
+      typeof openProductEditorFromDraft === 'function'
+    ) {
+      openProductEditorFromDraft();
+      return;
+    }
+
+    if (typeof editingProductId !== 'undefined') {
+      editingProductId = null;
+    }
+    if (typeof clearEditorForm === 'function') clearEditorForm();
+    const crumb = document.getElementById('editorBreadcrumb');
+    if (crumb) crumb.textContent = 'Добавить';
+    if (pageTitle) pageTitle.textContent = 'Продукты › Добавить';
+    switchPage('product-editor');
+    activateEditorBasicTab();
+    if (typeof updateProductDraftUi === 'function') updateProductDraftUi();
+  } catch (err) {
+    console.error('[admin] open product editor failed', err);
+    document.querySelectorAll('.admin-page').forEach((p) => p.classList.remove('active'));
+    document.getElementById('page-product-editor')?.classList.add('active');
+    if (pageTitle) pageTitle.textContent = 'Продукты › Добавить';
+    alert('Не удалось полностью открыть редактор. Страница всё равно показана — заполните форму и сохраните.\n\n' + (err?.message || err));
+  }
+}
+
+window.emirateOpenProductEditor = openNewProductEditor;
+
+document.addEventListener('click', function (e) {
+  const btn = e.target.closest('#addProductBtn');
+  if (!btn) return;
+  e.preventDefault();
+  openNewProductEditor();
+});
+
 // ===== LOGOUT =====
 document.getElementById('logoutBtn').addEventListener('click', async function() {
   if (window.emirateSupabaseApi?.isConfigured?.() && window.emirateSupabase) {
@@ -1570,9 +1619,12 @@ function formatBrandUpdatedAt(value) {
 
 function resetBrandForm() {
   document.getElementById('brandForm')?.reset();
-  document.getElementById('brandId').value = '';
-  document.getElementById('brandStatus').value = 'active';
-  document.getElementById('brandSortOrder').value = '100';
+  const brandId = document.getElementById('brandId');
+  const brandStatus = document.getElementById('brandStatus');
+  const brandSort = document.getElementById('brandSortOrder');
+  if (brandId) brandId.value = '';
+  if (brandStatus) brandStatus.value = 'active';
+  if (brandSort) brandSort.value = '100';
   pendingBrandLogoData = null;
   setBrandLogoPreview('');
   const saveBtn = document.getElementById('brandSaveBtn');
@@ -1797,9 +1849,12 @@ function renderStoreCatalogs(data = storeCatalogsData) {
 
 function resetCatalogForm() {
   document.getElementById('catalogForm')?.reset();
-  document.getElementById('catalogId').value = '';
-  document.getElementById('catalogStatus').value = 'active';
-  document.getElementById('catalogSortOrder').value = '100';
+  const catalogId = document.getElementById('catalogId');
+  const catalogStatus = document.getElementById('catalogStatus');
+  const catalogSort = document.getElementById('catalogSortOrder');
+  if (catalogId) catalogId.value = '';
+  if (catalogStatus) catalogStatus.value = 'active';
+  if (catalogSort) catalogSort.value = '100';
   pendingCatalogImageData = null;
   setCatalogImagePreview('');
   renderCatalogCategoryPicker([]);
@@ -2345,6 +2400,7 @@ function syncStorefrontPricesFromUsd({ force = false } = {}) {
 
 let productsData = loadProductsData().map(normalizeProductRecord).filter((item) => item && item.id);
 let productsLoading = !!window.emirateSupabaseApi?.isConfigured?.();
+void loadAdminProductsFromSupabase();
 
 function renderProducts() {
   const tbody = document.getElementById('productsBody');
@@ -2358,8 +2414,15 @@ function renderProducts() {
   }
   if (!productsData.length) {
     tbody.innerHTML =
-      '<tr><td colspan="7" style="text-align:center;padding:28px;color:#64748b">Нет товаров. Нажмите «+ Добавить», чтобы создать первый.</td></tr>';
+      '<tr><td colspan="7" style="text-align:center;padding:36px 20px;">' +
+      '<p style="margin:0 0 14px;color:#64748b">В админке список пуст. Если на сайте товары видны — нажмите «Обновить». Добавить новый товар можно кнопкой ниже.</p>' +
+      '<button type="button" class="btn-add" id="addProductBtnEmpty">+ Добавить первый товар</button>' +
+      '</td></tr>';
     if (countEl) countEl.textContent = 'Показано 0 товаров';
+    document.getElementById('addProductBtnEmpty')?.addEventListener('click', function (e) {
+      e.preventDefault();
+      openNewProductEditor();
+    });
     return;
   }
   tbody.innerHTML = productsData.map(renderProductRow).join('');
@@ -2406,7 +2469,33 @@ async function loadAdminProductsFromSupabase() {
       return;
     }
 
-    const raw = await api.pullAdminProductsRaw();
+    let raw = await api.pullAdminProductsRaw();
+    if ((!raw || !raw.length) && api.fetchPublicCatalogProducts) {
+      const publicItems = await api.fetchPublicCatalogProducts();
+      if (Array.isArray(publicItems) && publicItems.length) {
+        raw = publicItems.map((item) => ({
+          id: item.sku || item.id,
+          nameRu: item.title || item.nameRu || '',
+          nameUz: item.nameUz || item.title || '',
+          category: item.category || '',
+          brand: item.brand || '',
+          model: item.model || '',
+          price: item.price,
+          oldPrice: item.oldPrice,
+          photos: Array.isArray(item.photos) ? item.photos : [],
+          status: 'active',
+          descRu: item.descRu || '',
+          descUz: item.descUz || '',
+          specs: item.specs || [],
+          colors: item.colors || [],
+          memoryVariants: item.memoryVariants || [],
+          colorMeta: item.colorMeta,
+          memoryMeta: item.memoryMeta,
+          priority: item.priority
+        }));
+        showAdminProductsBanner('Список подгружен как на сайте. Можно редактировать и добавлять товары.', 'info');
+      }
+    }
     if (raw === null) {
       showAdminProductsBanner(
         'Не удалось загрузить товары из Supabase. Войдите с email из Authentication и добавьте его в таблицу admin_users (SQL в supabase/schema.sql).',
@@ -3284,37 +3373,42 @@ async function applyOrderStatusChange(orderId, newStatus, pickerEl) {
 }
 
 // ===== RENDER ALL =====
-void loadClientsFromSupabase();
-renderSuppliers();
-if (!localStorage.getItem(ADMIN_CATEGORIES_KEY)) {
-  persistCategoriesData();
+try {
+  void loadClientsFromSupabase();
+  renderSuppliers();
+  if (!localStorage.getItem(ADMIN_CATEGORIES_KEY)) {
+    persistCategoriesData();
+  }
+  if (!localStorage.getItem(ADMIN_BRANDS_KEY)) {
+    persistBrandsData();
+  }
+  if (!localStorage.getItem(ADMIN_CATALOGS_KEY)) {
+    persistStoreCatalogsData();
+  }
+  renderCategories();
+  syncProductCategorySelect();
+  initCategoryTreePicker();
+  resetCategoryForm();
+  syncCategoryParentSelect();
+  renderBrands();
+  syncProductBrandSelect();
+  resetBrandForm();
+  renderCatalogCategoryPicker([]);
+  renderStoreCatalogs();
+  resetCatalogForm();
+  renderProducts();
+  renderBanners();
+  renderIntake();
+  setupIntakeFilters();
+  syncIntakeCounterpartyControls();
+  resetBannerForm();
+  setBannerReadonlyMode();
+  resetSupplierForm();
+  resetAssetUploadState();
+} catch (err) {
+  console.error('[admin] init failed', err);
+  try { renderProducts(); } catch (_) {}
 }
-if (!localStorage.getItem(ADMIN_BRANDS_KEY)) {
-  persistBrandsData();
-}
-if (!localStorage.getItem(ADMIN_CATALOGS_KEY)) {
-  persistStoreCatalogsData();
-}
-renderCategories();
-syncProductCategorySelect();
-initCategoryTreePicker();
-resetCategoryForm();
-syncCategoryParentSelect();
-renderBrands();
-syncProductBrandSelect();
-resetBrandForm();
-renderCatalogCategoryPicker([]);
-renderStoreCatalogs();
-resetCatalogForm();
-renderProducts();
-renderBanners();
-renderIntake();
-setupIntakeFilters();
-syncIntakeCounterpartyControls();
-resetBannerForm();
-setBannerReadonlyMode();
-resetSupplierForm();
-resetAssetUploadState();
 
 function readLocalProductsCache() {
   try {
@@ -3358,8 +3452,6 @@ document.addEventListener('visibilitychange', function () {
     startOrdersPolling();
   }
 });
-
-void loadAdminProductsFromSupabase();
 
 document.getElementById('refreshProductsBtn')?.addEventListener('click', () => {
   void loadAdminProductsFromSupabase();
@@ -4773,35 +4865,6 @@ editorTabs.forEach(tab => {
     const target = document.querySelector(`.editor-tab-content[data-tab="${tabName}"]`);
     if (target) target.classList.add('active');
   });
-});
-
-// Open editor for new product
-document.getElementById('addProductBtn')?.addEventListener('click', function(e) {
-  e.preventDefault();
-  try {
-    // Есть черновик нового товара — тихо продолжаем без всплывающих окон
-    const draft = readProductDraft();
-    if (isProductEditorMeaningful(draft) && !draft.editingProductId) {
-      openProductEditorFromDraft();
-      return;
-    }
-
-    editingProductId = null;
-    clearEditorForm();
-    const crumb = document.getElementById('editorBreadcrumb');
-    if (crumb) crumb.textContent = 'Добавить';
-    if (pageTitle) pageTitle.textContent = 'Продукты › Добавить';
-    switchPage('product-editor');
-    // Reset to first tab
-    editorTabs.forEach(t => t.classList.remove('active'));
-    editorTabContents.forEach(c => c.classList.remove('active'));
-    editorTabs[0]?.classList.add('active');
-    editorTabContents[0]?.classList.add('active');
-    updateProductDraftUi();
-  } catch (err) {
-    console.error('[admin] open product editor failed', err);
-    alert('Не удалось открыть редактор товара. Обновите страницу (Ctrl+F5) и попробуйте снова.\n\n' + (err?.message || err));
-  }
 });
 
 // Open editor for existing product
