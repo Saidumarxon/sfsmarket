@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260820g">
+  <link rel="stylesheet" href="styles.css?v=20260820h">
   <link rel="stylesheet" href="mobile.css">
   <!-- Optional: <script src="emirate-seo-config.js"></script> for Google/Yandex verification -->
   <script src="emirate-seo-config.js"></script>
@@ -108,6 +108,16 @@
     <section class="hero hero--full container">
       <div class="hero-main">
         <div class="hero-slider" aria-busy="true"></div>
+      </div>
+    </section>
+
+    <!-- ===== BRANDS ===== -->
+    <section class="container section section--brands">
+      <div class="section-header">
+        <h2 data-i18n="section.brands">Популярные бренды</h2>
+      </div>
+      <div class="brands-grid brands-row" id="homeBrandsGrid">
+        <a href="catalog.html?brand=Apple" class="brand-card">Apple</a>
       </div>
     </section>
 
@@ -188,38 +198,36 @@
     </section>
     <div id="feedTrigger" style="height:1px"></div>
 
-    <!-- ===== BRANDS ===== -->
-    <section class="container section">
-      <div class="section-header">
-        <h2 data-i18n="section.brands">Популярные бренды</h2>
-      </div>
-      <div class="brands-grid" id="homeBrandsGrid">
-        <a href="catalog.html?brand=Apple" class="brand-card">Apple</a>
-      </div>
-    </section>
-
     <!-- ===== PERKS ===== -->
-    <section class="container section">
-      <div class="perks-grid">
+    <section class="container section section--perks">
+      <div class="perks-grid perks-row">
         <article class="perk-card">
           <div class="perk-icon"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg></div>
-          <h3 data-i18n="perk.installment">0-0-12</h3>
-          <p data-i18n="perk.installmentDesc">Рассрочка без переплат на любой товар</p>
+          <div class="perk-copy">
+            <h3 data-i18n="perk.installment">0-0-12</h3>
+            <p data-i18n="perk.installmentDesc">Рассрочка без переплат на любой товар</p>
+          </div>
         </article>
         <article class="perk-card">
           <div class="perk-icon"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8zM5 21a2 2 0 100-4 2 2 0 000 4zM19 21a2 2 0 100-4 2 2 0 000 4z"/></svg></div>
-          <h3 data-i18n="perk.delivery">24 часа</h3>
-          <p data-i18n="perk.deliveryDesc">Бесплатная доставка по Ташкенту</p>
+          <div class="perk-copy">
+            <h3 data-i18n="perk.delivery">24 часа</h3>
+            <p data-i18n="perk.deliveryDesc">Бесплатная доставка по Ташкенту</p>
+          </div>
         </article>
         <article class="perk-card">
           <div class="perk-icon"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-          <h3 data-i18n="perk.guarantee">Гарантия</h3>
-          <p data-i18n="perk.guaranteeDesc">Только оригинальная продукция</p>
+          <div class="perk-copy">
+            <h3 data-i18n="perk.guarantee">Гарантия</h3>
+            <p data-i18n="perk.guaranteeDesc">Только оригинальная продукция</p>
+          </div>
         </article>
         <article class="perk-card">
           <div class="perk-icon"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-          <h3 data-i18n="perk.support">Поддержка</h3>
-          <p data-i18n="perk.supportDesc">Консультация 7 дней в неделю</p>
+          <div class="perk-copy">
+            <h3 data-i18n="perk.support">Поддержка</h3>
+            <p data-i18n="perk.supportDesc">Консультация 7 дней в неделю</p>
+          </div>
         </article>
       </div>
     </section>
