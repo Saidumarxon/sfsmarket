@@ -340,7 +340,10 @@ function normalizeViewedProduct(product) {
     rating: normalizeNumber(product.rating),
     reviews: normalizeNumber(product.reviews),
     badge: typeof product.badge === "string" ? product.badge : "",
-    image: typeof product.image === "string" ? product.image : ""
+    image: typeof product.image === "string" ? product.image : "",
+    photos: Array.isArray(product.photos)
+      ? product.photos.map((url) => String(url || "").trim()).filter(Boolean)
+      : (typeof product.image === "string" && product.image ? [product.image] : [])
   };
 }
 

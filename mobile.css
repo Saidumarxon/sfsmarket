@@ -70,6 +70,29 @@ html.capacitor-app .catalog-dropdown {
   top: calc(var(--app-header-height, 68px) + var(--safe-top));
 }
 
+html.capacitor-app .section--perks {
+  display: none !important;
+}
+
+html.capacitor-app .category-section {
+  display: none !important;
+}
+
+html.capacitor-app #feedSection:not([hidden]) {
+  margin-top: 8px;
+}
+
+html.capacitor-app #feedSection .section-header {
+  padding: 0 12px;
+  margin-bottom: 8px;
+}
+
+html.capacitor-app #feedGrid.products-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  margin: 0;
+}
+
 /* ===== Profile (guest) screen ===== */
 body.profile-page {
   background: #f0f2f5;

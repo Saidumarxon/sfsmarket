@@ -497,6 +497,49 @@ async function insertOrderViaService(orderRow) {
   return { ok: true, id: id, order: payload };
 }
 
+async function redeemPromoViaService(code) {
+  if (!SUPABASE_SERVICE) return { ok: false, error: "service_role_missing" };
+  const key = String(code || "").trim().toUpperCase();
+  if (!key) return { ok: false, error: "empty_code" };
+  const read = await fetch(
+    SUPABASE_URL + "/rest/v1/promos?code=eq." + encodeURIComponent(key) + "&select=admin_id,code,used_count,max_uses,is_active,payload",
+    {
+      headers: {
+        apikey: SUPABASE_SERVICE,
+        Authorization: "Bearer " + SUPABASE_SERVICE,
+        Accept: "application/json",
+      },
+    }
+  );
+  if (!read.ok) return { ok: false, error: "promo_read_failed" };
+  const rows = await read.json();
+  const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
+  if (!row) return { ok: false, error: "not_found" };
+  if (row.is_active === false) return { ok: false, error: "inactive" };
+  const used = Number(row.used_count) || 0;
+  const maxUses = Number(row.max_uses) || 1;
+  if (used >= maxUses) return { ok: false, error: "limit" };
+  const payload = row.payload && typeof row.payload === "object" ? row.payload : {};
+  payload.usedCount = used + 1;
+  payload.updatedAt = new Date().toISOString();
+  const patch = await fetch(SUPABASE_URL + "/rest/v1/promos?admin_id=eq." + encodeURIComponent(row.admin_id), {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_SERVICE,
+      Authorization: "Bearer " + SUPABASE_SERVICE,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      used_count: used + 1,
+      payload: payload,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  if (!patch.ok) return { ok: false, error: "promo_update_failed" };
+  return { ok: true, usedCount: used + 1 };
+}
+
 function formatOrderItems(order) {
   const items = order.items || [];
   if (!items.length) return "• (пусто)";
@@ -994,5 +1037,6 @@ module.exports = {
   fetchOrderById,
   notifyAdminNewOrder,
   insertOrderViaService,
+  redeemPromoViaService,
   sanitizeOrderPayload,
 };

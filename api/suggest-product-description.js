@@ -101,7 +101,10 @@ function buildPrompt(input) {
     "- No markdown, no outer html/body\n" +
     "- Be factual; do not invent exact specs if unknown — use generic placeholders\n" +
     "- FAQ heading Ru: Часто задаваемые вопросы; Uz: Ko'p beriladigan savollar (FAQ)\n" +
-    "- specs: 4-8 rows with bilingual keys/values relevant to category"
+    "- specs: 4-8 rows with bilingual keys/values relevant to category\n" +
+    "- descRu and descUz are BOTH required — never leave descRu empty\n" +
+    "- Write descRu first, then descUz\n" +
+    "- Each description 90-150 words, not longer"
   );
 }
 
@@ -115,12 +118,13 @@ async function suggestWithOpenAI(apiKey, input) {
     body: JSON.stringify({
       model: OPENAI_MODEL,
       temperature: 0.35,
-      max_tokens: 2200,
+      max_tokens: 4000,
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content: "You are an expert e-commerce copywriter for electronics retail in Uzbekistan. Return valid JSON only.",
+          content:
+            "You are an expert e-commerce copywriter for electronics retail in Uzbekistan. Always write BOTH Russian and Uzbek. Return valid JSON only.",
         },
         { role: "user", content: buildPrompt(input) },
       ],
@@ -136,12 +140,72 @@ async function suggestWithOpenAI(apiKey, input) {
   const text = json && json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content;
   const parsed = extractJson(text);
   if (!parsed) return null;
-  return normalizePayload(parsed, input);
+  let payload = normalizePayload(parsed, input);
+  if (payload && (!payload.descRu || !payload.descUz)) {
+    payload = await fillMissingLanguage(apiKey, payload, input);
+  }
+  return payload;
+}
+
+function pickDesc(parsed, keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const value = sanitizeHtml(String(parsed[keys[i]] || "").trim());
+    if (value) return value;
+  }
+  return "";
+}
+
+async function fillMissingLanguage(apiKey, payload, input) {
+  const missing = !payload.descRu ? "ru" : "uz";
+  const source = missing === "ru" ? payload.descUz : payload.descRu;
+  if (!source) return payload;
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + apiKey,
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        temperature: 0.2,
+        max_tokens: 1800,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: "Translate e-commerce product HTML. Keep the same HTML tags. Return valid JSON only.",
+          },
+          {
+            role: "user",
+            content:
+              missing === "ru"
+                ? 'Translate this Uzbek product HTML into natural Russian. Return {"descRu":"..."}.\n\n' + source
+                : 'Translate this Russian product HTML into Uzbek Latin. Return {"descUz":"..."}.\n\n' + source,
+          },
+        ],
+      }),
+    });
+    const json = await res.json().catch(function () {
+      return null;
+    });
+    const text = json && json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content;
+    const parsed = extractJson(text);
+    if (!parsed) return payload;
+    if (missing === "ru") {
+      payload.descRu = sanitizeHtml(String(parsed.descRu || parsed.text || "").trim()) || payload.descRu;
+    } else {
+      payload.descUz = sanitizeHtml(String(parsed.descUz || parsed.text || "").trim()) || payload.descUz;
+    }
+  } catch (err) {
+    console.warn("[suggest-product-description] fillMissingLanguage", err && err.message ? err.message : err);
+  }
+  return payload;
 }
 
 function normalizePayload(parsed, input) {
-  const descRu = sanitizeHtml(String(parsed.descRu || "").trim());
-  const descUz = sanitizeHtml(String(parsed.descUz || "").trim());
+  const descRu = pickDesc(parsed, ["descRu", "descriptionRu", "ru", "description_ru"]);
+  const descUz = pickDesc(parsed, ["descUz", "descriptionUz", "uz", "description_uz"]);
   if (!descRu && !descUz) return null;
 
   const specs = Array.isArray(parsed.specs)

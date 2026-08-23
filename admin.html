@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=20260820e">
+  <link rel="stylesheet" href="admin.css?v=20260823c">
   <style>
     /* Старые кэшированные баннеры черновика больше не показываем */
     #productDraftBanner,
@@ -107,6 +107,11 @@
       <a class="sidebar-link" data-page="banners">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M8 15h8"/></svg>
         Баннеры
+      </a>
+
+      <a class="sidebar-link" data-page="promos">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        Промокоды
       </a>
 
       <a class="sidebar-link" data-page="suppliers">
@@ -559,7 +564,7 @@
                 <select id="categoryParentId">
                   <option value="">— Корень (верхний уровень) —</option>
                 </select>
-                <span class="form-hint">Для дерева: например «Умные часы» → родитель «Электроника».</span>
+                <span class="form-hint">Чтобы открыть мелкую категорию внутри крупной, выберите родителя. Или нажмите «+» в таблице.</span>
               </div>
               <div class="form-group">
                 <label for="categorySortOrder">Порядок</label>
@@ -637,6 +642,71 @@
           <div class="table-footer">
             <span id="categoriesCount">Показано 0</span>
             <div class="pagination"><button class="active">1</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PROMOS ==================== -->
+      <div class="admin-page" id="page-promos">
+        <div class="table-card category-editor-card">
+          <div class="table-card-header">
+            <h3>Промокод</h3>
+          </div>
+          <div class="category-feedback" id="promoFeedback" hidden></div>
+          <form id="promoForm" class="category-form">
+            <input type="hidden" id="promoId">
+            <div class="category-grid">
+              <div class="form-group">
+                <label class="required" for="promoCode">Код</label>
+                <input type="text" id="promoCode" placeholder="EMIRATE" required>
+                <span class="form-hint">Клиент вводит этот код при заказе.</span>
+              </div>
+              <div class="form-group">
+                <label for="promoType">Тип скидки</label>
+                <select id="promoType">
+                  <option value="fixed">Фиксированная сумма (сум)</option>
+                  <option value="percent">Процент (%)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="required" for="promoValue">Размер скидки</label>
+                <input type="number" id="promoValue" min="1" step="1" placeholder="50000" required>
+                <span class="form-hint" id="promoValueHint">Например 50000 — минус 50 000 сум от заказа.</span>
+              </div>
+              <div class="form-group">
+                <label class="required" for="promoMaxUses">Сколько раз можно использовать</label>
+                <input type="number" id="promoMaxUses" min="1" step="1" value="1" required>
+                <span class="form-hint">1 = один раз на весь магазин, 10 = десять заказов.</span>
+              </div>
+              <div class="form-group">
+                <label for="promoStatus">Статус</label>
+                <select id="promoStatus">
+                  <option value="active">Активен</option>
+                  <option value="inactive">Неактивен</option>
+                </select>
+              </div>
+            </div>
+            <div class="category-form-actions">
+              <button type="button" class="btn-filter-reset" id="promoResetBtn">Очистить</button>
+              <button type="submit" class="btn-add" id="promoSaveBtn">Создать промокод</button>
+            </div>
+          </form>
+        </div>
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3>Промокоды</h3>
+            <div class="table-toolbar">
+              <button class="btn-add" id="addPromoBtn" type="button">Новый промокод</button>
+            </div>
+          </div>
+          <table class="admin-table" id="promosTable">
+            <thead>
+              <tr><th>Код</th><th>Скидка</th><th>Использовано</th><th>Лимит</th><th>Статус</th><th>Действия</th></tr>
+            </thead>
+            <tbody id="promosBody"></tbody>
+          </table>
+          <div class="table-footer">
+            <span id="promosCount">Показано 0</span>
           </div>
         </div>
       </div>
@@ -967,28 +1037,18 @@
               <div class="editor-section">
                 <div class="form-group">
                   <label class="required">Категория</label>
-                  <div class="category-tree-picker" id="pCategoryPicker">
+                  <div class="category-stack-picker" id="pCategoryPicker">
                     <input type="hidden" id="pCategory" value="">
-                    <button type="button" class="category-tree-trigger" id="pCategoryTrigger" aria-haspopup="listbox" aria-expanded="false">
-                      <span class="category-tree-path" id="pCategoryPath">Выберите категорию…</span>
-                      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="category-tree-panel" id="pCategoryPanel" hidden>
-                      <div class="category-tree-modes" role="tablist">
-                        <button type="button" class="category-tree-mode is-active" data-cat-mode="search">🔍 Поиск</button>
-                        <button type="button" class="category-tree-mode" data-cat-mode="browse">📂 По шагам</button>
-                      </div>
-                      <div class="category-tree-mode-pane" data-cat-pane="search">
-                        <input type="search" id="pCategorySearch" class="category-tree-search" placeholder="Начните вводить название категории…" autocomplete="off">
-                        <div class="category-tree-results" id="pCategorySearchResults"></div>
-                      </div>
-                      <div class="category-tree-mode-pane" data-cat-pane="browse" hidden>
-                        <div class="category-tree-breadcrumb" id="pCategoryBreadcrumb"></div>
-                        <div class="category-tree-browse" id="pCategoryBrowseList"></div>
-                      </div>
+                    <div class="category-stack-layout">
+                      <div class="category-stack-levels" id="pCategoryLevels"></div>
+                      <aside class="category-stack-note">Если вы измените категорию товара, предыдущие характеристики не сохранятся.</aside>
+                    </div>
+                    <button type="button" class="category-stack-accept" id="pCategoryAccept" disabled>Принять</button>
+                    <div class="category-stack-chosen">
+                      <span class="category-tree-path is-placeholder" id="pCategoryPath">Выберите категорию…</span>
                     </div>
                   </div>
-                  <small class="form-hint">Два способа: поиск по названию или вход по дереву шаг за шагом. При выборе подставятся характеристики по умолчанию.</small>
+                  <small class="form-hint">Сначала крупный раздел, затем подкатегории шаг за шагом. «Принять» доступно на последнем уровне.</small>
                 </div>
                 <div class="form-group">
                   <label class="required">Название Uz</label>
@@ -1149,6 +1209,7 @@
                 <p class="form-hint" id="pNbuRateLine" style="margin:0 0 12px;font-size:13px;color:#64748b;">
                   Курс NBU (продажа USD): загрузка… · на витрине +20%
                 </p>
+                <h4 class="price-block-title">1. Закуп</h4>
                 <div class="form-row">
                   <div class="form-group">
                     <label>Цена закупа (USD)</label>
@@ -1161,23 +1222,49 @@
                 </div>
                 <div class="form-row">
                   <div class="form-group">
+                    <label>Приход / себестоимость (сум)</label>
+                    <input type="text" id="pCostPrice" inputmode="numeric" placeholder="считается из USD × курс">
+                    <span class="form-hint">Если пусто — берём закуп в USD по курсу NBU, без наценки витрины.</span>
+                  </div>
+                  <div class="form-group">
+                    <label>Логистика (сум)</label>
+                    <input type="text" id="pLogisticsFee" inputmode="numeric" placeholder="5250">
+                    <span class="form-hint">Примерная доставка на 1 штуку. Можно поменять.</span>
+                  </div>
+                </div>
+                <h4 class="price-block-title">2. Витрина</h4>
+                <div class="form-row">
+                  <div class="form-group">
                     <label>Цена на витрине (сум)</label>
-                    <input type="text" id="pPrice" inputmode="numeric" placeholder="считается автоматически">
+                    <input type="text" id="pPrice" inputmode="numeric" placeholder="закуп × курс + 20%">
                   </div>
                   <div class="form-group">
                     <label>Старая цена на витрине (сум)</label>
                     <input type="text" id="pOldPrice" inputmode="numeric" placeholder="опционально">
                   </div>
                 </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label>Margin Price</label>
-                    <input type="text" id="pMarginPrice" placeholder="">
+                <input type="hidden" id="pMarginPrice" value="">
+                <div class="profit-calc" id="pProfitCalc">
+                  <div class="profit-calc-head">Предварительный расчёт на 1 шт.</div>
+                  <div class="profit-calc-grid">
+                    <div class="profit-calc-cell">
+                      <span>Цена продажи</span>
+                      <strong id="pProfitSale">—</strong>
+                    </div>
+                    <div class="profit-calc-cell">
+                      <span>Приход</span>
+                      <strong id="pProfitCost">—</strong>
+                    </div>
+                    <div class="profit-calc-cell">
+                      <span>Логистика</span>
+                      <strong id="pProfitLogistics">—</strong>
+                    </div>
+                    <div class="profit-calc-cell profit-calc-cell--result">
+                      <span>Соф фойда</span>
+                      <strong id="pProfitNet">—</strong>
+                    </div>
                   </div>
-                  <div class="form-group">
-                    <label>Себестоимость (сум)</label>
-                    <input type="text" id="pCostPrice" placeholder="">
-                  </div>
+                  <p class="profit-calc-formula" id="pProfitFormula">Продажа − приход − логистика</p>
                 </div>
                 <div class="form-group">
                   <label>Рассрочка (мес.)</label>
@@ -1456,9 +1543,10 @@
   <script src="supabase-config.js"></script>
   <script src="supabase-config.prod.js"></script>
   <script src="emirate-exchange.js?v=20260808e"></script>
-  <script src="emirate-supabase-api.js?v=20260820c"></script>
+  <script src="emirate-supabase-api.js?v=20260823h"></script>
   <script src="emirate-auth.js"></script>
   <script src="emirate-brands.js"></script>
+  <script src="emirate-promos.js?v=20260823h"></script>
   <script src="emirate-catalogs.js"></script>
   <script>
     (async function emirateAdminEntry() {
@@ -1471,7 +1559,7 @@
         var gate = document.getElementById("adminAuthGate");
         if (gate) gate.remove();
         var tag = document.createElement("script");
-        tag.src = "admin.js?v=20260820e";
+        tag.src = "admin.js?v=20260823h";
         document.body.appendChild(tag);
       }
 

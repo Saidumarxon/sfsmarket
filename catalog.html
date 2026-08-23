@@ -28,7 +28,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260820g">
+  <link rel="stylesheet" href="styles.css?v=20260823h">
   <link rel="stylesheet" href="mobile.css">
   <script>
     (function () {
@@ -276,6 +276,11 @@
           <p><span data-i18n="cart.discount">Скидка</span><strong id="cartSummaryDiscount">0 сум</strong></p>
           <p class="cart-summary-total"><span data-i18n="cart.total">Итого</span><strong id="cartSummaryTotal">0 сум</strong></p>
         </div>
+        <div class="cart-promo">
+          <input id="cartPromoCode" type="text" placeholder="Promokod" autocomplete="off">
+          <button type="button" class="btn-filter-reset" id="cartPromoApply">OK</button>
+          <p class="cart-promo-status" id="cartPromoStatus"></p>
+        </div>
         <div class="cart-summary-actions">
           <button class="btn-primary" id="proceedCheckoutBtn" type="button" data-i18n="cart.checkoutShort">Оформить</button>
           <button class="btn-filter-reset" id="clearCartBtn" type="button" data-i18n="cart.clearAll">Удалить все</button>
@@ -372,15 +377,16 @@
   <script src="supabase-config.js"></script>
   <script src="supabase-config.prod.js"></script>
   <script src="emirate-exchange.js?v=20260808e"></script>
-  <script src="emirate-supabase-api.js?v=20260808e"></script>
-  <script src="emirate-brands.js"></script>
+  <script src="emirate-supabase-api.js?v=20260823h"></script>
+  <script src="emirate-brands.js?v=20260823f"></script>
+  <script src="emirate-promos.js?v=20260823h"></script>
   <script src="emirate-catalogs.js"></script>
   <script src="emirate-auth.js?v=20260820g"></script>
   <script src="translations.js"></script>
   <script src="emirate-telegram-config.js"></script>
-  <script src="common.js?v=20260820g"></script>
+  <script src="common.js?v=20260823d"></script>
   <script src="emirate-image-search.js"></script>
-  <script src="catalog.js?v=20260820g"></script>
+  <script src="catalog.js?v=20260823h"></script>
   <script src="mobile-storefront-fix.js"></script>
 </body>
 </html>

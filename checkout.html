@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20260823h">
   <link rel="stylesheet" href="mobile.css">
   <script src="emirate-seo.js"></script>
   <script src="theme.js"></script>
@@ -91,6 +91,13 @@
             <label><input type="radio" name="payment" value="cash"> При получении (Наличными)</label>
             <label><input type="radio" name="payment" value="account"> Оплата с лицевого счета</label>
           </div>
+          <div class="checkout-promo">
+            <label>Промокод
+              <input id="checkoutPromoCode" type="text" placeholder="EMIRATE" autocomplete="off">
+            </label>
+            <button type="button" class="btn-filter-reset" id="checkoutPromoApply">Применить</button>
+            <p class="checkout-promo-status" id="checkoutPromoStatus"></p>
+          </div>
           <label class="checkout-agree"><input type="checkbox" required> Я согласен с правилами покупки товаров</label>
           <div class="checkout-actions">
             <button type="submit" class="btn-primary">Заказать</button>
@@ -99,6 +106,7 @@
         </form>
         <aside class="checkout-side">
           <h4>В корзине <span id="checkoutCount">0</span> товар(ов)</h4>
+          <p class="checkout-side-discount" id="checkoutDiscountRow" hidden>Скидка по промокоду: <strong id="checkoutDiscount">0 сум</strong></p>
           <p class="checkout-side-total" id="checkoutTotal">0 сум</p>
           <div id="checkoutItemsPreview"></div>
         </aside>
@@ -112,10 +120,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase-config.js"></script>
   <script src="supabase-config.prod.js"></script>
-  <script src="emirate-supabase-api.js"></script>
+  <script src="emirate-supabase-api.js?v=20260823h"></script>
   <script src="emirate-auth.js"></script>
   <script src="common.js"></script>
-  <script src="checkout.js"></script>
+  <script src="emirate-promos.js?v=20260823h"></script>
+  <script src="checkout.js?v=20260823h"></script>
   <script src="mobile-storefront-fix.js"></script>
 </body>
 </html>

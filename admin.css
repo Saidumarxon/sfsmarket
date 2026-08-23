@@ -996,6 +996,84 @@ body {
   position: relative;
 }
 
+.category-stack-picker {
+  display: grid;
+  gap: 12px;
+}
+
+.category-stack-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 16px;
+  align-items: start;
+}
+
+.category-stack-levels {
+  display: grid;
+  gap: 10px;
+}
+
+.category-stack-select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--admin-text);
+  font: inherit;
+}
+
+.category-stack-select:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.category-stack-note {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.category-stack-accept {
+  width: fit-content;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #7c3aed;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.category-stack-accept:hover:not(:disabled) {
+  background: #6d28d9;
+}
+
+.category-stack-accept:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.category-stack-chosen {
+  font-size: 13px;
+  color: #475569;
+}
+
+@media (max-width: 860px) {
+  .category-stack-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .category-tree-trigger {
   width: 100%;
   display: flex;
@@ -2118,6 +2196,87 @@ body {
 
 .title-suggest.is-loading {
   opacity: 0.75;
+}
+
+.price-block-title {
+  margin: 4px 0 12px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.profit-calc {
+  margin: 4px 0 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.profit-calc-head {
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.profit-calc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.profit-calc-cell {
+  padding: 14px;
+  border-right: 1px solid #e2e8f0;
+}
+
+.profit-calc-cell:last-child {
+  border-right: 0;
+}
+
+.profit-calc-cell span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.profit-calc-cell strong {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.profit-calc-cell--result {
+  background: #ecfdf5;
+}
+
+.profit-calc-cell--result strong {
+  color: #047857;
+}
+
+.profit-calc-cell.is-negative strong {
+  color: #b91c1c;
+}
+
+.profit-calc-formula {
+  margin: 0;
+  padding: 8px 14px 12px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+@media (max-width: 860px) {
+  .profit-calc-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .profit-calc-cell {
+    border-bottom: 1px solid #e2e8f0;
+  }
 }
 
 .form-row {

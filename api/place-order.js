@@ -19,10 +19,23 @@ module.exports = async function handler(req, res) {
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
     const orderRow = body.order && typeof body.order === "object" ? body.order : body;
+    const promoCode = String(orderRow.promo_code || body.promo_code || "").trim().toUpperCase();
+    if (promoCode && !String(orderRow.user_id || "").trim()) {
+      return res.status(401).json({ ok: false, error: "auth_required" });
+    }
+    if (promoCode) {
+      const note = String(orderRow.comment_text || "").trim();
+      const discount = Number(orderRow.promo_discount) || 0;
+      orderRow.comment_text = (note ? note + "\n" : "") + "[PROMO " + promoCode + (discount ? " −" + discount : "") + "]";
+    }
+
     const inserted = await bot.insertOrderViaService(orderRow);
     if (!inserted.ok) {
       const status = inserted.error === "service_role_missing" ? 503 : 400;
       return res.status(status).json(inserted);
+    }
+    if (promoCode && inserted.ok) {
+      await bot.redeemPromoViaService(promoCode).catch(function () {});
     }
     await bot.notifyAdminNewOrder(Object.assign({ id: inserted.id }, inserted.order)).catch(function () {});
 

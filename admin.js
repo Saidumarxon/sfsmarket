@@ -95,6 +95,7 @@ const pageTitles = {
   finance: 'Финансы',
   categories: 'Категории',
   brands: 'Бренды',
+  promos: 'Промокоды',
   catalogs: 'Каталоги',
   'product-editor': 'Продукты › Добавить',
 };
@@ -841,7 +842,7 @@ function deleteSupplier(supplierId) {
 
 const ADMIN_CATEGORIES_KEY = 'emirate_admin_categories_v1';
 
-function defaultCategoriesData() {
+function nestedCategoryBlueprint() {
   const smartphoneSpecs = [
     { keyRu: 'Память', keyUz: 'Xotira', valueRu: '', valueUz: '' },
     { keyRu: 'Экран', keyUz: 'Ekran', valueRu: '', valueUz: '' },
@@ -860,33 +861,120 @@ function defaultCategoriesData() {
     { keyRu: 'Совместимость', keyUz: 'Moslik', valueRu: '', valueUz: '' },
     { keyRu: 'Защита', keyUz: 'Himoya', valueRu: '', valueUz: '' }
   ];
-  const seed = [
-    { id: 'cat_electronics', nameRu: 'Электроника', nameUz: 'Elektronika', sortOrder: 1, parentId: '' },
-    { id: 'cat_phones', nameRu: 'Телефоны', nameUz: 'Telefonlar', sortOrder: 1, parentId: 'cat_electronics' },
-    { id: 'cat_smartphones', nameRu: 'Смартфоны', nameUz: 'Smartfonlar', sortOrder: 1, parentId: 'cat_phones' },
-    { id: 'cat_wearables', nameRu: 'Умные часы и браслеты', nameUz: 'Aqlli soatlar va brasletlar', sortOrder: 2, parentId: 'cat_phones' },
-    { id: 'cat_smartwatches', nameRu: 'Умные часы', nameUz: 'Aqlli soatlar', sortOrder: 1, parentId: 'cat_wearables' },
-    { id: 'cat_computers', nameRu: 'Компьютерная техника', nameUz: 'Kompyuter texnikasi', sortOrder: 2, parentId: 'cat_electronics' },
-    { id: 'cat_laptops', nameRu: 'Ноутбуки', nameUz: 'Noutbuklar', sortOrder: 1, parentId: 'cat_computers' },
-    { id: 'cat_pc_accessories', nameRu: 'Компьютерные аксессуары', nameUz: 'Kompyuter aksessuarlari', sortOrder: 2, parentId: 'cat_computers' },
-    { id: 'cat_keyboards', nameRu: 'Клавиатуры', nameUz: 'Klaviaturalar', sortOrder: 1, parentId: 'cat_pc_accessories' },
-    { id: 'cat_tv', nameRu: 'ТВ и аудио', nameUz: 'TV va audio', sortOrder: 3, parentId: 'cat_electronics' },
-    { id: 'cat_accessories', nameRu: 'Аксессуары', nameUz: 'Aksessuarlar', sortOrder: 4, parentId: 'cat_electronics' },
-    { id: 'cat_appliances', nameRu: 'Бытовая техника', nameUz: 'Maishiy texnika', sortOrder: 2, parentId: '' },
-    { id: 'cat_home', nameRu: 'Товары для дома', nameUz: 'Uy uchun tovarlar', sortOrder: 3, parentId: '' },
-    { id: 'cat_beauty', nameRu: 'Красота и здоровье', nameUz: 'Go\'zallik va salomatlik', sortOrder: 4, parentId: '' }
+  return [
+    { id: 'cat_smartphones', parentRu: '', nameRu: 'Смартфоны', nameUz: 'Smartfonlar', sortOrder: 1 },
+    { id: 'cat_smartphones_all', parentRu: 'Смартфоны', nameRu: 'Смартфоны', nameUz: 'Smartfonlar', sortOrder: 1, specs: smartphoneSpecs },
+    { id: 'cat_tablets', parentRu: 'Смартфоны', nameRu: 'Планшеты', nameUz: 'Planshetlar', sortOrder: 2 },
+    { id: 'cat_wearables', parentRu: 'Смартфоны', nameRu: 'Умные часы и фитнес-браслеты', nameUz: 'Aqlli soatlar va fitnes bilaguzuklar', sortOrder: 3 },
+    { id: 'cat_smartwatches', parentRu: 'Умные часы и фитнес-браслеты', nameRu: 'Умные часы', nameUz: 'Aqlli soatlar', sortOrder: 1, specs: watchSpecs },
+    { id: 'cat_fitbands', parentRu: 'Умные часы и фитнес-браслеты', nameRu: 'Фитнес-браслеты', nameUz: 'Fitnes bilaguzuklar', sortOrder: 2 },
+
+    { id: 'cat_laptops', parentRu: '', nameRu: 'Ноутбуки', nameUz: 'Noutbuklar', sortOrder: 2 },
+    { id: 'cat_laptops_all', parentRu: 'Ноутбуки', nameRu: 'Ноутбуки', nameUz: 'Noutbuklar', sortOrder: 1, specs: laptopSpecs },
+    { id: 'cat_monitors', parentRu: 'Ноутбуки', nameRu: 'Мониторы', nameUz: 'Monitorlar', sortOrder: 2 },
+    { id: 'cat_monoblocks', parentRu: 'Ноутбуки', nameRu: 'Моноблоки', nameUz: 'Monobloklar', sortOrder: 3 },
+    { id: 'cat_pc_accessories', parentRu: 'Ноутбуки', nameRu: 'Компьютерные аксессуары', nameUz: 'Kompyuter aksessuarlari', sortOrder: 4 },
+    { id: 'cat_keyboards', parentRu: 'Компьютерные аксессуары', nameRu: 'Клавиатуры', nameUz: 'Klaviaturalar', sortOrder: 1 },
+    { id: 'cat_mice', parentRu: 'Компьютерные аксессуары', nameRu: 'Мыши', nameUz: 'Sichqonchalar', sortOrder: 2 },
+    { id: 'cat_webcams', parentRu: 'Компьютерные аксессуары', nameRu: 'Веб-камеры', nameUz: 'Veb-kameralar', sortOrder: 3 },
+
+    { id: 'cat_tv', parentRu: '', nameRu: 'ТВ и аудио', nameUz: 'TV va audio', sortOrder: 3 },
+    { id: 'cat_tvs', parentRu: 'ТВ и аудио', nameRu: 'Телевизоры', nameUz: 'Televizorlar', sortOrder: 1 },
+    { id: 'cat_tv_led', parentRu: 'Телевизоры', nameRu: 'LED', nameUz: 'LED', sortOrder: 1 },
+    { id: 'cat_tv_oled', parentRu: 'Телевизоры', nameRu: 'OLED', nameUz: 'OLED', sortOrder: 2 },
+    { id: 'cat_headphones', parentRu: 'ТВ и аудио', nameRu: 'Наушники', nameUz: 'Quloqchinlar', sortOrder: 2 },
+    { id: 'cat_speakers', parentRu: 'ТВ и аудио', nameRu: 'Колонки', nameUz: 'Kolonkalar', sortOrder: 3 },
+    { id: 'cat_soundbars', parentRu: 'ТВ и аудио', nameRu: 'Саундбары', nameUz: 'Saundbarlar', sortOrder: 4 },
+
+    { id: 'cat_appliances', parentRu: '', nameRu: 'Бытовая техника', nameUz: 'Maishiy texnika', sortOrder: 4 },
+    { id: 'cat_vacuums', parentRu: 'Бытовая техника', nameRu: 'Пылесосы', nameUz: 'Changyutgichlar', sortOrder: 1 },
+    { id: 'cat_robot_vacuums', parentRu: 'Пылесосы', nameRu: 'Роботы-пылесосы', nameUz: 'Robot changyutgichlar', sortOrder: 1 },
+    { id: 'cat_aircon', parentRu: 'Бытовая техника', nameRu: 'Кондиционеры', nameUz: 'Konditsionerlar', sortOrder: 2 },
+    { id: 'cat_heaters', parentRu: 'Бытовая техника', nameRu: 'Обогреватели', nameUz: 'Isitgichlar', sortOrder: 3 },
+    { id: 'cat_microwaves', parentRu: 'Бытовая техника', nameRu: 'Микроволновки', nameUz: 'Mikroto\'lqinli pechlar', sortOrder: 4 },
+    { id: 'cat_kettles', parentRu: 'Бытовая техника', nameRu: 'Чайники', nameUz: 'Choynaklar', sortOrder: 5 },
+
+    { id: 'cat_accessories', parentRu: '', nameRu: 'Аксессуары', nameUz: 'Aksessuarlar', sortOrder: 5 },
+    { id: 'cat_cases', parentRu: 'Аксессуары', nameRu: 'Чехлы', nameUz: 'G\'iloflar', sortOrder: 1 },
+    { id: 'cat_glasses', parentRu: 'Аксессуары', nameRu: 'Защитные стёкла', nameUz: 'Himoya oynalari', sortOrder: 2 },
+    { id: 'cat_powerbanks', parentRu: 'Аксессуары', nameRu: 'Power Bank', nameUz: 'Power Bank', sortOrder: 3 },
+    { id: 'cat_chargers', parentRu: 'Аксессуары', nameRu: 'Зарядки', nameUz: 'Zaryadlovchilar', sortOrder: 4 },
+    { id: 'cat_cables', parentRu: 'Аксессуары', nameRu: 'Кабели', nameUz: 'Kabellar', sortOrder: 5 },
+    { id: 'cat_bags', parentRu: 'Аксессуары', nameRu: 'Сумки', nameUz: 'Sumkalar', sortOrder: 6 },
+    { id: 'cat_docks', parentRu: 'Аксессуары', nameRu: 'Док-станции', nameUz: 'Dok-stansiyalar', sortOrder: 7 },
+    { id: 'cat_adapters', parentRu: 'Аксессуары', nameRu: 'Адаптеры', nameUz: 'Adapterlar', sortOrder: 8 },
+
+    { id: 'cat_home', parentRu: '', nameRu: 'Товары для дома', nameUz: 'Uy uchun tovarlar', sortOrder: 6 },
+    { id: 'cat_lamps', parentRu: 'Товары для дома', nameRu: 'Лампы', nameUz: 'Lampalar', sortOrder: 1 },
+    { id: 'cat_smarthome', parentRu: 'Товары для дома', nameRu: 'Умный дом', nameUz: 'Aqlli uy', sortOrder: 2 },
+    { id: 'cat_textile', parentRu: 'Товары для дома', nameRu: 'Текстиль', nameUz: 'To\'qimachilik', sortOrder: 3 },
+    { id: 'cat_storage', parentRu: 'Товары для дома', nameRu: 'Хранение', nameUz: 'Saqlash', sortOrder: 4 },
+
+    { id: 'cat_beauty', parentRu: '', nameRu: 'Красота и здоровье', nameUz: 'Go\'zallik va salomatlik', sortOrder: 7 },
+    { id: 'cat_hairdryers', parentRu: 'Красота и здоровье', nameRu: 'Фены', nameUz: 'Fenlar', sortOrder: 1 },
+    { id: 'cat_trimmers', parentRu: 'Красота и здоровье', nameRu: 'Триммеры', nameUz: 'Trimmerlar', sortOrder: 2 },
+    { id: 'cat_scales', parentRu: 'Красота и здоровье', nameRu: 'Весы', nameUz: 'Tarozi', sortOrder: 3 },
+    { id: 'cat_beauty_care', parentRu: 'Красота и здоровье', nameRu: 'Уход', nameUz: 'Parvarish', sortOrder: 4 }
   ];
-  const specMap = {
-    cat_smartphones: smartphoneSpecs,
-    cat_laptops: laptopSpecs,
-    cat_smartwatches: watchSpecs
-  };
-  return seed.map((item) => ({
-    ...item,
-    isActive: true,
-    defaultSpecs: specMap[item.id] || [],
-    updatedAt: getDateTimeString()
-  }));
+}
+
+function defaultCategoriesData() {
+  const list = [];
+  const firstByName = new Map();
+  nestedCategoryBlueprint().forEach((row) => {
+    const parent = row.parentRu ? firstByName.get(String(row.parentRu).toLowerCase()) : null;
+    if (row.parentRu && !parent) return;
+    const rec = normalizeCategoryRecord({
+      id: row.id,
+      nameRu: row.nameRu,
+      nameUz: row.nameUz,
+      parentId: parent ? parent.id : '',
+      sortOrder: row.sortOrder,
+      defaultSpecs: row.specs || [],
+      isActive: true,
+      updatedAt: getDateTimeString()
+    });
+    list.push(rec);
+    if (!firstByName.has(row.nameRu.toLowerCase())) {
+      firstByName.set(row.nameRu.toLowerCase(), rec);
+    }
+  });
+  return list;
+}
+
+function findCategoryByNameRu(nameRu, parentId) {
+  const name = String(nameRu || '').trim().toLowerCase();
+  if (!name) return null;
+  const parent = parentId === undefined ? undefined : String(parentId || '');
+  return categoriesData.find((item) => {
+    if (item.nameRu.toLowerCase() !== name) return false;
+    if (parent === undefined) return true;
+    return String(item.parentId || '') === parent;
+  }) || null;
+}
+
+function ensureNestedCategorySeed() {
+  let added = 0;
+  nestedCategoryBlueprint().forEach((row) => {
+    if (!row.parentRu) return;
+    const parent = findCategoryByNameRu(row.parentRu);
+    if (!parent) return;
+    if (findCategoryByNameRu(row.nameRu, parent.id)) return;
+    const id = categoriesData.some((item) => item.id === row.id) ? undefined : row.id;
+    categoriesData.push(normalizeCategoryRecord({
+      id,
+      nameRu: row.nameRu,
+      nameUz: row.nameUz,
+      parentId: parent.id,
+      sortOrder: row.sortOrder,
+      defaultSpecs: row.specs || [],
+      isActive: true,
+      updatedAt: getDateTimeString()
+    }));
+    added += 1;
+  });
+  if (added) persistCategoriesData();
+  return added;
 }
 
 function normalizeCategorySpec(spec) {
@@ -954,6 +1042,14 @@ function categoryHasChildren(categoryId) {
   return categoriesData.some((item) => String(item.parentId || '').trim() === id);
 }
 
+function flattenCategoryTree(parentId = '') {
+  return getCategoryChildren(parentId).flatMap((item) => [item, ...flattenCategoryTree(item.id)]);
+}
+
+function collectDescendantCategoryIds(categoryId) {
+  return getCategoryChildren(categoryId).flatMap((item) => [item.id, ...collectDescendantCategoryIds(item.id)]);
+}
+
 function wouldCreateCategoryCycle(categoryId, parentId) {
   const id = String(categoryId || '').trim();
   let current = String(parentId || '').trim();
@@ -1007,6 +1103,7 @@ function loadCategoriesData() {
 }
 
 let categoriesData = loadCategoriesData().map(normalizeCategoryRecord);
+ensureNestedCategorySeed();
 let categoryFeedbackTimer = null;
 
 function persistCategoriesData() {
@@ -1055,7 +1152,8 @@ function renderCategories(data = categoriesData) {
   const count = document.getElementById('categoriesCount');
   if (!tbody || !count) return;
 
-  const sorted = [...data].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  const idSet = new Set(data.map((item) => item.id));
+  const sorted = flattenCategoryTree('').filter((item) => idSet.has(item.id));
 
   if (!sorted.length) {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:20px;">Нет категорий</td></tr>';
@@ -1064,13 +1162,14 @@ function renderCategories(data = categoriesData) {
   }
 
   tbody.innerHTML = sorted.map((category) => {
+    const depth = Math.max(0, getCategoryPath(category).length - 1);
     const pathLabel = getCategoryPathLabel(category, ' › ');
     const parentLabel = category.parentId
       ? (getCategoryById(category.parentId)?.nameRu || '—')
       : 'Корень';
     return `
     <tr>
-      <td><strong>${escapeHtml(category.nameRu)}</strong><div class="product-sku">${escapeHtml(category.id)}</div></td>
+      <td style="padding-left:${12 + depth * 18}px"><strong>${escapeHtml(category.nameRu)}</strong><div class="product-sku">${escapeHtml(category.id)}</div></td>
       <td><span class="category-path-cell" title="${escapeHtml(pathLabel)}">${escapeHtml(pathLabel || category.nameRu)}</span><div class="product-sku">${escapeHtml(parentLabel)}</div></td>
       <td>${escapeHtml(category.nameUz || '—')}</td>
       <td>${category.defaultSpecs.length}</td>
@@ -1079,6 +1178,7 @@ function renderCategories(data = categoriesData) {
       <td>${escapeHtml(category.updatedAt)}</td>
       <td>
         <div class="action-btns">
+          <button class="action-btn" title="Добавить подкатегорию" data-action="add-child-category" data-category-id="${escapeHtml(category.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
           <button class="action-btn" title="Редактировать" data-action="edit-category" data-category-id="${escapeHtml(category.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
           <button class="action-btn" title="Вкл/выкл" data-action="toggle-category" data-category-id="${escapeHtml(category.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/></svg></button>
           <button class="action-btn delete" title="Удалить" data-action="delete-category" data-category-id="${escapeHtml(category.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
@@ -1148,9 +1248,13 @@ function saveCategory(event) {
     return;
   }
 
-  const duplicate = categoriesData.find((item) => item.nameRu.toLowerCase() === nameRu.toLowerCase() && item.id !== id);
+  const duplicate = categoriesData.find((item) => (
+    item.nameRu.toLowerCase() === nameRu.toLowerCase() &&
+    item.id !== id &&
+    String(item.parentId || '') === parentId
+  ));
   if (duplicate) {
-    showCategoryFeedback('Категория с таким названием уже существует.', 'error', 3200);
+    showCategoryFeedback('В этой категории уже есть подкатегория с таким названием.', 'error', 3200);
     return;
   }
 
@@ -1191,11 +1295,23 @@ function toggleCategoryStatus(categoryId) {
   showCategoryFeedback(`Категория ${category.isActive ? 'активирована' : 'деактивирована'}.`, 'success');
 }
 
+function startAddChildCategory(parentId) {
+  const parent = getCategoryById(parentId);
+  if (!parent) return;
+  resetCategoryForm();
+  syncCategoryParentSelect(parent.id);
+  document.getElementById('categoryNameRu')?.focus();
+  showCategoryFeedback(`Подкатегория внутри «${parent.nameRu}». Укажите название.`, 'success');
+}
+
 function deleteCategory(categoryId) {
   const category = categoriesData.find((item) => item.id === categoryId);
   if (!category) return;
-  if (!confirm(`Удалить категорию "${category.nameRu}"?`)) return;
-  categoriesData = categoriesData.filter((item) => item.id !== categoryId);
+  const childIds = collectDescendantCategoryIds(categoryId);
+  const extra = childIds.length ? ` Вместе с ней удалятся ещё ${childIds.length} подкатегории.` : '';
+  if (!confirm(`Удалить категорию "${category.nameRu}"?${extra}`)) return;
+  const remove = new Set([categoryId, ...childIds]);
+  categoriesData = categoriesData.filter((item) => !remove.has(item.id));
   persistCategoriesData();
   renderCategories();
   syncProductCategorySelect();
@@ -1210,28 +1326,21 @@ function getCategoryByProductName(name) {
 }
 
 const categoryPickerState = {
-  open: false,
-  mode: 'search',
-  browseParentId: '',
-  browseStack: [],
+  stackIds: [],
   initialized: false,
 };
 
 function findCategoryByProductValue(value) {
   const key = String(value || '').trim();
   if (!key) return null;
-  return (
-    categoriesData.find((item) => item.id === key) ||
-    categoriesData.find((item) => item.nameRu === key) ||
-    categoriesData.find((item) => item.nameUz === key) ||
-    null
-  );
+  const matches = categoriesData.filter((item) => item.id === key || item.nameRu === key || item.nameUz === key);
+  if (!matches.length) return null;
+  return matches.sort((a, b) => getCategoryPath(b).length - getCategoryPath(a).length)[0];
 }
 
 function setProductCategoryValue(value, { silent = false } = {}) {
   const input = document.getElementById('pCategory');
   const pathEl = document.getElementById('pCategoryPath');
-  const trigger = document.getElementById('pCategoryTrigger');
   if (!input) return;
 
   const previous = input.value;
@@ -1251,7 +1360,8 @@ function setProductCategoryValue(value, { silent = false } = {}) {
       pathEl.classList.add('is-placeholder');
     }
   }
-  trigger?.classList.toggle('has-value', Boolean(nextValue));
+
+  hydrateCategoryStackFromValue(nextValue);
 
   if (!silent && previous !== nextValue) {
     input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1265,221 +1375,85 @@ function syncProductCategorySelect(selectedValue = '') {
     ? selectedValue
     : input.value;
   setProductCategoryValue(current, { silent: true });
-  if (categoryPickerState.open) {
-    renderCategoryPickerSearchResults(document.getElementById('pCategorySearch')?.value || '');
-    renderCategoryPickerBrowse();
-  }
 }
 
-function closeCategoryPicker() {
-  const panel = document.getElementById('pCategoryPanel');
-  const trigger = document.getElementById('pCategoryTrigger');
-  if (panel) panel.hidden = true;
-  trigger?.setAttribute('aria-expanded', 'false');
-  categoryPickerState.open = false;
+function hydrateCategoryStackFromValue(value) {
+  const category = findCategoryByProductValue(value);
+  categoryPickerState.stackIds = category ? getCategoryPath(category).map((item) => item.id) : [];
+  renderCategoryStackLevels();
+  syncCategoryAcceptButton();
 }
 
-function openCategoryPicker() {
-  const panel = document.getElementById('pCategoryPanel');
-  const trigger = document.getElementById('pCategoryTrigger');
-  if (!panel) return;
-  panel.hidden = false;
-  trigger?.setAttribute('aria-expanded', 'true');
-  categoryPickerState.open = true;
-  setCategoryPickerMode(categoryPickerState.mode || 'search');
-  if (categoryPickerState.mode === 'search') {
-    document.getElementById('pCategorySearch')?.focus();
-    renderCategoryPickerSearchResults(document.getElementById('pCategorySearch')?.value || '');
-  } else {
-    renderCategoryPickerBrowse();
-  }
+function getCategoryStackLeaf() {
+  const ids = categoryPickerState.stackIds || [];
+  const lastId = ids[ids.length - 1];
+  return lastId ? getCategoryById(lastId) : null;
 }
 
-function setCategoryPickerMode(mode) {
-  categoryPickerState.mode = mode === 'browse' ? 'browse' : 'search';
-  document.querySelectorAll('[data-cat-mode]').forEach(function (btn) {
-    btn.classList.toggle('is-active', btn.getAttribute('data-cat-mode') === categoryPickerState.mode);
-  });
-  document.querySelectorAll('[data-cat-pane]').forEach(function (pane) {
-    pane.hidden = pane.getAttribute('data-cat-pane') !== categoryPickerState.mode;
-  });
-  if (categoryPickerState.mode === 'search') {
-    renderCategoryPickerSearchResults(document.getElementById('pCategorySearch')?.value || '');
-  } else {
-    const selected = findCategoryByProductValue(document.getElementById('pCategory')?.value);
-    if (selected?.parentId) {
-      categoryPickerState.browseParentId = selected.parentId;
-      categoryPickerState.browseStack = getCategoryPath(selected.parentId);
-    } else {
-      categoryPickerState.browseParentId = '';
-      categoryPickerState.browseStack = [];
-    }
-    renderCategoryPickerBrowse();
-  }
+function syncCategoryAcceptButton() {
+  const btn = document.getElementById('pCategoryAccept');
+  if (!btn) return;
+  const leaf = getCategoryStackLeaf();
+  btn.disabled = !(leaf && !categoryHasChildren(leaf.id));
 }
 
-function renderCategoryPickerSearchResults(query) {
-  const box = document.getElementById('pCategorySearchResults');
+function renderCategoryStackLevels() {
+  const box = document.getElementById('pCategoryLevels');
   if (!box) return;
-  const q = String(query || '').trim().toLowerCase();
-  const selected = String(document.getElementById('pCategory')?.value || '').trim();
-  const items = categoriesData
-    .filter((item) => item.isActive)
-    .map((item) => ({
-      item,
-      path: getCategoryPathLabel(item, ' · '),
-      leaf: !categoryHasChildren(item.id),
-    }))
-    .filter((entry) => {
-      if (!q) return entry.leaf || categoriesData.length < 20;
-      const hay = (entry.path + ' ' + entry.item.nameRu + ' ' + entry.item.nameUz).toLowerCase();
-      return hay.includes(q);
-    })
-    .sort((a, b) => {
-      if (a.leaf !== b.leaf) return a.leaf ? -1 : 1;
-      return a.path.localeCompare(b.path, 'ru');
-    })
-    .slice(0, 40);
 
-  if (!items.length) {
-    box.innerHTML = `<div class="category-tree-empty">${q ? 'Ничего не найдено' : 'Начните вводить название категории'}</div>`;
-    return;
-  }
+  const stack = Array.isArray(categoryPickerState.stackIds) ? categoryPickerState.stackIds : [];
+  const levels = [{ parentId: '', selected: stack[0] || '' }];
+  stack.forEach((id, index) => {
+    if (categoryHasChildren(id)) {
+      levels.push({ parentId: id, selected: stack[index + 1] || '' });
+    }
+  });
 
-  box.innerHTML = items.map((entry) => {
-    const active = entry.item.nameRu === selected || entry.item.id === selected;
+  box.innerHTML = levels.map((level, index) => {
+    const options = getCategoryChildren(level.parentId, { activeOnly: true });
+    if (!options.length) return '';
     return `
-      <button type="button" class="category-tree-option${active ? ' is-active' : ''}" data-category-pick="${escapeHtml(entry.item.id)}">
-        <span class="category-tree-option-path">${escapeHtml(entry.path)}</span>
-        ${entry.leaf ? '' : '<span class="category-tree-option-tag">есть подкатегории</span>'}
-        ${active ? '<span class="category-tree-check">✓</span>' : ''}
-      </button>
+      <select class="category-stack-select" data-stack-level="${index}">
+        <option value="">Выберите категорию…</option>
+        ${options.map((item) => `
+          <option value="${escapeHtml(item.id)}"${item.id === level.selected ? ' selected' : ''}>${escapeHtml(item.nameRu)}</option>
+        `).join('')}
+      </select>
     `;
   }).join('');
 }
 
-function renderCategoryPickerBrowse() {
-  const list = document.getElementById('pCategoryBrowseList');
-  const crumb = document.getElementById('pCategoryBreadcrumb');
-  if (!list || !crumb) return;
-
-  const parentId = String(categoryPickerState.browseParentId || '');
-  const children = getCategoryChildren(parentId, { activeOnly: true });
-  const selected = String(document.getElementById('pCategory')?.value || '').trim();
-  const stack = categoryPickerState.browseStack || [];
-
-  crumb.innerHTML = `
-    <button type="button" class="category-tree-crumb" data-browse-to="">Все категории</button>
-    ${stack.map((item) => `
-      <span class="category-tree-crumb-sep">›</span>
-      <button type="button" class="category-tree-crumb" data-browse-to="${escapeHtml(item.id)}">${escapeHtml(item.nameRu)}</button>
-    `).join('')}
-  `;
-
-  if (!children.length) {
-    const parent = getCategoryById(parentId);
-    list.innerHTML = parent
-      ? `<button type="button" class="category-tree-option is-leaf" data-category-pick="${escapeHtml(parent.id)}">
-           <span class="category-tree-option-path">Выбрать «${escapeHtml(parent.nameRu)}»</span>
-           <span class="category-tree-check">✓</span>
-         </button>`
-      : '<div class="category-tree-empty">Нет категорий</div>';
-    return;
-  }
-
-  list.innerHTML = children.map((item) => {
-    const hasKids = categoryHasChildren(item.id);
-    const active = item.nameRu === selected || item.id === selected;
-    return `
-      <button type="button" class="category-tree-option${active ? ' is-active' : ''}${hasKids ? '' : ' is-leaf'}"
-        data-browse-item="${escapeHtml(item.id)}"
-        data-has-children="${hasKids ? '1' : '0'}"
-        data-category-pick="${hasKids ? '' : escapeHtml(item.id)}">
-        <span class="category-tree-option-path">${escapeHtml(item.nameRu)}</span>
-        ${hasKids ? '<span class="category-tree-option-tag">далее ›</span>' : '<span class="category-tree-option-tag">выбрать</span>'}
-        ${active ? '<span class="category-tree-check">✓</span>' : ''}
-      </button>
-    `;
-  }).join('');
+function onCategoryStackLevelChange(levelIndex, categoryId) {
+  const nextId = String(categoryId || '').trim();
+  const prev = (categoryPickerState.stackIds || []).slice(0, levelIndex);
+  categoryPickerState.stackIds = nextId ? prev.concat(nextId) : prev;
+  renderCategoryStackLevels();
+  syncCategoryAcceptButton();
 }
 
-function pickProductCategoryById(categoryId) {
-  const category = getCategoryById(categoryId);
-  if (!category) return;
-  setProductCategoryValue(category.nameRu);
-  closeCategoryPicker();
+function acceptProductCategoryStack() {
+  const leaf = getCategoryStackLeaf();
+  if (!leaf || categoryHasChildren(leaf.id)) return;
+  setProductCategoryValue(leaf.nameRu);
 }
 
 function initCategoryTreePicker() {
   if (categoryPickerState.initialized) return;
   const picker = document.getElementById('pCategoryPicker');
-  const trigger = document.getElementById('pCategoryTrigger');
-  const panel = document.getElementById('pCategoryPanel');
-  const search = document.getElementById('pCategorySearch');
-  if (!picker || !trigger || !panel) return;
+  const levels = document.getElementById('pCategoryLevels');
+  const accept = document.getElementById('pCategoryAccept');
+  if (!picker || !levels) return;
   categoryPickerState.initialized = true;
 
-  trigger.addEventListener('click', function (e) {
-    e.preventDefault();
-    if (categoryPickerState.open) closeCategoryPicker();
-    else openCategoryPicker();
+  levels.addEventListener('change', function (e) {
+    const select = e.target.closest('[data-stack-level]');
+    if (!select) return;
+    onCategoryStackLevelChange(Number(select.getAttribute('data-stack-level')) || 0, select.value);
   });
 
-  panel.querySelectorAll('[data-cat-mode]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      setCategoryPickerMode(btn.getAttribute('data-cat-mode'));
-      if (categoryPickerState.mode === 'search') {
-        search?.focus();
-      }
-    });
-  });
-
-  search?.addEventListener('input', function () {
-    renderCategoryPickerSearchResults(this.value);
-  });
-
-  panel.addEventListener('click', function (e) {
-    const crumb = e.target.closest('[data-browse-to]');
-    if (crumb) {
-      const to = crumb.getAttribute('data-browse-to') || '';
-      categoryPickerState.browseParentId = to;
-      categoryPickerState.browseStack = to ? getCategoryPath(to) : [];
-      renderCategoryPickerBrowse();
-      return;
-    }
-
-    const browseItem = e.target.closest('[data-browse-item]');
-    if (browseItem) {
-      const id = browseItem.getAttribute('data-browse-item');
-      const hasChildren = browseItem.getAttribute('data-has-children') === '1';
-      if (hasChildren) {
-        categoryPickerState.browseParentId = id;
-        categoryPickerState.browseStack = getCategoryPath(id);
-        renderCategoryPickerBrowse();
-      } else {
-        pickProductCategoryById(id);
-      }
-      return;
-    }
-
-    const pick = e.target.closest('[data-category-pick]');
-    if (pick) {
-      const id = pick.getAttribute('data-category-pick');
-      if (id) pickProductCategoryById(id);
-    }
-  });
-
-  document.addEventListener('click', function (e) {
-    if (!categoryPickerState.open) return;
-    if (picker.contains(e.target)) return;
-    closeCategoryPicker();
-  });
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && categoryPickerState.open) closeCategoryPicker();
-  });
-
-  syncProductCategorySelect();
+  accept?.addEventListener('click', acceptProductCategoryStack);
+  renderCategoryStackLevels();
+  syncCategoryAcceptButton();
 }
 
 function applyCategoryDefaultSpecsToProduct(categoryName, { mode = 'replace' } = {}) {
@@ -2322,6 +2296,10 @@ function normalizeProductRecord(product) {
 
 let storefrontPriceTouched = false;
 let suppressStorefrontPriceSync = false;
+let costPriceTouched = false;
+let suppressCostPriceSync = false;
+const DEFAULT_LOGISTICS_UZS = 5250;
+const LOGISTICS_DEFAULT_KEY = 'emirate_admin_logistics_uzs';
 
 function formatUzsInputValue(amount) {
   const n = Math.round(Number(amount) || 0);
@@ -2366,8 +2344,111 @@ function updateNbuRateLine() {
   el.textContent = `Курс NBU (продажа USD): ${meta.rate.toLocaleString('ru-RU')} сум · источник: ${meta.source} · ${when} · на витрине +20% · цена как Asaxiy (…9000)`;
 }
 
+function getDefaultLogisticsUzs() {
+  try {
+    const stored = parseAdminMoneyInput(localStorage.getItem(LOGISTICS_DEFAULT_KEY));
+    if (stored > 0) return stored;
+  } catch (_) {}
+  return DEFAULT_LOGISTICS_UZS;
+}
+
+function rememberLogisticsDefault(amount) {
+  const n = parseAdminMoneyInput(amount);
+  if (n <= 0) return;
+  try {
+    localStorage.setItem(LOGISTICS_DEFAULT_KEY, String(n));
+  } catch (_) {}
+}
+
+function fillLogisticsField(value) {
+  const el = document.getElementById('pLogisticsFee');
+  if (!el) return;
+  const n = parseAdminMoneyInput(value);
+  el.value = formatUzsInputValue(n > 0 ? n : getDefaultLogisticsUzs());
+}
+
+function getLogisticsUzs() {
+  const raw = String(document.getElementById('pLogisticsFee')?.value || '').trim();
+  if (!raw) return getDefaultLogisticsUzs();
+  return parseAdminMoneyInput(raw);
+}
+
+function getPurchaseCostUzs() {
+  const typed = parseAdminMoneyInput(document.getElementById('pCostPrice')?.value);
+  if (typed > 0) return typed;
+  const usd = window.emirateExchange?.parseUsdInput?.(document.getElementById('pPriceUsd')?.value) || 0;
+  if (usd > 0 && window.emirateExchange?.usdToBaseUzs) {
+    return window.emirateExchange.usdToBaseUzs(usd);
+  }
+  return 0;
+}
+
+function syncCostFromUsd({ force = false } = {}) {
+  if (!force && costPriceTouched) return;
+  const el = document.getElementById('pCostPrice');
+  if (!el) return;
+  const usd = window.emirateExchange?.parseUsdInput?.(document.getElementById('pPriceUsd')?.value) || 0;
+  suppressCostPriceSync = true;
+  if (usd > 0 && window.emirateExchange?.usdToBaseUzs) {
+    el.value = formatUzsInputValue(window.emirateExchange.usdToBaseUzs(usd));
+  } else if (!costPriceTouched) {
+    el.value = '';
+  }
+  suppressCostPriceSync = false;
+}
+
+function formatProfitMoney(amount) {
+  const value = Math.round(Number(amount) || 0);
+  const abs = Math.abs(value).toLocaleString('ru-RU').replace(/\u00a0/g, ' ');
+  return value < 0 ? `−${abs}` : abs;
+}
+
+function updateProfitEstimate() {
+  const sale = parseAdminMoneyInput(document.getElementById('pPrice')?.value);
+  const cost = getPurchaseCostUzs();
+  const logistics = getLogisticsUzs();
+  const canCalc = sale > 0 && cost > 0;
+  const net = canCalc ? sale - cost - logistics : 0;
+
+  const setText = (id, text) => {
+    const node = document.getElementById(id);
+    if (node) node.textContent = text;
+  };
+  setText('pProfitSale', sale > 0 ? formatProfitMoney(sale) : '—');
+  setText('pProfitCost', cost > 0 ? formatProfitMoney(cost) : '—');
+  setText('pProfitLogistics', formatProfitMoney(logistics));
+  setText('pProfitNet', canCalc ? formatProfitMoney(net) : '—');
+
+  document.getElementById('pProfitNet')?.closest('.profit-calc-cell')?.classList.toggle('is-negative', canCalc && net < 0);
+
+  const formula = document.getElementById('pProfitFormula');
+  if (formula) {
+    formula.textContent = canCalc
+      ? `${formatProfitMoney(sale)} − ${formatProfitMoney(cost)} − ${formatProfitMoney(logistics)} = ${formatProfitMoney(net)} сум`
+      : 'Продажа − приход − логистика';
+  }
+
+  const marginEl = document.getElementById('pMarginPrice');
+  if (marginEl) marginEl.value = canCalc ? String(net) : '';
+}
+
+function collectPriceEditorValues() {
+  updateProfitEstimate();
+  const sale = parseAdminMoneyInput(document.getElementById('pPrice')?.value);
+  const cost = getPurchaseCostUzs();
+  const logisticsFee = getLogisticsUzs();
+  const canCalc = sale > 0 && cost > 0;
+  return {
+    costPrice: String(document.getElementById('pCostPrice')?.value || '').trim(),
+    logisticsFee,
+    marginPrice: canCalc ? sale - cost - logisticsFee : 0,
+    installmentMonths: document.getElementById('pInstallmentMonths')?.value || ''
+  };
+}
+
 function updateStorefrontPricePreview() {
-  // Preview banner removed — fields sync automatically from USD.
+  if (!costPriceTouched) syncCostFromUsd();
+  updateProfitEstimate();
 }
 
 function syncStorefrontPricesFromUsd({ force = false } = {}) {
@@ -3657,6 +3738,11 @@ document.getElementById('categoriesBody')?.addEventListener('click', function(e)
   const categoryId = button.getAttribute('data-category-id');
   if (!categoryId) return;
 
+  if (action === 'add-child-category') {
+    switchPage('categories');
+    startAddChildCategory(categoryId);
+    return;
+  }
   if (action === 'edit-category') {
     switchPage('categories');
     fillCategoryForm(categoryId);
@@ -4147,6 +4233,7 @@ function collectProductEditorDraft() {
     oldPrice: document.getElementById('pOldPrice')?.value || '',
     marginPrice: document.getElementById('pMarginPrice')?.value || '',
     costPrice: document.getElementById('pCostPrice')?.value || '',
+    logisticsFee: document.getElementById('pLogisticsFee')?.value || '',
     installmentMonths: document.getElementById('pInstallmentMonths')?.value || '',
     videoUrl: document.getElementById('pVideoUrl')?.value || '',
     specs: getSpecsFromEditor(),
@@ -4238,6 +4325,8 @@ function applyProductDraft(draft) {
   document.getElementById('pOldPrice').value = draft.oldPrice || '';
   if (document.getElementById('pMarginPrice')) document.getElementById('pMarginPrice').value = draft.marginPrice || '';
   if (document.getElementById('pCostPrice')) document.getElementById('pCostPrice').value = draft.costPrice || '';
+  fillLogisticsField(draft.logisticsFee);
+  costPriceTouched = !!String(draft.costPrice || '').trim();
   if (document.getElementById('pInstallmentMonths')) document.getElementById('pInstallmentMonths').value = draft.installmentMonths || '';
   if (document.getElementById('pVideoUrl')) document.getElementById('pVideoUrl').value = draft.videoUrl || '';
   storefrontPriceTouched = !!(draft.price && draft.priceUsd);
@@ -4312,6 +4401,15 @@ function syncDescFieldFromEditor(lang) {
   const editor = getDescEditor(lang);
   if (!field || !editor) return;
   field.value = editor.getContent({ format: 'html' }) || '';
+}
+
+function applyDescHtml(lang, html) {
+  const field = document.getElementById(DESC_EDITOR_IDS[lang]);
+  if (!field) return;
+  field.value = String(html || '');
+  syncDescEditorFromField(lang);
+  const editor = getDescEditor(lang);
+  if (editor) editor.save();
 }
 
 function syncDescEditorFromField(lang) {
@@ -4479,16 +4577,8 @@ async function requestDescriptionAiFill() {
       return;
     }
 
-    if (data.descUz) {
-      const uzField = document.getElementById('pDescUz');
-      if (uzField) uzField.value = data.descUz;
-      syncDescEditorFromField('uz');
-    }
-    if (data.descRu) {
-      const ruField = document.getElementById('pDescRu');
-      if (ruField) ruField.value = data.descRu;
-      syncDescEditorFromField('ru');
-    }
+    if (data.descUz) applyDescHtml('uz', data.descUz);
+    if (data.descRu) applyDescHtml('ru', data.descRu);
     if (data.seoTitleRu) document.getElementById('pSeoTitleRu').value = data.seoTitleRu;
     if (data.seoTitleUz) document.getElementById('pSeoTitleUz').value = data.seoTitleUz;
     if (data.seoDescRu) document.getElementById('pSeoDescRu').value = data.seoDescRu;
@@ -4507,8 +4597,12 @@ async function requestDescriptionAiFill() {
     }
 
     renderEditorDescriptionPreview();
-    const sourceLabel = data.source === 'openai' ? 'Emirate AI' : 'shablon';
-    setDescAiStatus('Tavsif ' + sourceLabel + ' orqali to\'ldirildi. Kerak bo\'lsa tahrirlang.', 'success');
+    if (data.descUz && !data.descRu) {
+      setDescAiStatus('Uzbekcha tavsif to\'ldirildi, ruscha kelmadi. Qayta bosing — RU ham yozilishi kerak.', 'error');
+    } else {
+      const sourceLabel = data.source === 'openai' ? 'Emirate AI' : 'shablon';
+      setDescAiStatus('Tavsif (Ru + Uz) ' + sourceLabel + ' orqali to\'ldirildi. Kerak bo\'lsa tahrirlang.', 'success');
+    }
   } catch (_) {
     setDescAiStatus('Tarmoq xatosi. Qayta urinib ko\'ring.', 'error');
   } finally {
@@ -4929,6 +5023,14 @@ function openEditorForProduct(id) {
   document.getElementById('pOldPriceUsd').value = p.oldPriceUsd > 0 ? String(p.oldPriceUsd) : '';
   document.getElementById('pPrice').value = p.price || '';
   document.getElementById('pOldPrice').value = p.oldPrice || '';
+  if (document.getElementById('pCostPrice')) {
+    document.getElementById('pCostPrice').value = p.costPrice || '';
+  }
+  if (document.getElementById('pInstallmentMonths')) {
+    document.getElementById('pInstallmentMonths').value = p.installmentMonths || '';
+  }
+  fillLogisticsField(p.logisticsFee);
+  costPriceTouched = !!String(p.costPrice || '').trim();
   storefrontPriceTouched = p.priceIsStorefront === true && !!String(p.price || '').trim();
   if (p.priceUsd > 0 && !storefrontPriceTouched) {
     syncStorefrontPricesFromUsd({ force: true });
@@ -5253,10 +5355,12 @@ function clearEditorForm() {
   setVal('pPrice', '');
   setVal('pOldPrice', '');
   storefrontPriceTouched = false;
-  updateStorefrontPricePreview();
+  costPriceTouched = false;
   setVal('pMarginPrice', '');
   setVal('pCostPrice', '');
+  fillLogisticsField('');
   setVal('pInstallmentMonths', '');
+  updateStorefrontPricePreview();
   setVal('pVideoUrl', '');
   const videoPreview = document.getElementById('videoPreview');
   if (videoPreview) videoPreview.innerHTML = '';
@@ -5383,6 +5487,36 @@ productEditorPage?.addEventListener('change', scheduleProductDraftAutosave);
   });
 });
 
+document.getElementById('pCostPrice')?.addEventListener('input', () => {
+  if (suppressCostPriceSync) return;
+  costPriceTouched = !!String(document.getElementById('pCostPrice')?.value || '').trim();
+  updateProfitEstimate();
+});
+document.getElementById('pCostPrice')?.addEventListener('blur', () => {
+  if (suppressCostPriceSync) return;
+  const el = document.getElementById('pCostPrice');
+  if (!el) return;
+  const n = parseAdminMoneyInput(el.value);
+  if (n > 0) el.value = formatUzsInputValue(n);
+  if (!String(el.value || '').trim()) {
+    costPriceTouched = false;
+    syncCostFromUsd({ force: true });
+  }
+  updateProfitEstimate();
+});
+
+document.getElementById('pLogisticsFee')?.addEventListener('input', () => {
+  updateProfitEstimate();
+});
+document.getElementById('pLogisticsFee')?.addEventListener('blur', () => {
+  const el = document.getElementById('pLogisticsFee');
+  if (!el) return;
+  const n = parseAdminMoneyInput(el.value);
+  fillLogisticsField(n > 0 ? n : getDefaultLogisticsUzs());
+  rememberLogisticsDefault(getLogisticsUzs());
+  updateProfitEstimate();
+});
+
 void (async () => {
   if (!window.emirateExchange?.refreshNbuUsdSellRate) return;
   await window.emirateExchange.refreshNbuUsdSellRate(false);
@@ -5503,6 +5637,8 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
 
   if (document.getElementById('pPrice') && price) document.getElementById('pPrice').value = price;
   if (document.getElementById('pOldPrice') && oldPrice) document.getElementById('pOldPrice').value = oldPrice;
+  const priceEditor = collectPriceEditorValues();
+  rememberLogisticsDefault(priceEditor.logisticsFee);
 
   if (!hasUsd && !price) {
     alert('Укажите цену в USD или цену в сумах.');
@@ -5553,6 +5689,10 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
         price,
         oldPrice,
         priceIsStorefront,
+        costPrice: priceEditor.costPrice,
+        logisticsFee: priceEditor.logisticsFee,
+        marginPrice: priceEditor.marginPrice,
+        installmentMonths: priceEditor.installmentMonths,
         brand,
         model,
         date: dateStr,
@@ -5575,6 +5715,10 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
       price,
       oldPrice,
       priceIsStorefront,
+      costPrice: priceEditor.costPrice,
+      logisticsFee: priceEditor.logisticsFee,
+      marginPrice: priceEditor.marginPrice,
+      installmentMonths: priceEditor.installmentMonths,
       status,
       installmentStatus,
       promo,
@@ -6141,6 +6285,226 @@ window.addEventListener('beforeunload', function () {
 });
 
 updateProductDraftUi();
+
+// ===== PROMOS =====
+const ADMIN_PROMOS_KEY = window.emiratePromos?.ADMIN_PROMOS_KEY || 'emirate_admin_promos_v1';
+let promosData = (window.emiratePromos?.loadPromosData?.() || []).map(function (item) {
+  return window.emiratePromos?.normalizePromoRecord?.(item) || item;
+});
+let promoFeedbackTimer = null;
+
+function persistPromosData() {
+  if (window.emiratePromos?.persistPromosData) {
+    window.emiratePromos.persistPromosData(promosData);
+  } else {
+    localStorage.setItem(ADMIN_PROMOS_KEY, JSON.stringify(promosData));
+  }
+  void syncPromosToSupabase();
+}
+
+async function syncPromosToSupabase() {
+  if (!window.emirateSupabaseApi?.pushAdminPromosPayload) return;
+  try {
+    const res = await window.emirateSupabaseApi.pushAdminPromosPayload(promosData);
+    if (!res?.ok && res?.error !== 'no_session') {
+      console.warn('[Supabase] promos sync', res?.error);
+    }
+  } catch (err) {
+    console.warn('[Supabase] promos sync', err);
+  }
+}
+
+function showPromoFeedback(message, type = 'success', timeoutMs = 2800) {
+  const node = document.getElementById('promoFeedback');
+  if (!node) return;
+  node.textContent = message;
+  node.classList.remove('success', 'error');
+  node.classList.add(type === 'error' ? 'error' : 'success');
+  node.removeAttribute('hidden');
+  if (promoFeedbackTimer) clearTimeout(promoFeedbackTimer);
+  promoFeedbackTimer = setTimeout(() => {
+    node.setAttribute('hidden', 'hidden');
+    node.classList.remove('success', 'error');
+  }, timeoutMs);
+}
+
+function formatPromoDiscount(promo) {
+  if (promo.type === 'percent') return `${promo.value} %`;
+  return `${Number(promo.value || 0).toLocaleString('ru-RU')} сум`;
+}
+
+function renderPromos(data = promosData) {
+  const tbody = document.getElementById('promosBody');
+  const count = document.getElementById('promosCount');
+  if (!tbody || !count) return;
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">Нет промокодов</td></tr>';
+    count.textContent = 'Показано 0';
+    return;
+  }
+  tbody.innerHTML = data.map((promo) => `
+    <tr>
+      <td><strong>${escapeHtml(promo.code)}</strong></td>
+      <td>${escapeHtml(formatPromoDiscount(promo))}</td>
+      <td>${promo.usedCount || 0}</td>
+      <td>${promo.maxUses || 1}</td>
+      <td>${promo.isActive ? 'Активен' : 'Неактивен'}</td>
+      <td>
+        <button type="button" class="action-btn" data-action="edit-promo" data-promo-id="${escapeHtml(promo.id)}">Изменить</button>
+        <button type="button" class="action-btn" data-action="toggle-promo" data-promo-id="${escapeHtml(promo.id)}">${promo.isActive ? 'Выкл' : 'Вкл'}</button>
+        <button type="button" class="action-btn delete" data-action="delete-promo" data-promo-id="${escapeHtml(promo.id)}">Удалить</button>
+      </td>
+    </tr>
+  `).join('');
+  count.textContent = `Показано ${data.length}`;
+}
+
+function resetPromoForm() {
+  const setVal = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+  };
+  setVal('promoId', '');
+  setVal('promoCode', '');
+  setVal('promoType', 'fixed');
+  setVal('promoValue', '');
+  setVal('promoMaxUses', '1');
+  setVal('promoStatus', 'active');
+  const saveBtn = document.getElementById('promoSaveBtn');
+  if (saveBtn) saveBtn.textContent = 'Создать промокод';
+  updatePromoValueHint();
+}
+
+function fillPromoForm(id) {
+  const promo = promosData.find((item) => item.id === id);
+  if (!promo) return;
+  document.getElementById('promoId').value = promo.id;
+  document.getElementById('promoCode').value = promo.code;
+  document.getElementById('promoType').value = promo.type;
+  document.getElementById('promoValue').value = promo.value;
+  document.getElementById('promoMaxUses').value = promo.maxUses;
+  document.getElementById('promoStatus').value = promo.isActive ? 'active' : 'inactive';
+  const saveBtn = document.getElementById('promoSaveBtn');
+  if (saveBtn) saveBtn.textContent = 'Сохранить';
+  updatePromoValueHint();
+}
+
+function updatePromoValueHint() {
+  const hint = document.getElementById('promoValueHint');
+  const type = document.getElementById('promoType')?.value;
+  if (!hint) return;
+  hint.textContent = type === 'percent'
+    ? 'Например 10 — минус 10% от суммы заказа.'
+    : 'Например 50000 — минус 50 000 сум от заказа.';
+}
+
+function savePromo(event) {
+  event.preventDefault();
+  const code = window.emiratePromos?.normalizePromoCode?.(document.getElementById('promoCode')?.value)
+    || String(document.getElementById('promoCode')?.value || '').trim().toUpperCase();
+  const type = document.getElementById('promoType')?.value === 'percent' ? 'percent' : 'fixed';
+  const value = Number(document.getElementById('promoValue')?.value);
+  const maxUses = Number(document.getElementById('promoMaxUses')?.value);
+  const editingId = document.getElementById('promoId')?.value || '';
+  if (!code) {
+    showPromoFeedback('Введите код промокода.', 'error');
+    return;
+  }
+  if (!Number.isFinite(value) || value <= 0) {
+    showPromoFeedback('Укажите размер скидки.', 'error');
+    return;
+  }
+  if (type === 'percent' && value > 100) {
+    showPromoFeedback('Процент не может быть больше 100.', 'error');
+    return;
+  }
+  if (!Number.isFinite(maxUses) || maxUses < 1) {
+    showPromoFeedback('Лимит использований должен быть от 1.', 'error');
+    return;
+  }
+  const duplicate = promosData.find((item) => item.code === code && item.id !== editingId);
+  if (duplicate) {
+    showPromoFeedback('Такой промокод уже есть.', 'error');
+    return;
+  }
+  const current = promosData.find((item) => item.id === editingId);
+  const record = window.emiratePromos?.normalizePromoRecord
+    ? window.emiratePromos.normalizePromoRecord({
+      id: editingId || ('promo_' + Date.now()),
+      code,
+      type,
+      value,
+      maxUses,
+      usedCount: current?.usedCount || 0,
+      isActive: document.getElementById('promoStatus')?.value !== 'inactive',
+      updatedAt: new Date().toISOString()
+    })
+    : { id: editingId || ('promo_' + Date.now()), code, type, value, maxUses, usedCount: current?.usedCount || 0, isActive: true };
+  if (editingId) {
+    promosData = promosData.map((item) => item.id === editingId ? record : item);
+    showPromoFeedback('Промокод сохранён.', 'success');
+  } else {
+    promosData.unshift(record);
+    showPromoFeedback('Промокод создан.', 'success');
+  }
+  persistPromosData();
+  renderPromos();
+  resetPromoForm();
+}
+
+document.getElementById('promoForm')?.addEventListener('submit', savePromo);
+document.getElementById('promoType')?.addEventListener('change', updatePromoValueHint);
+document.getElementById('promoResetBtn')?.addEventListener('click', function () {
+  resetPromoForm();
+  showPromoFeedback('Форма очищена.', 'success');
+});
+document.getElementById('addPromoBtn')?.addEventListener('click', function () {
+  switchPage('promos');
+  resetPromoForm();
+  document.getElementById('promoCode')?.focus();
+});
+document.getElementById('promosBody')?.addEventListener('click', function (e) {
+  const button = e.target.closest('button[data-action]');
+  if (!button) return;
+  const action = button.getAttribute('data-action');
+  const promoId = button.getAttribute('data-promo-id');
+  const promo = promosData.find((item) => item.id === promoId);
+  if (!promo) return;
+  if (action === 'edit-promo') {
+    switchPage('promos');
+    fillPromoForm(promoId);
+    return;
+  }
+  if (action === 'toggle-promo') {
+    promo.isActive = !promo.isActive;
+    persistPromosData();
+    renderPromos();
+    return;
+  }
+  if (action === 'delete-promo' && confirm('Удалить промокод ' + promo.code + '?')) {
+    promosData = promosData.filter((item) => item.id !== promoId);
+    persistPromosData();
+    void window.emirateSupabaseApi?.deleteAdminPromo?.(promoId);
+    renderPromos();
+    resetPromoForm();
+  }
+});
+
+renderPromos();
+updatePromoValueHint();
+
+void (async () => {
+  try {
+    const raw = await window.emirateSupabaseApi?.pullAdminPromosRaw?.();
+    if (raw && raw.length) {
+      promosData = raw.map((item) => window.emiratePromos?.normalizePromoRecord?.(item) || item);
+      persistPromosData();
+      renderPromos();
+    }
+  } catch (err) {
+    console.warn('[Supabase] admin promos pull', err);
+  }
+})();
 
 window.switchPage = switchPage;
 window.openEditorForProduct = openEditorForProduct;

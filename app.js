@@ -63,12 +63,40 @@ function renderHomeCarouselSkeletons() {
   });
 }
 
+function isNativeHome() {
+  return document.documentElement.classList.contains("capacitor-app");
+}
+
 function updateCategorySectionsVisibility() {
   document.querySelectorAll(".category-section").forEach((section) => {
+    if (isNativeHome()) {
+      section.hidden = true;
+      return;
+    }
     const track = section.querySelector(".carousel-track");
     const count = track ? track.querySelectorAll(".product-card:not(.product-card--skeleton)").length : 0;
     section.hidden = count === 0;
   });
+}
+
+function collectAllHomeProducts() {
+  const seen = new Set();
+  const list = [];
+  Object.values(productData).forEach((items) => {
+    (items || []).forEach((item) => {
+      const title = String(item?.title || "").trim();
+      if (!title || seen.has(title)) return;
+      seen.add(title);
+      list.push(item);
+    });
+  });
+  list.sort((a, b) => (Number(a.priority) || 300) - (Number(b.priority) || 300));
+  return list;
+}
+
+function fillFeedProductsFromCatalog() {
+  feedProducts.length = 0;
+  collectAllHomeProducts().forEach((item) => feedProducts.push(item));
 }
 
 function escapeHtmlAttr(value) {
@@ -409,25 +437,57 @@ function resolveHomeBannerForLang(banner, lang) {
   };
 }
 
+function isCompactHomeHero() {
+  return document.documentElement.classList.contains("capacitor-app")
+    || (window.matchMedia && window.matchMedia("(max-width: 680px)").matches);
+}
+
 function buildHeroBannerPictureHtml(banner, index) {
   const desktopImage = banner.image || "";
   const mobileImage = banner.imageMobile || desktopImage;
   const alt = banner.title || "Баннер";
   const loading = index === 0 ? "eager" : "lazy";
+  const fetchPriority = index === 0 ? ' fetchpriority="high"' : "";
+  const preferMobile = isCompactHomeHero();
+  const imgSrc = preferMobile ? (mobileImage || desktopImage) : (desktopImage || mobileImage);
   const mobileSource =
-    mobileImage && mobileImage !== desktopImage
+    !preferMobile && mobileImage && mobileImage !== desktopImage
       ? `<source media="(max-width: 680px)" srcset="${escapeHtmlAttr(mobileImage)}">`
       : "";
-  const imgSrc = desktopImage || mobileImage;
-  return `<picture class="hero-banner-picture">${mobileSource}<img class="hero-banner-img" src="${escapeHtmlAttr(imgSrc)}" alt="${escapeHtmlAttr(alt)}" loading="${loading}" decoding="async" width="1200" height="430"></picture>`;
+  const sizes = preferMobile ? ' width="750" height="360"' : ' width="1200" height="430"';
+  return `<picture class="hero-banner-picture">${mobileSource}<img class="hero-banner-img" src="${escapeHtmlAttr(imgSrc)}" alt="${escapeHtmlAttr(alt)}" loading="${loading}" decoding="async"${fetchPriority}${sizes}></picture>`;
 }
 
+const PUBLIC_BANNERS_CACHE_KEY = "emirate_public_home_banners_v1";
 let remoteHomeBannersCache = null;
+
+function readCachedPublicBanners() {
+  try {
+    const raw = localStorage.getItem(PUBLIC_BANNERS_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeCachedPublicBanners(banners) {
+  try {
+    localStorage.setItem(PUBLIC_BANNERS_CACHE_KEY, JSON.stringify(banners || []));
+  } catch (_) {}
+}
 
 function loadHomeBanners() {
   if (window.emirateSupabaseApi?.isConfigured?.()) {
     if (Array.isArray(remoteHomeBannersCache) && remoteHomeBannersCache.length) {
       return remoteHomeBannersCache
+        .map(normalizeHomeBanner)
+        .filter((banner) => banner.isActive)
+        .sort((a, b) => Number(a.priority) - Number(b.priority));
+    }
+    const cached = readCachedPublicBanners();
+    if (cached.length) {
+      return cached
         .map(normalizeHomeBanner)
         .filter((banner) => banner.isActive)
         .sort((a, b) => Number(a.priority) - Number(b.priority));
@@ -712,17 +772,19 @@ function renderHomeBrands() {
   const brands = window.emirateBrands.getActiveBrands();
   if (!brands.length) return;
 
+  grid.classList.remove("is-marquee");
   grid.innerHTML = brands
     .map(function (brand) {
       const url = window.emirateBrands.buildBrandCatalogUrl(brand);
       const logo = brand.logoUrl
         ? `<img class="brand-card-logo" src="${escapeHtmlAttr(brand.logoUrl)}" alt="" loading="lazy">`
         : "";
-      return `<a href="${escapeHtmlAttr(url)}" class="brand-card">${logo}<span>${escapeHtml(brand.nameRu)}</span></a>`;
+      const name = window.emirateBrands.getBrandDisplayName
+        ? window.emirateBrands.getBrandDisplayName(brand, window.emirateLang?.() || "ru")
+        : brand.nameRu;
+      return `<a href="${escapeHtmlAttr(url)}" class="brand-card">${logo}<span>${escapeHtml(name)}</span></a>`;
     })
     .join("");
-
-  setupHomeMarquee(grid, Math.max(24, Math.min(48, brands.length * 3.4)));
 }
 
 function prefersReducedMotion() {
@@ -803,6 +865,7 @@ async function initHomeStorefront() {
     renderHeroBanners();
     renderInitialCarousels();
     updateCategorySectionsVisibility();
+    renderNativeHomeFeed();
     finishHomeShellMode();
     return;
   }
@@ -813,22 +876,24 @@ async function initHomeStorefront() {
   productData.appliances = [];
   productData.accessories = [];
   renderHomeCarouselSkeletons();
+  renderHeroBanners();
 
   const api = window.emirateSupabaseApi;
   try {
-    const [remoteBanners, remoteProducts] = await Promise.all([
-      api.fetchPublicHomeBanners(),
-      api.fetchPublicCatalogProducts()
-    ]);
-
-    if (Array.isArray(remoteBanners) && remoteBanners.length) {
-      remoteHomeBannersCache = remoteBanners;
-    }
-
-    if (Array.isArray(remoteProducts) && remoteProducts.length) {
-      replaceHomeProductsFromRemote(remoteProducts);
-      rebuildAllProductsIndex();
-    }
+    const bannersPromise = api.fetchPublicHomeBanners().then((remoteBanners) => {
+      if (Array.isArray(remoteBanners) && remoteBanners.length) {
+        remoteHomeBannersCache = remoteBanners;
+        writeCachedPublicBanners(remoteBanners);
+        renderHeroBanners();
+      }
+    });
+    const productsPromise = api.fetchPublicCatalogProducts().then((remoteProducts) => {
+      if (Array.isArray(remoteProducts) && remoteProducts.length) {
+        replaceHomeProductsFromRemote(remoteProducts);
+        rebuildAllProductsIndex();
+      }
+    });
+    await Promise.all([bannersPromise, productsPromise]);
   } catch (err) {
     console.warn("[Supabase] home storefront", err);
   } finally {
@@ -837,6 +902,7 @@ async function initHomeStorefront() {
     renderHeroBanners();
     renderInitialCarousels();
     updateCategorySectionsVisibility();
+    renderNativeHomeFeed();
     if (typeof translatePage === "function") {
       translatePage();
     }
@@ -862,9 +928,10 @@ setupHomeMarquee(document.querySelector(".perks-row"), 22);
 const feedSection = document.getElementById("feedSection");
 const feedGrid = document.getElementById("feedGrid");
 const feedTrigger = document.getElementById("feedTrigger");
+let feedObserver = null;
 
 function loadFeedBatch() {
-  if (feedIndex >= feedProducts.length) return false;
+  if (!feedGrid || feedIndex >= feedProducts.length) return false;
 
   const batch = feedProducts.slice(feedIndex, feedIndex + FEED_BATCH);
   feedIndex += batch.length;
@@ -873,35 +940,66 @@ function loadFeedBatch() {
   feedGrid.insertAdjacentHTML("beforeend", html);
   window.emirateSyncFavoritesUI?.(feedGrid);
 
-  // Show section on first load
-  if (feedSection.style.display === "none") {
+  if (feedSection) {
+    feedSection.hidden = false;
     feedSection.style.display = "";
   }
 
-  // Apply translation if active
   if (typeof translatePage === "function") {
     translatePage();
   }
 
-  return feedIndex < feedProducts.length; // true if more products remain
+  return feedIndex < feedProducts.length;
 }
 
-if (feedGrid && feedTrigger && feedProducts.length > 0) {
-  const feedObserver = new IntersectionObserver((entries) => {
+function setupFeedObserver() {
+  if (!feedGrid || !feedTrigger) return;
+  if (feedObserver) {
+    feedObserver.disconnect();
+    feedObserver = null;
+  }
+  if (feedIndex >= feedProducts.length) return;
+  feedObserver = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        const hasMore = loadFeedBatch();
-        if (!hasMore) {
-          feedObserver.disconnect();
-        }
+      if (!entry.isIntersecting) return;
+      const hasMore = loadFeedBatch();
+      if (!hasMore && feedObserver) {
+        feedObserver.disconnect();
+        feedObserver = null;
       }
     });
   }, {
     rootMargin: "300px 0px",
     threshold: 0
   });
-
   feedObserver.observe(feedTrigger);
+}
+
+function renderNativeHomeFeed() {
+  if (!isNativeHome() || !feedSection || !feedGrid) return;
+  fillFeedProductsFromCatalog();
+  rebuildAllProductsIndex();
+  feedIndex = 0;
+  feedGrid.innerHTML = "";
+  document.body.classList.add("native-home-feed");
+
+  const titleEl = feedSection.querySelector(".section-header h2");
+  if (titleEl) {
+    titleEl.removeAttribute("data-i18n");
+    titleEl.setAttribute("data-i18n", "section.homeAll");
+    titleEl.textContent = window.emirateT?.("section.homeAll") || "Все товары";
+  }
+
+  if (!feedProducts.length) {
+    feedSection.hidden = true;
+    return;
+  }
+
+  feedSection.hidden = false;
+  feedSection.style.display = "";
+  loadFeedBatch();
+  loadFeedBatch();
+  setupFeedObserver();
 }
 
 // ===== ADD TO CART =====

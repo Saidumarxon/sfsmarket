@@ -55,8 +55,23 @@ function refreshCatalogLinkedCategories() {
   );
 }
 refreshCatalogLinkedCategories();
-const brandFilterBrand = window.emirateBrands?.resolveBrandFilterParam?.(brandFilterRaw) || null;
-const brandFilter = brandFilterBrand?.nameRu || brandFilterRaw;
+let brandFilterBrand = window.emirateBrands?.resolveBrandFilterParam?.(brandFilterRaw) || null;
+let brandFilter = brandFilterBrand?.nameRu || brandFilterRaw;
+
+function refreshBrandFilterFromRegistry() {
+  if (!brandFilterRaw) return;
+  brandFilterBrand = window.emirateBrands?.resolveBrandFilterParam?.(brandFilterRaw) || brandFilterBrand;
+  brandFilter = brandFilterBrand?.nameRu || brandFilterRaw;
+}
+
+function productMatchesAnyBrand(product, brandNames) {
+  if (!brandNames.length) return true;
+  if (window.emirateBrands?.productMatchesBrand) {
+    return brandNames.some((name) => window.emirateBrands.productMatchesBrand(product, name));
+  }
+  const key = String(product?.brand || "").trim().toLowerCase();
+  return brandNames.some((name) => String(name || "").trim().toLowerCase() === key);
+}
 let photoSearchList = null;
 let photoSearchLoading = false;
 let photoSearchError = "";
@@ -275,7 +290,9 @@ function renderProduct(product, options = {}) {
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
             </svg>
           </button>
-          ${imageHtml}
+          <a class="product-image-link product-link" href="${productHref}" title="${safeProductId}">
+            ${imageHtml}
+          </a>
         </div>
       </div>
       <h3 class="product-title"><a class="product-link" href="${productHref}">${product.title}</a></h3>
@@ -420,11 +437,20 @@ function renderViewedProducts() {
 
 function getCartTotals() {
   const items = window.emirateGetCartItems?.() || [];
-  const subtotal = items.reduce((sum, item) => sum + (item.oldPrice || item.price || 0) * (item.qty || 1), 0);
-  const total = items.reduce((sum, item) => sum + (item.price || 0) * (item.qty || 1), 0);
-  const discount = Math.max(0, subtotal - total);
+  const listSubtotal = items.reduce((sum, item) => sum + (item.oldPrice || item.price || 0) * (item.qty || 1), 0);
+  const payable = items.reduce((sum, item) => sum + (item.price || 0) * (item.qty || 1), 0);
+  const saleDiscount = Math.max(0, listSubtotal - payable);
+  let promoDiscount = 0;
+  const applied = window.emiratePromos?.getAppliedPromo?.();
+  if (applied?.code && window.emiratePromos?.evaluatePromo) {
+    const checked = window.emiratePromos.evaluatePromo(applied.code, payable, {
+      skipAuth: window.emiratePromos.isCustomerRegistered?.()
+    });
+    if (checked.ok) promoDiscount = checked.discount;
+  }
+  const discount = saleDiscount + promoDiscount;
   const count = items.reduce((sum, item) => sum + (item.qty || 1), 0);
-  return { items, subtotal, total, discount, count };
+  return { items, subtotal: listSubtotal, total: Math.max(0, payable - promoDiscount), discount, promoDiscount, count };
 }
 
 function renderCartPanels() {
@@ -438,6 +464,9 @@ function renderCartPanels() {
   if (cartSummarySubtotalEl) cartSummarySubtotalEl.textContent = money(subtotal);
   if (cartSummaryDiscountEl) cartSummaryDiscountEl.textContent = `-${money(discount)}`;
   if (cartSummaryTotalEl) cartSummaryTotalEl.textContent = money(total);
+  const applied = window.emiratePromos?.getAppliedPromo?.();
+  const codeInput = document.getElementById("cartPromoCode");
+  if (codeInput && applied?.code && !codeInput.value.trim()) codeInput.value = applied.code;
 }
 
 function getCheckedValues(selector) {
@@ -483,7 +512,8 @@ function applyFiltersAndSort() {
           } else if (categories.length && !categories.includes(p.category)) {
             return false;
           }
-          if (brands.length && !brands.includes(p.brand)) return false;
+          const selectedBrands = brands.length ? brands : (brandFilter ? [brandFilterBrand || brandFilter] : []);
+          if (selectedBrands.length && !productMatchesAnyBrand(p, selectedBrands)) return false;
           if (min !== null && p.price < min) return false;
           if (max !== null && p.price > max) return false;
           if (ratings.length && !ratings.some(r => p.rating >= r)) return false;
@@ -493,6 +523,10 @@ function applyFiltersAndSort() {
 
   if (isFavoritesMode) {
     list = list.filter((p) => window.emirateIsFavorite?.(p.title) === true);
+  }
+
+  if (isCartMode || isFavoritesMode) {
+    list = list.map(hydrateListedProduct);
   }
 
   if (!isPhotoSearchMode) {
@@ -725,6 +759,32 @@ async function runPhotoSearch() {
   }
 }
 
+function findLiveCatalogProduct(product) {
+  const title = String(product?.title || "").trim();
+  if (!title) return null;
+  const key = normalizeTitleKey(title);
+  return (
+    sourceProducts.find((item) => item.title === title) ||
+    sourceProducts.find((item) => normalizeTitleKey(item.title) === key) ||
+    null
+  );
+}
+
+function hydrateListedProduct(product) {
+  const live = findLiveCatalogProduct(product);
+  if (!live) return product;
+  const photos = Array.isArray(live.photos) && live.photos.length
+    ? live.photos
+    : (Array.isArray(product.photos) ? product.photos.filter(Boolean) : []);
+  return {
+    ...product,
+    ...live,
+    qty: product.qty,
+    image: live.image || product.image || photos[0] || "",
+    photos
+  };
+}
+
 async function refreshCatalogFromRemote() {
   const api = window.emirateSupabaseApi;
   if (!api || !api.isConfigured()) return;
@@ -877,12 +937,15 @@ function renderBrandFilters() {
 }
 
 function applyBrandFilterFromUrl() {
+  refreshBrandFilterFromRegistry();
   if (activeStoreCatalog || brandFilter) {
     renderCatalogBrandHero();
   }
-  if (!brandFilter) return;
+  if (!brandFilterRaw) return;
   document.querySelectorAll(".filter-brand").forEach((item) => {
-    item.checked = item.value === brandFilter;
+    item.checked = window.emirateBrands?.productMatchesBrand
+      ? window.emirateBrands.productMatchesBrand({ brand: item.value }, brandFilterBrand || brandFilterRaw)
+      : item.value === brandFilter;
   });
 }
 
@@ -900,6 +963,7 @@ async function initCatalogBrands() {
   if (window.emirateBrands?.refreshPublicBrandsFromRemote) {
     await window.emirateBrands.refreshPublicBrandsFromRemote();
   }
+  refreshBrandFilterFromRegistry();
 }
 
 function finishCatalogShellMode() {
@@ -946,7 +1010,7 @@ if (isPhotoSearchMode) {
   })();
 } else if (isCartMode || isFavoritesMode) {
   syncCatalogSeoMeta();
-  if (isFavoritesMode && window.emirateSupabaseApi?.isConfigured?.()) {
+  if (window.emirateSupabaseApi?.isConfigured?.()) {
     void (async () => {
       try {
         await refreshCatalogFromRemote();
@@ -1102,6 +1166,28 @@ function onProductGridClick(e) {
 // Add to cart / favorites delegation
 productsGridEl?.addEventListener("click", onProductGridClick);
 viewedProductsGridEl?.addEventListener("click", onProductGridClick);
+
+document.getElementById("cartPromoApply")?.addEventListener("click", async function () {
+  const statusEl = document.getElementById("cartPromoStatus");
+  const code = document.getElementById("cartPromoCode")?.value || "";
+  if (window.emiratePromos?.refreshPublicPromosFromRemote) {
+    await window.emiratePromos.refreshPublicPromosFromRemote();
+  }
+  if (!window.emiratePromos?.isCustomerRegistered?.()) {
+    window.emiratePromos?.clearAppliedPromo?.();
+    if (statusEl) statusEl.textContent = window.emiratePromos?.authRequiredMessage?.() || "Iltimos, avval ro‘yxatdan o‘ting";
+    renderCartPanels();
+    return;
+  }
+  const { items } = getCartTotals();
+  const payable = items.reduce((sum, item) => sum + (item.price || 0) * (item.qty || 1), 0);
+  const result = window.emiratePromos.applyPromoToSubtotal(code, payable);
+  if (statusEl) {
+    statusEl.textContent = result.ok ? "" : (result.message || "");
+    statusEl.classList.toggle("is-error", !result.ok);
+  }
+  renderCartPanels();
+});
 
 proceedCheckoutBtn?.addEventListener("click", () => {
   const { count } = getCartTotals();

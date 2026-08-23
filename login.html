@@ -131,6 +131,11 @@
         <span class="profile-menu-label" data-i18n="profile.faq">Часто задаваемые вопросы</span>
         <svg class="profile-menu-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
       </a>
+      <button type="button" class="profile-menu-item" id="profilePromoGuest">
+        <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span class="profile-menu-label" data-i18n="profile.promo">Промокод</span>
+        <svg class="profile-menu-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
       <a href="#" class="profile-menu-item" id="profileAddresses">
         <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
         <span class="profile-menu-label" data-i18n="profile.addresses">Адреса доставки</span>
@@ -246,6 +251,11 @@
       </div>
 
       <div class="profile-menu-group profile-app-only">
+        <button type="button" class="profile-menu-item" id="profilePromoLogged">
+          <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          <span class="profile-menu-label" data-i18n="profile.promo">Промокод</span>
+          <svg class="profile-menu-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
         <a href="tel:+998508868844" class="profile-menu-item">
           <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg>
           <span class="profile-menu-label" data-i18n="profile.contact">Связаться с нами</span>
@@ -493,6 +503,7 @@
   <script src="supabase-config.prod.js"></script>
   <script src="emirate-supabase-api.js"></script>
   <script src="emirate-auth.js?v=20260820g"></script>
+  <script src="emirate-promos.js?v=20260823h"></script>
   <script>
     (function () {
       var loginModal = document.getElementById("loginModal");
@@ -758,6 +769,37 @@
       document.getElementById("profileAddresses").addEventListener("click", function (e) {
         e.preventDefault();
         openLoginModal();
+      });
+
+      function openPromoFromProfile(requireLogin) {
+        if (requireLogin && !(window.emiratePromos && window.emiratePromos.isCustomerRegistered && window.emiratePromos.isCustomerRegistered())) {
+          alert((window.emiratePromos && window.emiratePromos.authRequiredMessage && window.emiratePromos.authRequiredMessage()) || "Iltimos, avval ro‘yxatdan o‘ting");
+          openLoginModal();
+          return;
+        }
+        var code = window.prompt((window.emirateT && window.emirateT("profile.promoPrompt")) || "Promokod");
+        if (!code) return;
+        var items = window.emirateGetCartItems ? window.emirateGetCartItems() : [];
+        var payable = items.reduce(function (sum, item) {
+          return sum + (Number(item.price) || 0) * (Number(item.qty) || 1);
+        }, 0);
+        if (!payable) payable = 1;
+        void (window.emiratePromos && window.emiratePromos.refreshPublicPromosFromRemote
+          ? window.emiratePromos.refreshPublicPromosFromRemote()
+          : Promise.resolve()).then(function () {
+          var result = window.emiratePromos.applyPromoToSubtotal(code, payable);
+          alert(result.ok
+            ? ((window.emirateT && window.emirateT("profile.promoApplied")) || "Promokod qo‘llandi")
+            : (result.message || ""));
+          if (result.ok) window.location.href = "catalog.html?cart=1";
+        });
+      }
+
+      document.getElementById("profilePromoGuest")?.addEventListener("click", function () {
+        openPromoFromProfile(true);
+      });
+      document.getElementById("profilePromoLogged")?.addEventListener("click", function () {
+        openPromoFromProfile(false);
       });
 
       document.querySelectorAll(".profile-menu-group a[href='#']").forEach(function (link) {

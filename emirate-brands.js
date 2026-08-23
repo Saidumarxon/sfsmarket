@@ -13,6 +13,45 @@
       .replace(/^-+|-+$/g, "");
   }
 
+  function normalizeBrandKey(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[''`]/g, "")
+      .replace(/[^a-z0-9\u0400-\u04ff]+/gi, "");
+  }
+
+  function collectBrandKeys(brandOrName, brands) {
+    var keys = [];
+    var add = function (value) {
+      var key = normalizeBrandKey(value);
+      if (key && keys.indexOf(key) === -1) keys.push(key);
+    };
+    if (!brandOrName) return keys;
+    if (typeof brandOrName === "string") {
+      add(brandOrName);
+      add(slugifyBrand(brandOrName));
+      var resolved = resolveBrandFilterParam(brandOrName, brands);
+      if (resolved) {
+        add(resolved.nameRu);
+        add(resolved.nameUz);
+        add(resolved.slug);
+      }
+      return keys;
+    }
+    add(brandOrName.nameRu);
+    add(brandOrName.nameUz);
+    add(brandOrName.slug);
+    add(brandOrName.id);
+    return keys;
+  }
+
+  function productMatchesBrand(product, brandOrName, brands) {
+    var productKey = normalizeBrandKey(product && product.brand);
+    if (!productKey) return false;
+    return collectBrandKeys(brandOrName, brands).indexOf(productKey) !== -1;
+  }
+
   function defaultBrandsData() {
     var seed = [
       "Apple",
@@ -143,8 +182,8 @@
 
   function buildBrandCatalogUrl(brand) {
     if (!brand) return "catalog.html";
-    var name = encodeURIComponent(brand.nameRu || brand.nameUz || brand.slug || "");
-    return "catalog.html?brand=" + name;
+    var slug = brand.slug || slugifyBrand(brand.nameRu || brand.nameUz || "");
+    return "catalog.html?brand=" + encodeURIComponent(slug || brand.nameRu || brand.nameUz || "");
   }
 
   window.emirateBrands = {
@@ -160,6 +199,8 @@
     resolveBrandFilterParam: resolveBrandFilterParam,
     getBrandDisplayName: getBrandDisplayName,
     buildBrandCatalogUrl: buildBrandCatalogUrl,
+    normalizeBrandKey: normalizeBrandKey,
+    productMatchesBrand: productMatchesBrand,
     refreshPublicBrandsFromRemote: refreshPublicBrandsFromRemote,
   };
 })();

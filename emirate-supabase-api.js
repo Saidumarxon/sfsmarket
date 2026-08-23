@@ -507,6 +507,89 @@
     return { ok: true, rows: rows.length };
   }
 
+  function rowToPublicPromo(row) {
+    if (!row) return null;
+    var payload = row.payload && typeof row.payload === "object" ? row.payload : {};
+    payload.id = row.admin_id || payload.id;
+    payload.code = row.code || payload.code;
+    payload.isActive = row.is_active !== false;
+    payload.usedCount = row.used_count != null ? row.used_count : payload.usedCount;
+    payload.maxUses = row.max_uses != null ? row.max_uses : payload.maxUses;
+    return payload;
+  }
+
+  async function fetchPublicPromos() {
+    var sb = client();
+    if (!sb) return [];
+    var res = await sb
+      .from("promos")
+      .select("admin_id,code,is_active,used_count,max_uses,payload")
+      .eq("is_active", true);
+    if (res.error) {
+      console.warn("[Supabase] fetchPublicPromos", res.error);
+      return [];
+    }
+    return (res.data || []).map(rowToPublicPromo).filter(Boolean);
+  }
+
+  async function pullAdminPromosRaw() {
+    var sb = client();
+    if (!sb) return null;
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return null;
+    var res = await sb
+      .from("promos")
+      .select("admin_id,code,is_active,used_count,max_uses,payload")
+      .order("updated_at", { ascending: false });
+    if (res.error) {
+      console.warn("[Supabase] pullAdminPromosRaw", res.error);
+      return null;
+    }
+    return (res.data || []).map(rowToPublicPromo);
+  }
+
+  async function pushAdminPromosPayload(promosArray) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var rows = (promosArray || []).map(function (item) {
+      var payload = JSON.parse(JSON.stringify(item || {}));
+      var adminId = String(payload.id || "").trim();
+      var code = String(payload.code || "").trim().toUpperCase();
+      if (!adminId || !code) return null;
+      return {
+        admin_id: adminId,
+        code: code,
+        is_active: payload.isActive !== false,
+        used_count: Number(payload.usedCount) || 0,
+        max_uses: Number(payload.maxUses) || 1,
+        payload: payload,
+        updated_at: new Date().toISOString()
+      };
+    }).filter(Boolean);
+    if (!rows.length) return { ok: true, rows: 0 };
+    var res = await sb.from("promos").upsert(rows, { onConflict: "admin_id" });
+    if (res.error) {
+      console.warn("[Supabase] pushAdminPromosPayload", res.error);
+      return { ok: false, error: res.error.message || String(res.error) };
+    }
+    return { ok: true, rows: rows.length };
+  }
+
+  async function deleteAdminPromo(adminId) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var res = await sb.from("promos").delete().eq("admin_id", String(adminId || "").trim());
+    if (res.error) {
+      console.warn("[Supabase] deleteAdminPromo", res.error);
+      return { ok: false, error: res.error.message || String(res.error) };
+    }
+    return { ok: true };
+  }
+
   async function deleteAdminBrand(adminId) {
     var sb = client();
     if (!sb) return { ok: false, error: "no_client" };
@@ -588,6 +671,10 @@
     pullAdminBrandsRaw: pullAdminBrandsRaw,
     pushAdminBrandsPayload: pushAdminBrandsPayload,
     deleteAdminBrand: deleteAdminBrand,
+    fetchPublicPromos: fetchPublicPromos,
+    pullAdminPromosRaw: pullAdminPromosRaw,
+    pushAdminPromosPayload: pushAdminPromosPayload,
+    deleteAdminPromo: deleteAdminPromo,
     uploadAdminAsset: uploadAdminAsset,
     removeAdminAssetsByUrls: removeAdminAssetsByUrls
   };

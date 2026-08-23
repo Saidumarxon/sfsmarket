@@ -33,8 +33,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260820i">
-  <link rel="stylesheet" href="mobile.css">
+  <link rel="stylesheet" href="styles.css?v=20260823i">
+  <link rel="stylesheet" href="mobile.css?v=20260823g">
   <!-- Optional: <script src="emirate-seo-config.js"></script> for Google/Yandex verification -->
   <script src="emirate-seo-config.js"></script>
   <script src="emirate-seo.js"></script>
@@ -107,7 +107,7 @@
     <!-- ===== HERO ===== -->
     <section class="hero hero--full container">
       <div class="hero-main">
-        <div class="hero-slider" aria-busy="true"></div>
+        <div class="hero-slider hero-slider--carousel" aria-busy="true"></div>
       </div>
     </section>
 
@@ -115,11 +115,22 @@
     <section class="container section section--brands">
       <div class="section-header">
         <h2 data-i18n="section.brands">Популярные бренды</h2>
+        <a href="catalog.html" class="section-link" data-i18n="section.allBrands">Все →</a>
       </div>
       <div class="brands-grid brands-row" id="homeBrandsGrid">
         <a href="catalog.html?brand=Apple" class="brand-card">Apple</a>
       </div>
     </section>
+
+    <!-- ===== ALL PRODUCTS FEED (native app) ===== -->
+    <section class="container section" id="feedSection" hidden>
+      <div class="section-header">
+        <h2 data-i18n="section.recommended">Рекомендуем вам</h2>
+        <a href="catalog.html" class="section-link" data-i18n="section.allProducts">Все товары →</a>
+      </div>
+      <div class="products-grid" id="feedGrid"></div>
+    </section>
+    <div id="feedTrigger" style="height:1px"></div>
 
     <!-- ===== SMARTPHONES ===== -->
     <section class="container section category-section" data-category="smartphones">
@@ -188,15 +199,6 @@
         </button>
       </div>
     </section>
-
-    <!-- ===== LAZY-LOADED PRODUCTS FEED ===== -->
-    <section class="container section" id="feedSection" style="display:none">
-      <div class="section-header">
-        <h2 data-i18n="section.recommended">Рекомендуем вам</h2>
-      </div>
-      <div class="products-grid" id="feedGrid"></div>
-    </section>
-    <div id="feedTrigger" style="height:1px"></div>
 
     <!-- ===== PERKS ===== -->
     <section class="container section section--perks">
@@ -310,17 +312,17 @@
 
   <script src="mobile-config.js"></script>
   <script src="mobile-bridge.js"></script>
-  <script src="translations.js"></script>
+  <script src="translations.js?v=20260823g"></script>
   <script src="emirate-telegram-config.js"></script>
-  <script src="common.js?v=20260820g"></script>
+  <script src="common.js?v=20260823d"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase-config.js"></script>
   <script src="supabase-config.prod.js"></script>
   <script src="emirate-exchange.js?v=20260808e"></script>
   <script src="emirate-supabase-api.js?v=20260808e"></script>
-  <script src="emirate-brands.js"></script>
+  <script src="emirate-brands.js?v=20260823f"></script>
   <script src="emirate-auth.js?v=20260820g"></script>
-  <script src="app.js?v=20260820i"></script>
+  <script src="app.js?v=20260823i"></script>
   <script src="mobile-storefront-fix.js"></script>
 </body>
 </html>
