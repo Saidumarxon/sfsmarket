@@ -261,16 +261,21 @@
     return found;
   }
 
+  function readInsertedOrderNumber(data) {
+    var n = Number(data && (data.order_number != null ? data.order_number : data.orderNumber));
+    return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+  }
+
   async function insertOrder(payload) {
     var sb = client();
     if (!sb) return { ok: false, error: "no_client" };
-    // status не передаём: в старых БД колонки может не быть; после миграции сработает default 'processing'
+    // status / order_number не передаём: их ставит default в базе
     var res = await sb.from("orders").insert(payload || {}).select("id").single();
     if (res.error) {
       console.warn("[Supabase] insertOrder", res.error);
       return { ok: false, error: res.error.message || String(res.error) };
     }
-    return { ok: true, id: res.data && res.data.id };
+    return { ok: true, id: res.data && res.data.id, orderNumber: readInsertedOrderNumber(res.data) };
   }
 
   async function pullAdminOrdersRaw() {
@@ -281,9 +286,17 @@
     var res = await sb
       .from("orders")
       .select(
-        "id,phone,full_name,region,city,address,comment_text,delivery_method,payment_method,items,total_amount,status,created_at"
+        "id,order_number,phone,full_name,region,city,address,comment_text,delivery_method,payment_method,items,total_amount,status,created_at"
       )
       .order("created_at", { ascending: false });
+    if (res.error && /order_number/i.test(String(res.error.message || res.error))) {
+      res = await sb
+        .from("orders")
+        .select(
+          "id,phone,full_name,region,city,address,comment_text,delivery_method,payment_method,items,total_amount,status,created_at"
+        )
+        .order("created_at", { ascending: false });
+    }
     if (res.error) {
       console.warn("[Supabase] pullAdminOrdersRaw", res.error);
       return null;

@@ -277,7 +277,9 @@ function formatOrderDate(value) {
   return `${dd}.${mm}.${yyyy}`;
 }
 
-function formatOrderPublicId(uuid) {
+function formatOrderPublicId(uuid, orderNumber) {
+  const n = Number(orderNumber);
+  if (Number.isFinite(n) && n > 0) return '#' + Math.trunc(n);
   const raw = String(uuid || '').replace(/-/g, '');
   if (!raw) return '#—';
   return '#' + raw.slice(0, 8).toUpperCase();
@@ -298,7 +300,8 @@ function formatOrderItems(items) {
 function mapSupabaseOrderToAdminRow(row) {
   return {
     uuid: row.id,
-    id: formatOrderPublicId(row.id),
+    orderNumber: Number(row.order_number) > 0 ? Math.trunc(Number(row.order_number)) : 0,
+    id: formatOrderPublicId(row.id, row.order_number),
     client: String(row.full_name || '—').trim() || '—',
     phone: String(row.phone || '—').trim() || '—',
     items: formatOrderItems(row.items),

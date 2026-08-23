@@ -29,6 +29,10 @@ const cartSummarySubtotalEl = document.getElementById("cartSummarySubtotal");
 const cartSummaryDiscountEl = document.getElementById("cartSummaryDiscount");
 const cartSummaryTotalEl = document.getElementById("cartSummaryTotal");
 const proceedCheckoutBtn = document.getElementById("proceedCheckoutBtn");
+const cartCheckoutBarEl = document.getElementById("cartCheckoutBar");
+const cartBarTotalEl = document.getElementById("cartBarTotal");
+const cartBarCountEl = document.getElementById("cartBarCount");
+const cartBarCheckoutBtn = document.getElementById("cartBarCheckout");
 const clearCartBtn = document.getElementById("clearCartBtn");
 const isFavoritesMode = new URLSearchParams(window.location.search).get("favorites") === "1";
 const isCartMode = new URLSearchParams(window.location.search).get("cart") === "1";
@@ -453,6 +457,34 @@ function getCartTotals() {
   return { items, subtotal: listSubtotal, total: Math.max(0, payable - promoDiscount), discount, promoDiscount, count };
 }
 
+function formatCartBarCount(count) {
+  const n = Number(count) || 0;
+  const lang = localStorage.getItem("emirate_lang") || "ru";
+  const dict = window.TRANSLATIONS || {};
+  const pick = (key, fallback) => (dict[key] && (dict[key][lang] || dict[key].ru)) || fallback;
+  if (lang === "uz") {
+    return n + " " + pick("cart.barItemMany", "ta mahsulot");
+  }
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  let key = "cart.barItemMany";
+  let fallback = "товаров";
+  if (mod10 === 1 && mod100 !== 11) {
+    key = "cart.barItemOne";
+    fallback = "товар";
+  } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    key = "cart.barItemFew";
+    fallback = "товара";
+  }
+  return n + " " + pick(key, fallback);
+}
+
+function goToCheckout() {
+  const { count } = getCartTotals();
+  if (!count) return;
+  window.location.href = "checkout.html";
+}
+
 function renderCartPanels() {
   if (!isCartMode) return;
   const { subtotal, total, discount, count } = getCartTotals();
@@ -460,6 +492,9 @@ function renderCartPanels() {
   if (cartSummaryCardEl) {
     cartSummaryCardEl.hidden = count === 0;
   }
+  if (cartCheckoutBarEl) cartCheckoutBarEl.hidden = count === 0;
+  if (cartBarTotalEl) cartBarTotalEl.textContent = money(total);
+  if (cartBarCountEl) cartBarCountEl.textContent = formatCartBarCount(count);
   if (cartSummaryCountEl) cartSummaryCountEl.textContent = String(count);
   if (cartSummarySubtotalEl) cartSummarySubtotalEl.textContent = money(subtotal);
   if (cartSummaryDiscountEl) cartSummaryDiscountEl.textContent = `-${money(discount)}`;
@@ -1189,11 +1224,8 @@ document.getElementById("cartPromoApply")?.addEventListener("click", async funct
   renderCartPanels();
 });
 
-proceedCheckoutBtn?.addEventListener("click", () => {
-  const { count } = getCartTotals();
-  if (!count) return;
-  window.location.href = "checkout.html";
-});
+proceedCheckoutBtn?.addEventListener("click", goToCheckout);
+cartBarCheckoutBtn?.addEventListener("click", goToCheckout);
 
 clearCartBtn?.addEventListener("click", () => {
   window.emirateClearCart?.();

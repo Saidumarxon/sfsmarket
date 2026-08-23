@@ -112,9 +112,15 @@ function buildOtpMessage(code) {
   return "Emirate Co kod: " + String(code);
 }
 
+function prettyOrderId(orderId) {
+  const raw = String(orderId || "").trim();
+  if (/^\d+$/.test(raw)) return raw;
+  return raw.replace(/-/g, "").slice(0, 8).toUpperCase();
+}
+
 function buildOrderMessage(orderId, lang) {
   const custom = String(process.env.ESKIZ_ORDER_MESSAGE || "").trim();
-  const id = String(orderId || "").trim();
+  const id = prettyOrderId(orderId);
   if (custom) {
     return custom.split("{{id}}").join(id).split("{{orderId}}").join(id);
   }
@@ -122,9 +128,9 @@ function buildOrderMessage(orderId, lang) {
     return "";
   }
   if (lang === "uz") {
-    return "Emirate Co: buyurtmangiz qabul qilindi. #" + id.slice(0, 8);
+    return "Emirate Co: buyurtmangiz qabul qilindi. #" + id;
   }
-  return "Emirate Co: vash zakaz prinyat. #" + id.slice(0, 8);
+  return "Emirate Co: vash zakaz prinyat. #" + id;
 }
 
 async function sendSms(phone, message, options) {

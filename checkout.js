@@ -2,6 +2,7 @@ const checkoutFormPageEl = document.getElementById("checkoutFormPage");
 const checkoutCountEl = document.getElementById("checkoutCount");
 const checkoutTotalEl = document.getElementById("checkoutTotal");
 const checkoutItemsPreviewEl = document.getElementById("checkoutItemsPreview");
+let checkoutJustPlaced = false;
 
 function money(value) {
   return Number(value || 0).toLocaleString("ru-RU") + " сум";
@@ -56,7 +57,7 @@ function renderCheckoutSummary() {
       .join("");
   }
 
-  if (!count) {
+  if (!count && !checkoutJustPlaced) {
     window.location.href = "catalog.html?cart=1";
   }
 }
@@ -114,12 +115,23 @@ checkoutFormPageEl?.addEventListener("submit", async (event) => {
     promo_discount: promoDiscount || 0,
   };
 
+  const submitBtn = checkoutFormPageEl.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Отправка...";
+  }
+
+  let placed = { ok: true, id: "", orderNumber: null };
   if (window.emirateSupabaseApi?.isConfigured?.()) {
-    const res = await window.emiratePlaceOrder?.(orderRow);
-    if (!res?.ok) {
+    placed = (await window.emiratePlaceOrder?.(orderRow)) || { ok: false };
+    if (!placed.ok) {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Заказать";
+      }
       alert(
         "Не удалось сохранить заказ в Supabase. Проверьте таблицу orders и политики RLS (файл supabase/schema.sql).\n" +
-          (res.error || "")
+          (placed.error || "")
       );
       return;
     }
@@ -135,10 +147,25 @@ checkoutFormPageEl?.addEventListener("submit", async (event) => {
 
   if (promoCode) window.emiratePromos?.markPromoUsed?.(promoCode);
   window.emiratePromos?.clearAppliedPromo?.();
-  alert("Заказ принят! Мы свяжемся с вами в ближайшее время.");
+  checkoutJustPlaced = true;
   window.emirateClearCart?.();
   checkoutFormPageEl.reset();
-  window.location.href = "catalog.html?cart=1";
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Заказать";
+  }
+  if (window.emirateShowOrderSuccess) {
+    window.emirateShowOrderSuccess({
+      id: placed.id,
+      orderNumber: placed.orderNumber,
+      onClose: function () {
+        window.location.href = "index.html";
+      },
+    });
+    return;
+  }
+  alert("Заказ принят! Мы свяжемся с вами в ближайшее время.");
+  window.location.href = "index.html";
 });
 
 async function prefillCheckoutForm() {

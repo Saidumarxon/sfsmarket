@@ -28,8 +28,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260823h">
-  <link rel="stylesheet" href="mobile.css">
+  <link rel="stylesheet" href="styles.css?v=20260823k">
+  <link rel="stylesheet" href="mobile.css?v=20260823k">
   <script>
     (function () {
       var params = new URLSearchParams(location.search);
@@ -342,6 +342,14 @@
     </div>
   </footer>
 
+  <div class="cart-checkout-bar" id="cartCheckoutBar" hidden>
+    <div class="cart-checkout-bar-info">
+      <strong class="cart-checkout-bar-total" id="cartBarTotal">0 сум</strong>
+      <span class="cart-checkout-bar-count" id="cartBarCount"></span>
+    </div>
+    <button type="button" class="cart-checkout-bar-btn" id="cartBarCheckout" data-i18n="cart.checkout">Оформить заказ</button>
+  </div>
+
   <!-- ===== MOBILE NAV ===== -->
   <nav class="mobile-nav">
     <a href="index.html" class="mobile-nav-item">
@@ -377,16 +385,16 @@
   <script src="supabase-config.js"></script>
   <script src="supabase-config.prod.js"></script>
   <script src="emirate-exchange.js?v=20260808e"></script>
-  <script src="emirate-supabase-api.js?v=20260823h"></script>
+  <script src="emirate-supabase-api.js?v=20260823j"></script>
   <script src="emirate-brands.js?v=20260823f"></script>
   <script src="emirate-promos.js?v=20260823h"></script>
   <script src="emirate-catalogs.js"></script>
   <script src="emirate-auth.js?v=20260820g"></script>
-  <script src="translations.js"></script>
+  <script src="translations.js?v=20260823k"></script>
   <script src="emirate-telegram-config.js"></script>
-  <script src="common.js?v=20260823d"></script>
+  <script src="common.js?v=20260823j"></script>
   <script src="emirate-image-search.js"></script>
-  <script src="catalog.js?v=20260823h"></script>
+  <script src="catalog.js?v=20260823k"></script>
   <script src="mobile-storefront-fix.js"></script>
 </body>
 </html>

@@ -52,8 +52,11 @@ create table if not exists public.banners (
 
 create index if not exists banners_active_priority_idx on public.banners (is_active, priority);
 
+create sequence if not exists public.orders_order_number_seq;
+
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
+  order_number int not null default nextval('public.orders_order_number_seq'),
   phone text not null,
   full_name text not null,
   region text,
@@ -67,6 +70,9 @@ create table if not exists public.orders (
   status text not null default 'processing',
   created_at timestamptz not null default now()
 );
+
+create unique index if not exists orders_order_number_uidx on public.orders (order_number);
+grant usage, select on sequence public.orders_order_number_seq to anon, authenticated, service_role;
 
 alter table public.products enable row level security;
 alter table public.banners enable row level security;

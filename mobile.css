@@ -66,6 +66,23 @@ html.capacitor-app .scroll-top {
   bottom: calc(90px + var(--safe-bottom));
 }
 
+html.capacitor-app body.cart-mode .cart-checkout-bar:not([hidden]) {
+  display: flex;
+  bottom: calc(62px + var(--safe-bottom));
+}
+
+html.capacitor-app body.cart-mode:not(.cart-empty-mode) .footer {
+  padding-bottom: calc(156px + var(--safe-bottom));
+}
+
+html.capacitor-app body.cart-mode:not(.cart-empty-mode) .scroll-top {
+  bottom: calc(150px + var(--safe-bottom));
+}
+
+html.capacitor-app body.cart-mode:not(.cart-empty-mode) .cart-summary-actions .btn-primary {
+  display: none;
+}
+
 html.capacitor-app .catalog-dropdown {
   top: calc(var(--app-header-height, 68px) + var(--safe-top));
 }

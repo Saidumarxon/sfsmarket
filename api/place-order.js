@@ -37,17 +37,23 @@ module.exports = async function handler(req, res) {
     if (promoCode && inserted.ok) {
       await bot.redeemPromoViaService(promoCode).catch(function () {});
     }
-    await bot.notifyAdminNewOrder(Object.assign({ id: inserted.id }, inserted.order)).catch(function () {});
+    await bot.notifyAdminNewOrder(
+      Object.assign({ id: inserted.id, order_number: inserted.orderNumber }, inserted.order)
+    ).catch(function () {});
 
     const orderPhone = String((inserted.order && inserted.order.phone) || orderRow.phone || "").trim();
     if (orderPhone && eskiz.isConfigured()) {
       const lang = String(body.lang || orderRow.lang || "ru").trim().toLowerCase();
-      void eskiz.sendOrderSms(orderPhone, inserted.id, lang).catch(function (err) {
+      void eskiz.sendOrderSms(orderPhone, inserted.orderNumber || inserted.id, lang).catch(function (err) {
         console.warn("[place-order] order sms", err && err.message ? err.message : err);
       });
     }
 
-    return res.status(200).json({ ok: true, id: inserted.id });
+    return res.status(200).json({
+      ok: true,
+      id: inserted.id,
+      orderNumber: inserted.orderNumber || null,
+    });
   } catch (err) {
     console.error("[place-order]", err);
     return res.status(500).json({ ok: false, error: err.message || String(err) });

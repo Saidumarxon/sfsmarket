@@ -321,11 +321,19 @@ function normalizeOrderStatus(value) {
   return ORDER_STATUS_LABELS[status] ? status : "processing";
 }
 
+function publicOrderNumber(order) {
+  const n = Number(order && (order.order_number != null ? order.order_number : order.orderNumber));
+  if (Number.isFinite(n) && n > 0) return String(Math.trunc(n));
+  return shortOrderId(order && order.id);
+}
+
 function normalizeOrder(row) {
   if (!row || typeof row !== "object") return null;
   const items = Array.isArray(row.items) ? row.items : [];
+  const orderNumber = Number(row.order_number != null ? row.order_number : row.orderNumber);
   return {
     id: String(row.id || "").trim(),
+    order_number: Number.isFinite(orderNumber) && orderNumber > 0 ? Math.trunc(orderNumber) : null,
     phone: String(row.phone || "").trim(),
     full_name: String(row.full_name || row.fullName || "").trim(),
     region: String(row.region || "").trim(),
@@ -370,10 +378,24 @@ async function fetchOrderById(orderId) {
   return normalizeOrder(rows[0]);
 }
 
+async function fetchOrderByNumber(orderNumber) {
+  const n = String(orderNumber || "").trim();
+  if (!/^\d{1,9}$/.test(n) || !SUPABASE_SERVICE) return null;
+  const rows = await supabaseServiceFetch(
+    "/rest/v1/orders?order_number=eq." + encodeURIComponent(n) + "&select=*&limit=1"
+  );
+  if (!Array.isArray(rows) || !rows.length) return null;
+  return normalizeOrder(rows[0]);
+}
+
 async function resolveOrderId(ref, message) {
   const token = String(ref || "").trim();
   if (!token) {
     return extractOrderIdFromMessage(message);
+  }
+  if (/^\d{1,9}$/.test(token)) {
+    const byNumber = await fetchOrderByNumber(token);
+    if (byNumber) return byNumber.id;
   }
 
   if (/^[a-f0-9-]{36}$/i.test(token)) {
@@ -493,8 +515,18 @@ async function insertOrderViaService(orderRow) {
     return { ok: false, error: text || "insert_failed" };
   }
   const rows = await res.json();
-  const id = Array.isArray(rows) && rows[0] ? rows[0].id : null;
-  return { ok: true, id: id, order: payload };
+  const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
+  const id = row && row.id ? row.id : null;
+  const orderNumber = Number(row && row.order_number);
+  return {
+    ok: true,
+    id: id,
+    orderNumber: Number.isFinite(orderNumber) && orderNumber > 0 ? Math.trunc(orderNumber) : null,
+    order: Object.assign({}, payload, {
+      id: id,
+      order_number: Number.isFinite(orderNumber) && orderNumber > 0 ? Math.trunc(orderNumber) : null,
+    }),
+  };
 }
 
 async function redeemPromoViaService(code) {
@@ -556,7 +588,7 @@ function formatOrderItems(order) {
 function formatOrderMessage(order, options) {
   const opts = options || {};
   const title = opts.title || "🛒 Заказ";
-  const idLabel = order.id ? "#" + shortOrderId(order.id) : "";
+  const idLabel = publicOrderNumber(order) ? "#" + publicOrderNumber(order) : "";
   const statusLabel = ORDER_STATUS_LABELS[order.status] || ORDER_STATUS_LABELS.processing;
   const lines = [
     "<b>" + title + " " + idLabel + "</b>",
@@ -632,7 +664,7 @@ async function sendOrdersList(chatId) {
       "<b>" +
       (index + 1) +
       ".</b> #" +
-      shortOrderId(order.id) +
+      publicOrderNumber(order) +
       " · " +
       formatSum(order.total_amount) +
       "\n" +
@@ -650,19 +682,20 @@ async function sendOrdersList(chatId) {
 async function sendOrderDetail(chatId, orderRef) {
   const ref = String(orderRef || "").trim();
   if (!ref) {
-    await sendMessage(chatId, "Укажите ID: /order UUID");
+    await sendMessage(chatId, "Укажите номер: /order 1042");
     return;
   }
   if (!SUPABASE_SERVICE) {
     await sendMessage(chatId, "Нужен SUPABASE_SERVICE_ROLE_KEY в Vercel.");
     return;
   }
-  let order = await fetchOrderById(ref);
+  const resolvedId = await resolveOrderId(ref);
+  let order = resolvedId ? await fetchOrderById(resolvedId) : null;
   if (!order && ref.length <= 8) {
     const orders = await fetchRecentOrders(50);
     order =
       orders.find(function (item) {
-        return shortOrderId(item.id) === ref.toUpperCase();
+        return shortOrderId(item.id) === ref.toUpperCase() || String(item.order_number || "") === ref;
       }) || null;
   }
   if (!order) {
