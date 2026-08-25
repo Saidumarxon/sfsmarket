@@ -49,7 +49,7 @@ function renderCheckoutSummary() {
     checkoutItemsPreviewEl.innerHTML = items
       .map((item, index) => `
         <div class="checkout-item-mini">
-          <strong>${escapeHtml(item.title)}</strong>
+          <strong>${escapeHtml(window.emirateProductDisplayTitle?.(item) || item.title)}</strong>
           <div>${item.qty} шт. · ${money((item.price || 0) * (item.qty || 1))}</div>
           <button class="checkout-item-remove" type="button" data-index="${index}">Удалить</button>
         </div>

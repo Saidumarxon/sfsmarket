@@ -111,6 +111,8 @@ function loadAdminProductsForCatalog() {
         }) || { image: uploadedPhotos[0] || "", photos: uploadedPhotos };
         return {
         title: item.nameRu || item.nameUz || "Товар",
+        nameRu: String(item.nameRu || "").trim(),
+        nameUz: String(item.nameUz || "").trim(),
         sku: item.id || "",
         brand: item.brand || "",
         model: String(item.model || "").trim(),
@@ -244,11 +246,15 @@ function escapeHtml(value) {
 
 function renderProduct(product, options = {}) {
   const productHref = window.emirateProductHref
-    ? window.emirateProductHref(product.title)
+    ? window.emirateProductHref(product)
     : `product.html?product=${encodeURIComponent(product.title)}`;
   const cartControls = options.cartControls === true;
   const productId = product.title;
   const safeProductId = escapeHtmlAttr(productId);
+  const displayTitle = window.emirateListingDisplayTitle
+    ? window.emirateListingDisplayTitle(product)
+    : product.title;
+  const colorId = String(product.listingColorId || product.colorId || "").trim();
   const isFavorite = window.emirateIsFavorite?.(productId) === true;
   const cartQty = Math.max(1, Number(product.qty) || 1);
   const installment = Math.round(product.price / 12);
@@ -281,15 +287,15 @@ function renderProduct(product, options = {}) {
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <path d="M21 15l-5-5L5 21"/>
             </svg>
-            Фото
+            ${typeof window.emirateT === "function" ? window.emirateT("card.photo") : "Фото"}
           </div>`;
 
   return `
-    <article class="product-card" data-product-id="${safeProductId}">
+    <article class="product-card" data-product-id="${safeProductId}"${colorId ? ` data-color-id="${escapeHtmlAttr(colorId)}"` : ""}>
       <div class="product-card-top">
         <div class="product-image">
           <div class="product-badges">${badgeHTML}</div>
-          <button class="wishlist-btn ${isFavorite ? "active" : ""}" type="button" title="В избранное" data-product-id="${safeProductId}">
+          <button class="wishlist-btn ${isFavorite ? "active" : ""}" type="button" title="${typeof window.emirateT === "function" ? window.emirateT("card.wishlist") : "В избранное"}" data-product-id="${safeProductId}">
             <svg width="18" height="18" fill="${isFavorite ? "#ef4444" : "none"}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
             </svg>
@@ -299,7 +305,7 @@ function renderProduct(product, options = {}) {
           </a>
         </div>
       </div>
-      <h3 class="product-title"><a class="product-link" href="${productHref}">${product.title}</a></h3>
+      <h3 class="product-title"><a class="product-link" href="${productHref}">${escapeHtml(displayTitle)}</a></h3>
       ${ratingHtml ? `<div class="product-rating">${ratingHtml}</div>` : ""}
       ${window.emirateProductPriceHtml?.(product.price, product.oldPrice) || ""}
       ${window.emirateProductInstallmentHtml?.(product, installment) || ""}
@@ -512,7 +518,13 @@ function getCheckedValues(selector) {
 
 function matchesTextSearch(product) {
   if (!textSearchQuery) return true;
-  const haystack = [product.title, product.brand, product.category, product.sku]
+  const parts = [product.title, product.nameRu, product.nameUz, product.brand, product.category, product.sku, product.listingColorName];
+  if (!product.listingColorId) {
+    (Array.isArray(product.colors) ? product.colors : []).forEach((variant) => {
+      parts.push(variant?.nameRu, variant?.nameUz, variant?.name);
+    });
+  }
+  const haystack = parts
     .map((part) => String(part || "").toLowerCase())
     .join(" ");
   return haystack.includes(textSearchQuery);
@@ -541,7 +553,6 @@ function applyFiltersAndSort() {
     list = isCartMode
       ? (window.emirateGetCartItems?.() || [])
       : sourceProducts.filter(p => {
-          if (!matchesTextSearch(p)) return false;
           if (catalogLinkedCategoryNames.length) {
             if (!catalogLinkedCategoryNames.includes(String(p.category || "").trim())) return false;
           } else if (categories.length && !categories.includes(p.category)) {
@@ -562,6 +573,13 @@ function applyFiltersAndSort() {
 
   if (isCartMode || isFavoritesMode) {
     list = list.map(hydrateListedProduct);
+  }
+
+  if (!isCartMode && window.emirateExpandColorListings) {
+    list = window.emirateExpandColorListings(list);
+  }
+  if (!isCartMode) {
+    list = list.filter((p) => matchesTextSearch(p));
   }
 
   if (!isPhotoSearchMode) {
@@ -801,6 +819,8 @@ function findLiveCatalogProduct(product) {
   return (
     sourceProducts.find((item) => item.title === title) ||
     sourceProducts.find((item) => normalizeTitleKey(item.title) === key) ||
+    sourceProducts.find((item) => normalizeTitleKey(item.nameRu) === key) ||
+    sourceProducts.find((item) => normalizeTitleKey(item.nameUz) === key) ||
     null
   );
 }

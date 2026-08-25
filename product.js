@@ -49,6 +49,33 @@ let activeColorId = "";
 let currentColorVariants = [];
 let colorRenderContext = { title: "Товар", fallbackPhotos: [] };
 
+function readRequestedColorId() {
+  const fromUrl = (new URLSearchParams(window.location.search).get("color") || "").trim();
+  if (fromUrl) return fromUrl;
+  return String(currentProduct?.listingColorId || currentProduct?.colorId || "").trim();
+}
+
+function findColorVariantByQuery(variants, query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q || !Array.isArray(variants)) return null;
+  return (
+    variants.find((item) => String(item.id || "").toLowerCase() === q) ||
+    variants.find((item) =>
+      [item.name, item.nameRu, item.nameUz].some((name) => String(name || "").trim().toLowerCase() === q)
+    ) ||
+    null
+  );
+}
+
+function syncColorQuery(colorId) {
+  try {
+    const url = new URL(window.location.href);
+    if (colorId) url.searchParams.set("color", colorId);
+    else url.searchParams.delete("color");
+    history.replaceState(null, "", url.pathname + url.search + url.hash);
+  } catch (_) {}
+}
+
 function parsePriceText(text) {
   return Number(String(text || "").replace(/\s+/g, "").replace(/[^\d]/g, "")) || 0;
 }
@@ -291,6 +318,8 @@ function readAdminProducts() {
         }) || { image: uploadedPhotos[0] || "", photos: uploadedPhotos };
         return {
           title,
+          nameRu: String(item.nameRu || "").trim(),
+          nameUz: String(item.nameUz || "").trim(),
           brand: item.brand || "",
           model: String(item.model || "").trim(),
           category: item.category || "Смартфоны",
@@ -365,7 +394,11 @@ function resolvePageProduct() {
   const targetKey = queryKey || selectedKey;
   const selectedSku = String(selected?.sku || "").trim();
   const adminMatch = targetKey
-    ? adminProducts.find((item) => normalizeTitleKey(item.title) === targetKey)
+    ? adminProducts.find((item) =>
+        normalizeTitleKey(item.title) === targetKey ||
+        normalizeTitleKey(item.nameRu) === targetKey ||
+        normalizeTitleKey(item.nameUz) === targetKey
+      )
     : null;
   const adminMatchBySku = selectedSku
     ? adminProducts.find((item) => String(item.sku || "").trim() === selectedSku)
@@ -636,6 +669,7 @@ function renderProductFacts(product, lang, skuValue) {
 
 function hydratePageProduct(product) {
   const title = product.title || "Товар";
+  const displayTitle = window.emirateProductDisplayTitle?.(product) || title;
   const price = Number(product.price) || 0;
   const oldPrice = Number(product.oldPrice) || price;
   const sku = product.sku || `${(product.brand || "PRD").slice(0, 3).toUpperCase()}-${normalizeTitleKey(title).slice(0, 8).toUpperCase()}`;
@@ -663,8 +697,8 @@ function hydratePageProduct(product) {
   currentMemoryVariants = activeMemoryVariants;
   if (product.memoryMeta) currentProduct.memoryMeta = product.memoryMeta;
 
-  if (productTitleEl) productTitleEl.textContent = title;
-  if (breadcrumbProductEl) breadcrumbProductEl.textContent = title;
+  if (productTitleEl) productTitleEl.textContent = displayTitle;
+  if (breadcrumbProductEl) breadcrumbProductEl.textContent = displayTitle;
   if (currentPriceEl) currentPriceEl.textContent = `${formatMoney(price)} сум`;
   if (oldPriceEl) oldPriceEl.textContent = oldPrice > price ? `${formatMoney(oldPrice)} сум` : "";
   if (skuChipEl) skuChipEl.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> ${sku}`;
@@ -677,7 +711,10 @@ function hydratePageProduct(product) {
   currentColorVariants = activeColorVariants;
 
   if (currentColorVariants.length) {
-    if (!activeColorId || !currentColorVariants.some((item) => item.id === activeColorId)) {
+    const requested = findColorVariantByQuery(currentColorVariants, readRequestedColorId());
+    if (requested) {
+      activeColorId = requested.id;
+    } else if (!activeColorId || !currentColorVariants.some((item) => item.id === activeColorId)) {
       activeColorId = currentColorVariants[0].id;
     }
     applyActiveColorVariant(lang);
@@ -765,7 +802,10 @@ async function loadSimilarProducts(product) {
   }
 
   similarProductsSource = similar;
-  similarGridEl.innerHTML = similar
+  const similarCards = window.emirateExpandColorListings
+    ? window.emirateExpandColorListings(similar).slice(0, 8)
+    : similar;
+  similarGridEl.innerHTML = similarCards
     .map((item) => window.emirateRenderProductCard?.(item) || "")
     .join("");
   window.emirateSyncFavoritesUI?.(similarGridEl);
@@ -890,6 +930,7 @@ colorOptionsRowEl?.addEventListener("click", (event) => {
   const colorId = button.getAttribute("data-color-id");
   if (!colorId || colorId === activeColorId) return;
   activeColorId = colorId;
+  syncColorQuery(colorId);
   applyActiveColorVariant(getActiveLang());
 });
 

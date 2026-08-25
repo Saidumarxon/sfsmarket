@@ -333,6 +333,8 @@ function normalizeViewedProduct(product) {
 
   return {
     title,
+    nameRu: typeof product.nameRu === "string" ? product.nameRu.trim() : "",
+    nameUz: typeof product.nameUz === "string" ? product.nameUz.trim() : "",
     brand: typeof product.brand === "string" ? product.brand : "",
     category: typeof product.category === "string" ? product.category : "",
     price: normalizeNumber(product.price),
@@ -377,13 +379,9 @@ function emirateProductMediaSeed(product) {
   return raw.slice(0, 48) || "emirate-product";
 }
 
-/** Stock photos when admin has not uploaded images yet (stable per product). */
-function emirateFallbackProductPhotos(product, count = 4) {
-  const seed = emirateProductMediaSeed(product);
-  const total = Math.max(1, Math.min(Number(count) || 4, 6));
-  return Array.from({ length: total }, (_, index) =>
-    `https://picsum.photos/seed/${encodeURIComponent(`${seed}-${index}`)}/800/800`
-  );
+/** No stock photos: empty card until admin uploads a real image. */
+function emirateFallbackProductPhotos() {
+  return [];
 }
 
 function emirateParsePriceValue(value) {
@@ -506,12 +504,25 @@ function emirateProductRatingChipHtml(product, lang) {
   );
 }
 
+function emirateProductDisplayTitle(product) {
+  const nameRu = String(product?.nameRu || "").trim();
+  const nameUz = String(product?.nameUz || "").trim();
+  const fallback = String(product?.title || "").trim();
+  const lang = typeof window.emirateLang === "function" ? window.emirateLang() : "ru";
+  if (String(lang).toLowerCase() === "uz") {
+    return nameUz || nameRu || fallback;
+  }
+  return nameRu || nameUz || fallback;
+}
+
 function emirateProductInstallmentHtml(product, installmentValue) {
   if (product && product.installmentStatus === "inactive") {
-    return `<div class="product-installment product-installment--muted">Без рассрочки</div>`;
+    const label = (typeof t === "function" && t("card.noInstallment")) || "Без рассрочки";
+    return `<div class="product-installment product-installment--muted">${label}</div>`;
   }
   const part = emirateFormatPriceParts(Math.round(emirateParsePriceValue(installmentValue)));
-  return `<div class="product-installment"><span class="product-installment-value">${part.amount} ${part.currency}</span><span class="product-installment-term">× 12 мес</span></div>`;
+  const months = (typeof t === "function" && t("card.months")) || "мес";
+  return `<div class="product-installment"><span class="product-installment-value">${part.amount} ${part.currency}</span><span class="product-installment-term">× 12 ${months}</span></div>`;
 }
 
 function emirateOnProductImageError(img) {
@@ -523,10 +534,12 @@ function emirateOnProductImageError(img) {
 }
 
 function emirateProductActionsHtml(productHref, safeProductId) {
+  const buy = (typeof t === "function" && t("card.buy")) || "Купить";
+  const addCart = (typeof t === "function" && t("card.addCart")) || "В корзину";
   return `
     <div class="product-actions">
-      <button class="product-buy-btn quick-buy-open" type="button" data-product-title="${safeProductId}">Купить</button>
-      <button class="product-cart-icon-btn add-to-cart-btn" type="button" title="В корзину" aria-label="В корзину">
+      <button class="product-buy-btn quick-buy-open" type="button" data-product-title="${safeProductId}">${buy}</button>
+      <button class="product-cart-icon-btn add-to-cart-btn" type="button" title="${addCart}" aria-label="${addCart}">
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
           <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
@@ -544,17 +557,102 @@ function emirateEscapeHtmlAttr(value) {
 }
 
 /** Relative product URL — works on Live Server locally and on Vercel in production. */
-function emirateProductHref(title) {
-  return "product.html?product=" + encodeURIComponent(String(title || "").trim());
+function emirateProductHref(titleOrProduct, colorId) {
+  const isObj = titleOrProduct && typeof titleOrProduct === "object";
+  const title = isObj ? titleOrProduct.title : titleOrProduct;
+  const color = String(
+    colorId ||
+      (isObj ? titleOrProduct.listingColorId || titleOrProduct.colorId || "" : "") ||
+      ""
+  ).trim();
+  let href = "product.html?product=" + encodeURIComponent(String(title || "").trim());
+  if (color) href += "&color=" + encodeURIComponent(color);
+  return href;
+}
+
+function emirateColorDisplayName(variant, lang) {
+  const isUz = String(lang || "").toLowerCase() === "uz";
+  return String(
+    isUz
+      ? variant?.nameUz || variant?.nameRu || variant?.name || ""
+      : variant?.nameRu || variant?.nameUz || variant?.name || ""
+  ).trim();
+}
+
+function emirateGetActiveColorVariants(product) {
+  if (!product || product.colorMeta?.status === "inactive") return [];
+  const colors = Array.isArray(product.colors) ? product.colors : [];
+  return colors.filter((variant) => {
+    const name = String(variant?.nameRu || variant?.nameUz || variant?.name || "").trim();
+    return Boolean(name) && variant?.status !== "inactive";
+  });
+}
+
+function emirateListingFromColor(product, variant, lang, showColorInTitle) {
+  const colorPhotos = Array.isArray(variant?.photos)
+    ? variant.photos.map((url) => String(url || "").trim()).filter(Boolean)
+    : [];
+  const productPhotos = Array.isArray(product?.photos)
+    ? product.photos.map((url) => String(url || "").trim()).filter(Boolean)
+    : [];
+  if (!colorPhotos.length && product?.image) {
+    productPhotos.unshift(String(product.image).trim());
+  }
+  const photos = colorPhotos.length ? colorPhotos : productPhotos.filter(Boolean);
+  const unique = [];
+  photos.forEach((url) => {
+    if (url && !unique.includes(url)) unique.push(url);
+  });
+  const colorName = emirateColorDisplayName(variant, lang);
+  return {
+    ...product,
+    image: unique[0] || product?.image || "",
+    photos: unique.length ? unique : productPhotos,
+    colorId: String(variant?.id || ""),
+    listingColorId: String(variant?.id || ""),
+    listingColorName: showColorInTitle ? colorName : ""
+  };
+}
+
+function emirateListingDisplayTitle(product) {
+  const title = emirateProductDisplayTitle(product);
+  const color = String(product?.listingColorName || "").trim();
+  return color ? title + ", " + color : title;
+}
+
+/** One catalog card per active color, so white and black show at the same time. */
+function emirateExpandColorListings(products) {
+  const lang = typeof window.emirateLang === "function" ? window.emirateLang() : "ru";
+  const list = Array.isArray(products) ? products : [];
+  const out = [];
+  list.forEach((product) => {
+    if (!product) return;
+    const variants = emirateGetActiveColorVariants(product);
+    if (variants.length < 2) {
+      if (variants.length === 1) {
+        out.push(emirateListingFromColor(product, variants[0], lang, false));
+      } else {
+        out.push(product);
+      }
+      return;
+    }
+    variants.forEach((variant) => {
+      out.push(emirateListingFromColor(product, variant, lang, true));
+    });
+  });
+  return out;
 }
 
 function emirateRenderProductCard(product) {
   const productId = product.title;
   const safeProductId = emirateEscapeHtmlAttr(productId);
+  const displayTitle = emirateListingDisplayTitle(product);
+  const safeDisplayTitle = emirateEscapeHtmlAttr(displayTitle);
+  const colorId = String(product.listingColorId || product.colorId || "").trim();
   const isFavorite = window.emirateIsFavorite?.(productId) === true;
   const lang = typeof window.emirateLang === "function" ? window.emirateLang() : "ru";
   const ratingHtml = emirateProductRatingHtml(product, lang) || "";
-  const productHref = emirateProductHref(product.title);
+  const productHref = emirateProductHref(product);
   const discount = Math.round((1 - product.price / product.oldPrice) * 100);
   const discountText = Number.isFinite(discount) && discount > 0 ? "-" + discount + "%" : "";
   const badgeHTML = discountText ? '<span class="badge-sale">' + discountText + "</span>" : "";
@@ -570,16 +668,19 @@ function emirateRenderProductCard(product) {
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <path d="M21 15l-5-5L5 21"/>
             </svg>
-            Фото
+            ${(typeof t === "function" && t("card.photo")) || "Фото"}
           </div>`;
   const installment = Math.round((Number(product.price) || 0) / 12);
+  const wishlistLabel = (typeof t === "function" && t("card.wishlist")) || "В избранное";
 
   return (
-    '<article class="product-card" data-product-id="' + safeProductId + '" data-product-title="' + safeProductId + '">' +
+    '<article class="product-card" data-product-id="' + safeProductId + '" data-product-title="' + safeProductId + '"' +
+      (colorId ? ' data-color-id="' + emirateEscapeHtmlAttr(colorId) + '"' : "") +
+    ">" +
       '<div class="product-card-top">' +
         '<div class="product-image">' +
           '<div class="product-badges">' + badgeHTML + "</div>" +
-          '<button class="wishlist-btn ' + (isFavorite ? "active" : "") + '" type="button" title="В избранное" data-product-id="' + safeProductId + '">' +
+          '<button class="wishlist-btn ' + (isFavorite ? "active" : "") + '" type="button" title="' + wishlistLabel + '" data-product-id="' + safeProductId + '">' +
             '<svg width="18" height="18" fill="' + (isFavorite ? "#ef4444" : "none") + '" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
               '<path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>' +
             "</svg>" +
@@ -587,7 +688,7 @@ function emirateRenderProductCard(product) {
           imageHtml +
         "</div>" +
       "</div>" +
-      '<h3 class="product-title"><a class="product-link" href="' + productHref + '">' + product.title + "</a></h3>" +
+      '<h3 class="product-title"><a class="product-link" href="' + productHref + '">' + safeDisplayTitle + "</a></h3>" +
       (ratingHtml ? '<div class="product-rating">' + ratingHtml + "</div>" : "") +
       (emirateProductPriceHtml(product.price, product.oldPrice) || "") +
       (emirateProductInstallmentHtml(product, installment) || "") +
@@ -605,9 +706,6 @@ function emirateResolveProductMedia(product) {
     photos = [String(item.image).trim()];
   }
   const fromUpload = photos.length > 0;
-  if (!fromUpload) {
-    photos = emirateFallbackProductPhotos(item, 4);
-  }
   return {
     image: photos[0] || "",
     photos,
@@ -637,6 +735,11 @@ window.emirateProductActionsHtml = emirateProductActionsHtml;
 window.emirateRenderProductCard = emirateRenderProductCard;
 window.emirateEscapeHtmlAttr = emirateEscapeHtmlAttr;
 window.emirateProductHref = emirateProductHref;
+window.emirateColorDisplayName = emirateColorDisplayName;
+window.emirateGetActiveColorVariants = emirateGetActiveColorVariants;
+window.emirateProductDisplayTitle = emirateProductDisplayTitle;
+window.emirateListingDisplayTitle = emirateListingDisplayTitle;
+window.emirateExpandColorListings = emirateExpandColorListings;
 window.emirateParsePriceValue = emirateParsePriceValue;
 window.emirateResolveProductReviews = emirateResolveProductReviews;
 window.emirateFormatReviewStars = emirateFormatReviewStars;
@@ -725,9 +828,9 @@ function renderQuickBuySummary() {
   const media = window.emirateResolveProductMedia?.(product);
   if (imageEl) {
     imageEl.src = media?.image || product.image || "";
-    imageEl.alt = product.title;
+    imageEl.alt = emirateProductDisplayTitle(product);
   }
-  if (titleEl) titleEl.textContent = product.title;
+  if (titleEl) titleEl.textContent = emirateProductDisplayTitle(product);
   if (priceEl) priceEl.textContent = formatQuickBuyMoney(product.price * quickBuyState.qty);
   if (qtyEl) qtyEl.textContent = String(quickBuyState.qty);
 }
@@ -1517,6 +1620,84 @@ function t(key) {
   return entry[currentLang] || entry["ru"] || null;
 }
 
+function defaultHeaderNavItems() {
+  return [
+    { href: "catalog.html?catalog=elektronika", key: "navstrip.electronics" },
+    { href: "catalog.html?catalog=bytovaya-tehnika", key: "navstrip.appliances" },
+    { href: "catalog.html?catalog=aksessuary", key: "navstrip.accessories" },
+    { href: "catalog.html?catalog=kompyutery", key: "navstrip.computers" },
+    { href: "catalog.html?catalog=krasota-i-zdorove", key: "navstrip.beauty" },
+    { href: "delivery.html", key: "navstrip.delivery" },
+    { href: "faq.html", key: "navstrip.faq" },
+    { href: "catalogs.html", key: "navstrip.all" }
+  ];
+}
+
+function headerNavItems() {
+  const lang = currentLang || "ru";
+  const live = window.emirateCatalogs?.getActiveCatalogs?.() || [];
+  if (live.length) {
+    const items = live.slice(0, 7).map((catalog) => ({
+      href: window.emirateCatalogs.buildCatalogProductsUrl(catalog),
+      label: window.emirateCatalogs.getCatalogDisplayName(catalog, lang)
+    }));
+    items.push({ href: "delivery.html", key: "navstrip.delivery" });
+    items.push({ href: "catalogs.html", key: "navstrip.all" });
+    return items;
+  }
+  return defaultHeaderNavItems();
+}
+
+function fillHeaderNavstrip() {
+  const list = document.getElementById("headerNavstripList");
+  if (!list) return;
+  const current = (window.location.pathname || "").split("/").pop() + (window.location.search || "");
+  list.innerHTML = headerNavItems()
+    .map((item) => {
+      const label = item.label || t(item.key) || "";
+      const href = item.href || "#";
+      const active = current.indexOf(href) !== -1 ? " is-active" : "";
+      const i18n = item.key ? ' data-i18n="' + item.key + '"' : "";
+      return (
+        '<a class="header-navstrip-link' + active + '" href="' + href + '"' + i18n + ">" +
+        String(label).replace(/</g, "&lt;") +
+        "</a>"
+      );
+    })
+    .join("");
+}
+
+function ensureStorefrontHeaderChrome() {
+  if (!headerEl || document.body?.classList.contains("admin-page")) return;
+  if (!headerEl.querySelector(".topbar")) {
+    headerEl.insertAdjacentHTML(
+      "afterbegin",
+      '<div class="topbar">' +
+        '<div class="container topbar-inner">' +
+          '<div class="topbar-left">' +
+            '<span class="topbar-city" data-i18n="topbar.city">Ташкент</span>' +
+            '<span class="topbar-divider" aria-hidden="true"></span>' +
+            '<a class="topbar-link" href="delivery.html" data-i18n="topbar.delivery">Доставка и оплата</a>' +
+            '<a class="topbar-link" href="faq.html" data-i18n="topbar.faq">Вопрос-ответ</a>' +
+          "</div>" +
+          '<div class="topbar-right">' +
+            '<a class="topbar-phone" href="tel:+998508868844">+998 50 886-88-44</a>' +
+          "</div>" +
+        "</div>" +
+      "</div>"
+    );
+  }
+  if (!headerEl.querySelector(".header-navstrip")) {
+    headerEl.insertAdjacentHTML(
+      "beforeend",
+      '<nav class="header-navstrip" aria-label="Каталоги">' +
+        '<div class="container header-navstrip-inner" id="headerNavstripList"></div>' +
+      "</nav>"
+    );
+  }
+  fillHeaderNavstrip();
+}
+
 function applyTranslations() {
   /* data-i18n="key" → textContent */
   document.querySelectorAll("[data-i18n]").forEach((el) => {
@@ -1541,6 +1722,7 @@ function applyTranslations() {
 }
 
 /* Apply on page load (in case user previously chose UZ) */
+ensureStorefrontHeaderChrome();
 applyTranslations();
 
 /* ══════════════════════════════════════════
@@ -1677,9 +1859,14 @@ if (langSwitch) {
     if (typeof window.emirateRefreshHomeBanners === "function") {
       window.emirateRefreshHomeBanners();
     }
+    if (typeof window.emirateRefreshHomeListings === "function") {
+      window.emirateRefreshHomeListings();
+    }
     if (typeof window.emirateRenderCatalogMegaMenu === "function") {
       window.emirateRenderCatalogMegaMenu();
     }
+    fillHeaderNavstrip();
+    applyTranslations();
   });
 }
 

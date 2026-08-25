@@ -6,6 +6,15 @@ window.TRANSLATIONS = {
   "topbar.delivery":        { ru: "\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430 \u0438 \u043e\u043f\u043b\u0430\u0442\u0430", uz: "Yetkazib berish va to'lov" },
   "topbar.contacts":        { ru: "\u041a\u043e\u043d\u0442\u0430\u043a\u0442\u044b", uz: "Kontaktlar" },
   "topbar.home":            { ru: "\u0413\u043b\u0430\u0432\u043d\u0430\u044f", uz: "Bosh sahifa" },
+  "topbar.faq":             { ru: "\u0412\u043e\u043f\u0440\u043e\u0441-\u043e\u0442\u0432\u0435\u0442", uz: "Savol-javob" },
+  "navstrip.electronics":   { ru: "\u042d\u043b\u0435\u043a\u0442\u0440\u043e\u043d\u0438\u043a\u0430", uz: "Elektronika" },
+  "navstrip.appliances":    { ru: "\u0411\u044b\u0442\u043e\u0432\u0430\u044f \u0442\u0435\u0445\u043d\u0438\u043a\u0430", uz: "Maishiy texnika" },
+  "navstrip.accessories":   { ru: "\u0410\u043a\u0441\u0435\u0441\u0441\u0443\u0430\u0440\u044b", uz: "Aksessuarlar" },
+  "navstrip.computers":     { ru: "\u041a\u043e\u043c\u043f\u044c\u044e\u0442\u0435\u0440\u044b", uz: "Kompyuterlar" },
+  "navstrip.beauty":        { ru: "\u041a\u0440\u0430\u0441\u043e\u0442\u0430", uz: "Go'zallik" },
+  "navstrip.delivery":      { ru: "\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430", uz: "Yetkazib berish" },
+  "navstrip.faq":           { ru: "\u0412\u043e\u043f\u0440\u043e\u0441-\u043e\u0442\u0432\u0435\u0442", uz: "Savol-javob" },
+  "navstrip.all":           { ru: "\u0412\u0441\u0435 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0438", uz: "Barcha kataloglar" },
 
   "header.catalog":         { ru: "\u041a\u0430\u0442\u0430\u043b\u043e\u0433", uz: "Katalog" },
   "header.search":          { ru: "\u041d\u0430\u0439\u0442\u0438 \u0442\u043e\u0432\u0430\u0440\u2026", uz: "Mahsulot qidirish…" },
@@ -350,6 +359,11 @@ window.TRANSLATIONS = {
   "product.similarMore":    { ru: "\u0412 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0435 \u2192", uz: "Katalogda \u2192" },
 
   "card.addCart":           { ru: "\u0412 \u043a\u043e\u0440\u0437\u0438\u043d\u0443", uz: "Savatga" },
+  "card.buy":               { ru: "\u041a\u0443\u043f\u0438\u0442\u044c", uz: "Sotib olish" },
+  "card.months":            { ru: "\u043c\u0435\u0441", uz: "oy" },
+  "card.noInstallment":     { ru: "\u0411\u0435\u0437 \u0440\u0430\u0441\u0441\u0440\u043e\u0447\u043a\u0438", uz: "Muddatli to'lovsiz" },
+  "card.photo":             { ru: "\u0424\u043e\u0442\u043e", uz: "Foto" },
+  "card.wishlist":          { ru: "\u0412 \u0438\u0437\u0431\u0440\u0430\u043d\u043d\u043e\u0435", uz: "Sevimlilarga" },
   "card.quickBuy":          { ru: "\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440", uz: "Tezkor ko'rish" },
   "card.installment":       { ru: "\u0440\u0430\u0441\u0441\u0440\u043e\u0447\u043a\u0430", uz: "bo'lib to'lash" },
 

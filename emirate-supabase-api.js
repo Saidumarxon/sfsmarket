@@ -107,6 +107,8 @@
       : { image: uploadedPhotos[0] || "", photos: uploadedPhotos };
     return {
       title: item.nameRu || item.nameUz || "Товар",
+      nameRu: String(item.nameRu || "").trim(),
+      nameUz: String(item.nameUz || "").trim(),
       sku: item.id || "",
       brand: item.brand || "",
       model: String(item.model || "").trim(),
@@ -256,7 +258,11 @@
     var list = await fetchPublicCatalogProducts();
     var found =
       list.find(function (p) {
-        return normalizeTitleKey(p.title) === key;
+        return (
+          normalizeTitleKey(p.title) === key ||
+          normalizeTitleKey(p.nameRu) === key ||
+          normalizeTitleKey(p.nameUz) === key
+        );
       }) || null;
     return found;
   }

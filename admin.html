@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=20260823c">
+  <link rel="stylesheet" href="admin.css?v=20260825f">
   <style>
     /* Старые кэшированные баннеры черновика больше не показываем */
     #productDraftBanner,
@@ -388,7 +388,15 @@
             <div class="table-toolbar">
               <button type="button" class="filter-btn" id="refreshProductsBtn" title="Обновить список из Supabase"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.13-3.36L23 10M1 14l5.36 4.36A9 9 0 0020.49 15"/></svg> Обновить</button>
               <button class="filter-btn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Фильтр</button>
-              <button type="button" class="btn-add" id="addProductBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Добавить</button>
+              <div class="btn-split" id="addProductSplit">
+                <button type="button" class="btn-add" id="addProductBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Добавить</button>
+                <button type="button" class="btn-add btn-split-toggle" id="addProductMenuBtn" aria-label="Ещё варианты" aria-haspopup="true" aria-expanded="false">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="btn-split-menu" id="addProductMenu" hidden>
+                  <button type="button" id="addProductCopyLastBtn">Копировать последний товар</button>
+                </div>
+              </div>
             </div>
           </div>
           <table class="admin-table">
@@ -546,7 +554,7 @@
             <h3>Категория</h3>
           </div>
           <div class="category-feedback" id="categoryFeedback" hidden></div>
-          <form id="categoryForm" class="category-form">
+          <form id="categoryForm" class="category-form" autocomplete="off">
             <input type="hidden" id="categoryId">
 
             <div class="category-grid">
@@ -718,7 +726,7 @@
             <h3>Бренд</h3>
           </div>
           <div class="category-feedback" id="brandFeedback" hidden></div>
-          <form id="brandForm" class="category-form">
+          <form id="brandForm" class="category-form" autocomplete="off">
             <input type="hidden" id="brandId">
 
             <div class="category-grid">
@@ -804,7 +812,7 @@
             <h3>Каталог (витрина)</h3>
           </div>
           <div class="category-feedback" id="catalogFeedback" hidden></div>
-          <form id="catalogForm" class="category-form">
+          <form id="catalogForm" class="category-form" autocomplete="off">
             <input type="hidden" id="catalogId">
 
             <div class="category-grid">
@@ -1046,9 +1054,10 @@
                     <button type="button" class="category-stack-accept" id="pCategoryAccept" disabled>Принять</button>
                     <div class="category-stack-chosen">
                       <span class="category-tree-path is-placeholder" id="pCategoryPath">Выберите категорию…</span>
+                      <button type="button" class="category-stack-change" id="pCategoryChange">Изменить</button>
                     </div>
                   </div>
-                  <small class="form-hint">Сначала крупный раздел, затем подкатегории шаг за шагом. «Принять» доступно на последнем уровне.</small>
+                  <small class="form-hint">Сначала крупный раздел, затем подкатегории. После «Принять» подставятся характеристики этой категории.</small>
                 </div>
                 <div class="form-group">
                   <label class="required">Название Uz</label>
@@ -1423,7 +1432,7 @@
                   <div class="color-variant-upload">
                     <label class="upload-btn" for="colorVariantPhotoInput">Добавить фото для этого цвета</label>
                     <input type="file" id="colorVariantPhotoInput" accept="image/*" multiple hidden>
-                    <span class="upload-hint">Можно загрузить несколько фото. Перетащите мышкой, чтобы поменять порядок.</span>
+                    <span class="upload-hint">Можно загрузить несколько фото. Потяните карточку и бросьте на нужное место — первое фото главное.</span>
                   </div>
                   <div class="photo-preview-grid" id="colorVariantPhotoPreview"></div>
                   <div class="color-variants-list" id="colorVariantsList"></div>
@@ -1433,7 +1442,7 @@
                   <p>Перетащите фото сюда или</p>
                   <label class="upload-btn" for="photoInput">Выберите файлы</label>
                   <input type="file" id="photoInput" accept="image/*" multiple hidden>
-                  <span class="upload-hint">PNG, JPG, WEBP — до 5MB каждый. Перетащите превью мышкой, чтобы поменять местами (первое = главное).</span>
+                  <span class="upload-hint">PNG, JPG, WEBP. Потяните карточку, чтобы поменять порядок. Первое фото — главное.</span>
                 </div>
                 <div class="photo-preview-grid" id="photoPreviewGrid"></div>
               </div>
@@ -1559,7 +1568,7 @@
         var gate = document.getElementById("adminAuthGate");
         if (gate) gate.remove();
         var tag = document.createElement("script");
-        tag.src = "admin.js?v=20260823j";
+        tag.src = "admin.js?v=20260825f";
         document.body.appendChild(tag);
       }
 

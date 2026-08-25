@@ -79,6 +79,14 @@ function updateCategorySectionsVisibility() {
   });
 }
 
+function listingsForRender(list) {
+  return window.emirateExpandColorListings
+    ? window.emirateExpandColorListings(list)
+    : Array.isArray(list)
+      ? list
+      : [];
+}
+
 function collectAllHomeProducts() {
   const seen = new Set();
   const list = [];
@@ -91,7 +99,7 @@ function collectAllHomeProducts() {
     });
   });
   list.sort((a, b) => (Number(a.priority) || 300) - (Number(b.priority) || 300));
-  return list;
+  return listingsForRender(list);
 }
 
 function fillFeedProductsFromCatalog() {
@@ -141,6 +149,8 @@ function buildFallbackProductFromCard(card) {
 function toCatalogProductShape(product) {
   return {
     title: product.title,
+    nameRu: String(product.nameRu || "").trim(),
+    nameUz: String(product.nameUz || "").trim(),
     brand: product.brand || "",
     category: product.category || "",
     price: parseMoney(product.price),
@@ -216,6 +226,8 @@ function getAdminProductsForStorefront() {
         const priority = Number(item.priority);
         return {
           title: item.nameRu || item.nameUz || "\u0422\u043e\u0432\u0430\u0440",
+          nameRu: String(item.nameRu || "").trim(),
+          nameUz: String(item.nameUz || "").trim(),
           price: formatMoney(priceNum),
           oldPrice: formatMoney(safeOldPrice),
           discount: discount > 0 ? `-${discount}%` : "",
@@ -294,6 +306,8 @@ function mapRemoteCatalogToHomeCard(item) {
   }) || { image: item.image || uploadedPhotos[0] || "", photos: uploadedPhotos };
   return {
     title: item.title || "Товар",
+    nameRu: String(item.nameRu || "").trim(),
+    nameUz: String(item.nameUz || "").trim(),
     price: formatMoney(priceNum),
     oldPrice: formatMoney(oldPriceNum),
     discount: oldPriceNum > priceNum
@@ -653,12 +667,16 @@ window.emirateLookupProduct = (title) => allProductsByTitle.get(title);
 function renderProductCard(product) {
   const productId = product.title;
   const safeProductId = escapeHtmlAttr(productId);
+  const displayTitle = window.emirateListingDisplayTitle
+    ? window.emirateListingDisplayTitle(product)
+    : product.title;
+  const colorId = String(product.listingColorId || product.colorId || "").trim();
   const isFavorite = window.emirateIsFavorite?.(productId) === true;
   const lang = typeof window.emirateLang === "function" ? window.emirateLang() : "ru";
   const ratingHtml = window.emirateProductRatingHtml?.(product, lang) || "";
 
   const productHref = window.emirateProductHref
-    ? window.emirateProductHref(product.title)
+    ? window.emirateProductHref(product)
     : `product.html?product=${encodeURIComponent(product.title)}`;
   const discountText = String(product.discount || "").trim();
   const badgeHTML = discountText ? `<span class="badge-sale">${discountText}</span>` : "";
@@ -675,18 +693,18 @@ function renderProductCard(product) {
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <path d="M21 15l-5-5L5 21"/>
             </svg>
-            Фото
+            ${typeof window.emirateT === "function" ? window.emirateT("card.photo") : "Фото"}
             </div>`;
 
   const priceValue = window.emirateParsePriceValue?.(product.price) || 0;
   const installmentValue = Math.round(priceValue / 12);
 
   return `
-    <article class="product-card" data-product-title="${safeProductId}">
+    <article class="product-card" data-product-title="${safeProductId}"${colorId ? ` data-color-id="${escapeHtmlAttr(colorId)}"` : ""}>
       <div class="product-card-top">
         <div class="product-image">
           <div class="product-badges">${badgeHTML}</div>
-          <button class="wishlist-btn ${isFavorite ? "active" : ""}" type="button" title="В избранное" data-product-id="${safeProductId}">
+          <button class="wishlist-btn ${isFavorite ? "active" : ""}" type="button" title="${typeof window.emirateT === "function" ? window.emirateT("card.wishlist") : "В избранное"}" data-product-id="${safeProductId}">
             <svg width="18" height="18" fill="${isFavorite ? "#ef4444" : "none"}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
             </svg>
@@ -696,7 +714,7 @@ function renderProductCard(product) {
           </a>
         </div>
       </div>
-      <h3 class="product-title"><a class="product-link" href="${productHref}">${product.title}</a></h3>
+      <h3 class="product-title"><a class="product-link" href="${productHref}">${escapeHtmlText(displayTitle)}</a></h3>
       ${ratingHtml ? `<div class="product-rating">${ratingHtml}</div>` : ""}
       ${window.emirateProductPriceHtml?.(product.price, product.oldPrice) || ""}
       ${window.emirateProductInstallmentHtml?.(product, installmentValue) || ""}
@@ -748,6 +766,15 @@ function initCarousel(trackEl) {
 }
 
 // Render initial carousels
+function refreshHomeListings() {
+  renderInitialCarousels();
+  renderHomeBrands();
+  if (typeof renderNativeHomeFeed === "function") {
+    renderNativeHomeFeed();
+  }
+}
+window.emirateRefreshHomeListings = refreshHomeListings;
+
 function renderInitialCarousels() {
   const map = {
     smartphones: document.getElementById("carouselSmartphones"),
@@ -758,7 +785,7 @@ function renderInitialCarousels() {
 
   for (const [key, el] of Object.entries(map)) {
     if (el && productData[key]) {
-      el.innerHTML = productData[key].map(renderProductCard).join("");
+      el.innerHTML = listingsForRender(productData[key]).map(renderProductCard).join("");
       window.emirateSyncFavoritesUI?.(el);
       initCarousel(el);
     }

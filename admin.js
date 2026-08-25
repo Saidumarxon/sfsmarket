@@ -175,18 +175,7 @@ function activateEditorBasicTab() {
 
 function openNewProductEditor() {
   try {
-    const draft = typeof readProductDraft === 'function' ? readProductDraft() : null;
-    if (
-      typeof isProductEditorMeaningful === 'function' &&
-      isProductEditorMeaningful(draft) &&
-      draft &&
-      !draft.editingProductId &&
-      typeof openProductEditorFromDraft === 'function'
-    ) {
-      openProductEditorFromDraft();
-      return;
-    }
-
+    if (typeof clearProductDraft === 'function') clearProductDraft();
     if (typeof editingProductId !== 'undefined') {
       editingProductId = null;
     }
@@ -208,10 +197,52 @@ function openNewProductEditor() {
 
 window.emirateOpenProductEditor = openNewProductEditor;
 
+function getLastAddedProduct() {
+  if (!Array.isArray(productsData) || !productsData.length) return null;
+  return productsData[0] || null;
+}
+
+function setAddProductMenuOpen(open) {
+  const menu = document.getElementById('addProductMenu');
+  const toggle = document.getElementById('addProductMenuBtn');
+  if (!menu || !toggle) return;
+  menu.hidden = !open;
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function openEditorAsCopyOfLastProduct() {
+  const last = getLastAddedProduct();
+  if (!last) {
+    alert('Пока нет товаров для копирования. Сначала добавьте один товар.');
+    return;
+  }
+  openEditorForProduct(last.id, { asCopy: true });
+}
+
 document.addEventListener('click', function (e) {
+  const copyBtn = e.target.closest('#addProductCopyLastBtn');
+  if (copyBtn) {
+    e.preventDefault();
+    setAddProductMenuOpen(false);
+    openEditorAsCopyOfLastProduct();
+    return;
+  }
+  const toggle = e.target.closest('#addProductMenuBtn');
+  if (toggle) {
+    e.preventDefault();
+    const menu = document.getElementById('addProductMenu');
+    const copyLast = document.getElementById('addProductCopyLastBtn');
+    if (copyLast) copyLast.disabled = !getLastAddedProduct();
+    setAddProductMenuOpen(!!menu?.hidden);
+    return;
+  }
+  if (!e.target.closest('#addProductSplit')) {
+    setAddProductMenuOpen(false);
+  }
   const btn = e.target.closest('#addProductBtn');
   if (!btn) return;
   e.preventDefault();
+  setAddProductMenuOpen(false);
   openNewProductEditor();
 });
 
@@ -860,8 +891,16 @@ function nestedCategoryBlueprint() {
     { keyRu: 'Экран', keyUz: 'Ekran', valueRu: '', valueUz: '' }
   ];
   const watchSpecs = [
-    { keyRu: 'Экран', keyUz: 'Ekran', valueRu: '', valueUz: '' },
-    { keyRu: 'Совместимость', keyUz: 'Moslik', valueRu: '', valueUz: '' },
+    { keyRu: 'Тип экрана', keyUz: 'Ekran turi', valueRu: '', valueUz: '' },
+    { keyRu: 'Цвет ремешка', keyUz: 'Remeshok rangi', valueRu: '', valueUz: '' },
+    { keyRu: 'Always-On Display', keyUz: 'Always-On Display', valueRu: '', valueUz: '' },
+    { keyRu: 'Размер корпуса', keyUz: 'Korpus o\'lchami', valueRu: '', valueUz: '' },
+    { keyRu: 'Совместимость', keyUz: 'Moslik', valueRu: '', valueUz: '' }
+  ];
+  const fitbandSpecs = [
+    { keyRu: 'Тип экрана', keyUz: 'Ekran turi', valueRu: '', valueUz: '' },
+    { keyRu: 'Цвет ремешка', keyUz: 'Remeshok rangi', valueRu: '', valueUz: '' },
+    { keyRu: 'Датчики', keyUz: 'Sensorlar', valueRu: '', valueUz: '' },
     { keyRu: 'Защита', keyUz: 'Himoya', valueRu: '', valueUz: '' }
   ];
   return [
@@ -870,7 +909,7 @@ function nestedCategoryBlueprint() {
     { id: 'cat_tablets', parentRu: 'Смартфоны', nameRu: 'Планшеты', nameUz: 'Planshetlar', sortOrder: 2 },
     { id: 'cat_wearables', parentRu: 'Смартфоны', nameRu: 'Умные часы и фитнес-браслеты', nameUz: 'Aqlli soatlar va fitnes bilaguzuklar', sortOrder: 3 },
     { id: 'cat_smartwatches', parentRu: 'Умные часы и фитнес-браслеты', nameRu: 'Умные часы', nameUz: 'Aqlli soatlar', sortOrder: 1, specs: watchSpecs },
-    { id: 'cat_fitbands', parentRu: 'Умные часы и фитнес-браслеты', nameRu: 'Фитнес-браслеты', nameUz: 'Fitnes bilaguzuklar', sortOrder: 2 },
+    { id: 'cat_fitbands', parentRu: 'Умные часы и фитнес-браслеты', nameRu: 'Фитнес-браслеты', nameUz: 'Fitnes bilaguzuklar', sortOrder: 2, specs: fitbandSpecs },
 
     { id: 'cat_laptops', parentRu: '', nameRu: 'Ноутбуки', nameUz: 'Noutbuklar', sortOrder: 2 },
     { id: 'cat_laptops_all', parentRu: 'Ноутбуки', nameRu: 'Ноутбуки', nameUz: 'Noutbuklar', sortOrder: 1, specs: laptopSpecs },
@@ -978,6 +1017,40 @@ function ensureNestedCategorySeed() {
   });
   if (added) persistCategoriesData();
   return added;
+}
+
+function specKeysSignature(specs) {
+  return (Array.isArray(specs) ? specs : [])
+    .map((item) => String(item?.keyRu || item?.keyUz || '').trim().toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join('|');
+}
+
+function shouldReplaceCategorySpecs(currentSpecs, nextSpecs) {
+  const current = specKeysSignature(currentSpecs);
+  const next = specKeysSignature(nextSpecs);
+  if (!next) return false;
+  if (!current) return true;
+  if (current === next) return false;
+  return current === 'защита|совместимость|экран';
+}
+
+function syncBlueprintCategorySpecs() {
+  let changed = 0;
+  nestedCategoryBlueprint().forEach((row) => {
+    const nextSpecs = Array.isArray(row.specs) ? row.specs.map(normalizeCategorySpec).filter((item) => item.keyRu || item.keyUz) : [];
+    if (!nextSpecs.length) return;
+    const parent = row.parentRu ? findCategoryByNameRu(row.parentRu) : null;
+    const existing = findCategoryByNameRu(row.nameRu, parent ? parent.id : '')
+      || categoriesData.find((item) => item.id === row.id);
+    if (!existing) return;
+    if (!shouldReplaceCategorySpecs(existing.defaultSpecs, nextSpecs)) return;
+    existing.defaultSpecs = nextSpecs;
+    changed += 1;
+  });
+  if (changed) persistCategoriesData();
+  return changed;
 }
 
 function normalizeCategorySpec(spec) {
@@ -1107,6 +1180,7 @@ function loadCategoriesData() {
 
 let categoriesData = loadCategoriesData().map(normalizeCategoryRecord);
 ensureNestedCategorySeed();
+syncBlueprintCategorySpecs();
 let categoryFeedbackTimer = null;
 
 function persistCategoriesData() {
@@ -1202,6 +1276,10 @@ function resetCategoryForm() {
   const saveBtn = document.getElementById('categorySaveBtn');
   form?.reset();
   if (idInput) idInput.value = '';
+  const nameRu = document.getElementById('categoryNameRu');
+  const nameUz = document.getElementById('categoryNameUz');
+  if (nameRu) nameRu.value = '';
+  if (nameUz) nameUz.value = '';
   if (statusInput) statusInput.value = 'active';
   if (sortInput) sortInput.value = '100';
   if (saveBtn) {
@@ -1284,7 +1362,8 @@ function saveCategory(event) {
   persistCategoriesData();
   renderCategories();
   syncProductCategorySelect();
-  fillCategoryForm(draft.id);
+  if (existingIndex === -1) resetCategoryForm();
+  else fillCategoryForm(draft.id);
 }
 
 function toggleCategoryStatus(categoryId) {
@@ -1325,7 +1404,26 @@ function deleteCategory(categoryId) {
 function getCategoryByProductName(name) {
   const key = String(name || '').trim();
   if (!key) return null;
-  return categoriesData.find((item) => item.nameRu === key || item.nameUz === key) || null;
+  const matches = categoriesData.filter((item) => item.nameRu === key || item.nameUz === key);
+  if (!matches.length) return null;
+  return matches.sort((a, b) => getCategoryPath(b).length - getCategoryPath(a).length)[0];
+}
+
+function getCategoryDefaultSpecs(category) {
+  let current = category || null;
+  while (current) {
+    const specs = Array.isArray(current.defaultSpecs)
+      ? current.defaultSpecs.map(normalizeCategorySpec).filter((item) => item.keyRu || item.keyUz)
+      : [];
+    if (specs.length) return specs;
+    current = current.parentId ? getCategoryById(current.parentId) : null;
+  }
+  return [];
+}
+
+function activateEditorTab(tabName) {
+  const tab = document.querySelector(`.editor-tab[data-tab="${tabName}"]`);
+  if (tab) tab.click();
 }
 
 const categoryPickerState = {
@@ -1434,10 +1532,24 @@ function onCategoryStackLevelChange(levelIndex, categoryId) {
   syncCategoryAcceptButton();
 }
 
+function setCategoryPickerOpen(open) {
+  const picker = document.getElementById('pCategoryPicker');
+  if (!picker) return;
+  picker.classList.toggle('is-collapsed', !open);
+}
+
 function acceptProductCategoryStack() {
   const leaf = getCategoryStackLeaf();
   if (!leaf || categoryHasChildren(leaf.id)) return;
+  const previous = document.getElementById('pCategory')?.value || '';
+  const changed = previous !== leaf.nameRu;
   setProductCategoryValue(leaf.nameRu);
+  applyCategoryDefaultSpecsToProduct(leaf.nameRu, {
+    mode: (!changed && editingProductId) ? 'merge' : 'replace',
+    categoryId: leaf.id
+  });
+  setCategoryPickerOpen(false);
+  activateEditorTab('specs');
 }
 
 function initCategoryTreePicker() {
@@ -1445,6 +1557,7 @@ function initCategoryTreePicker() {
   const picker = document.getElementById('pCategoryPicker');
   const levels = document.getElementById('pCategoryLevels');
   const accept = document.getElementById('pCategoryAccept');
+  const changeBtn = document.getElementById('pCategoryChange');
   if (!picker || !levels) return;
   categoryPickerState.initialized = true;
 
@@ -1455,17 +1568,16 @@ function initCategoryTreePicker() {
   });
 
   accept?.addEventListener('click', acceptProductCategoryStack);
+  changeBtn?.addEventListener('click', function () {
+    setCategoryPickerOpen(true);
+  });
   renderCategoryStackLevels();
   syncCategoryAcceptButton();
 }
 
-function applyCategoryDefaultSpecsToProduct(categoryName, { mode = 'replace' } = {}) {
-  const category = getCategoryByProductName(categoryName);
-  if (!category || !Array.isArray(category.defaultSpecs) || !category.defaultSpecs.length) return;
-
-  const defaults = category.defaultSpecs
-    .map(normalizeCategorySpec)
-    .filter((item) => item.keyRu || item.keyUz);
+function applyCategoryDefaultSpecsToProduct(categoryName, { mode = 'replace', categoryId = '' } = {}) {
+  const category = (categoryId && getCategoryById(categoryId)) || getCategoryByProductName(categoryName);
+  const defaults = getCategoryDefaultSpecs(category);
   if (!defaults.length) return;
 
   if (mode === 'replace') {
@@ -1600,6 +1712,12 @@ function resetBrandForm() {
   const brandStatus = document.getElementById('brandStatus');
   const brandSort = document.getElementById('brandSortOrder');
   if (brandId) brandId.value = '';
+  const brandNameRu = document.getElementById('brandNameRu');
+  const brandNameUz = document.getElementById('brandNameUz');
+  const brandSlug = document.getElementById('brandSlug');
+  if (brandNameRu) brandNameRu.value = '';
+  if (brandNameUz) brandNameUz.value = '';
+  if (brandSlug) brandSlug.value = '';
   if (brandStatus) brandStatus.value = 'active';
   if (brandSort) brandSort.value = '100';
   pendingBrandLogoData = null;
@@ -1677,7 +1795,8 @@ function saveBrand(event) {
   persistBrandsData();
   renderBrands();
   syncProductBrandSelect();
-  fillBrandForm(draft.id);
+  if (existingIndex === -1) resetBrandForm();
+  else fillBrandForm(draft.id);
 }
 
 function toggleBrandStatus(brandId) {
@@ -1830,6 +1949,12 @@ function resetCatalogForm() {
   const catalogStatus = document.getElementById('catalogStatus');
   const catalogSort = document.getElementById('catalogSortOrder');
   if (catalogId) catalogId.value = '';
+  const catalogNameRu = document.getElementById('catalogNameRu');
+  const catalogNameUz = document.getElementById('catalogNameUz');
+  const catalogSlug = document.getElementById('catalogSlug');
+  if (catalogNameRu) catalogNameRu.value = '';
+  if (catalogNameUz) catalogNameUz.value = '';
+  if (catalogSlug) catalogSlug.value = '';
   if (catalogStatus) catalogStatus.value = 'active';
   if (catalogSort) catalogSort.value = '100';
   pendingCatalogImageData = null;
@@ -1932,7 +2057,8 @@ function saveStoreCatalog(event) {
 
   persistStoreCatalogsData();
   renderStoreCatalogs();
-  fillCatalogForm(draft.id);
+  if (existingIndex === -1) resetCatalogForm();
+  else fillCatalogForm(draft.id);
 }
 
 function toggleStoreCatalogStatus(catalogId) {
@@ -2394,6 +2520,7 @@ function syncCostFromUsd({ force = false } = {}) {
   suppressCostPriceSync = true;
   if (usd > 0 && window.emirateExchange?.usdToBaseUzs) {
     el.value = formatUzsInputValue(window.emirateExchange.usdToBaseUzs(usd));
+    if (force) costPriceTouched = false;
   } else if (!costPriceTouched) {
     el.value = '';
   }
@@ -4307,6 +4434,7 @@ function applyProductDraft(draft) {
   editingProductId = draft.editingProductId || null;
 
   setProductCategoryValue(draft.category || '', { silent: true });
+  setCategoryPickerOpen(!draft.category);
   document.getElementById('pNameUz').value = draft.nameUz || '';
   document.getElementById('pNameRu').value = draft.nameRu || '';
   document.getElementById('pModel').value = draft.model || '';
@@ -4755,16 +4883,22 @@ function getColorVariantDisplayName(variant) {
   return variant.nameRu || variant.nameUz || 'Без названия';
 }
 
+function photoPreviewCardHtml(src, idx, removeAttr) {
+  return `
+    <div class="photo-preview-item" data-photo-index="${idx}" title="Перетащите, чтобы поменять порядок">
+      <span class="photo-index-badge">${idx + 1}</span>
+      ${idx === 0 ? '<span class="photo-main-badge">Главное</span>' : ''}
+      <img src="${escapeHtml(src)}" alt="Фото ${idx + 1}">
+      <button type="button" class="photo-remove" ${removeAttr}="${idx}" aria-label="Удалить фото">×</button>
+    </div>
+  `;
+}
+
 function renderColorVariantPhotoPreview() {
   if (!colorVariantPhotoPreview) return;
-  colorVariantPhotoPreview.innerHTML = uploadedColorVariantPhotos.map((src, idx) => `
-    <div class="photo-preview-item" draggable="true" data-photo-index="${idx}" title="Перетащите, чтобы поменять порядок">
-      <span class="photo-drag-handle" aria-hidden="true">⋮⋮</span>
-      ${idx === 0 ? '<span class="photo-main-badge">Главное</span>' : ''}
-      <img src="${src}" alt="Color photo">
-      <button type="button" class="photo-remove" data-remove-color-photo="${idx}" aria-label="Удалить фото">×</button>
-    </div>
-  `).join('');
+  colorVariantPhotoPreview.innerHTML = uploadedColorVariantPhotos
+    .map((src, idx) => photoPreviewCardHtml(src, idx, 'data-remove-color-photo'))
+    .join('');
   bindPhotoReorder(colorVariantPhotoPreview, uploadedColorVariantPhotos, renderColorVariantPhotoPreview);
 }
 
@@ -4986,12 +5120,13 @@ editorTabs.forEach(tab => {
 });
 
 // Open editor for existing product
-function openEditorForProduct(id) {
+function openEditorForProduct(id, options) {
+  const asCopy = Boolean(options && options.asCopy);
   const p = productsData.find(x => x.id === id);
   if (!p) return;
 
   const draft = readProductDraft();
-  if (isProductEditorMeaningful(draft) && String(draft.editingProductId || '') === String(id)) {
+  if (!asCopy && isProductEditorMeaningful(draft) && String(draft.editingProductId || '') === String(id)) {
     applyProductDraft(draft);
     switchPage('product-editor');
     editorTabs.forEach((t) => t.classList.remove('active'));
@@ -5001,13 +5136,14 @@ function openEditorForProduct(id) {
     return;
   }
 
-  editingProductId = id;
+  editingProductId = asCopy ? null : id;
   clearEditorForm();
 
   // Fill form fields
   setProductCategoryValue(p.category || '', { silent: true });
-  document.getElementById('pNameUz').value = p.nameUz || '';
-  document.getElementById('pNameRu').value = p.nameRu || '';
+  setCategoryPickerOpen(!p.category);
+  document.getElementById('pNameUz').value = asCopy && p.nameUz ? `${p.nameUz} (nusxa)` : (p.nameUz || '');
+  document.getElementById('pNameRu').value = asCopy && p.nameRu ? `${p.nameRu} (копия)` : (p.nameRu || '');
   document.getElementById('pModel').value = p.model || '';
   document.getElementById('pBrand').value = p.brand || '';
   document.getElementById('pStatus').value = p.status || 'active';
@@ -5087,8 +5223,8 @@ function openEditorForProduct(id) {
   renderPhotoPreviews();
   renderProductEditorPreviews();
 
-  document.getElementById('editorBreadcrumb').textContent = 'Редактировать';
-  pageTitle.textContent = 'Продукты › Редактировать';
+  document.getElementById('editorBreadcrumb').textContent = asCopy ? 'Добавить' : 'Редактировать';
+  pageTitle.textContent = asCopy ? 'Продукты › Добавить (копия)' : 'Продукты › Редактировать';
 
   switchPage('product-editor');
   saveProductEditorDraft({ silent: true });
@@ -5333,6 +5469,7 @@ Object.keys(titleSuggestEls).forEach(function (lang) {
 function clearEditorForm() {
   resetTitleSuggestPanels();
   setProductCategoryValue('', { silent: true });
+  setCategoryPickerOpen(true);
   const setVal = (id, value) => {
     const el = document.getElementById(id);
     if (el) el.value = value;
@@ -5467,6 +5604,7 @@ productEditorPage?.addEventListener('change', scheduleProductDraftAutosave);
 ['pPriceUsd', 'pOldPriceUsd'].forEach((id) => {
   document.getElementById(id)?.addEventListener('input', () => {
     storefrontPriceTouched = false;
+    if (id === 'pPriceUsd') syncCostFromUsd({ force: true });
     syncStorefrontPricesFromUsd({ force: true });
   });
 });
@@ -5773,7 +5911,10 @@ document.getElementById('addSpecBtn').addEventListener('click', function() {
 
 document.getElementById('pCategory')?.addEventListener('change', function() {
   const mode = editingProductId ? 'merge' : 'replace';
-  applyCategoryDefaultSpecsToProduct(this.value, { mode });
+  applyCategoryDefaultSpecsToProduct(this.value, {
+    mode,
+    categoryId: getCategoryStackLeaf()?.id || ''
+  });
 });
 
 document.getElementById('specsContainer').addEventListener('click', function(e) {
@@ -6107,64 +6248,75 @@ function handleFiles(files) {
 function bindPhotoReorder(gridEl, photosArr, rerender) {
   if (!gridEl || !Array.isArray(photosArr)) return;
   let dragFrom = -1;
+  let draggingEl = null;
+
+  function clearDragOver() {
+    gridEl.querySelectorAll('.photo-preview-item.is-drag-over').forEach(function (el) {
+      el.classList.remove('is-drag-over');
+    });
+  }
+
+  function itemFromPoint(clientX, clientY) {
+    const node = document.elementFromPoint(clientX, clientY);
+    const item = node && node.closest ? node.closest('.photo-preview-item') : null;
+    return item && gridEl.contains(item) ? item : null;
+  }
+
+  function finishDrag(clientX, clientY) {
+    if (!draggingEl) return;
+    const over = itemFromPoint(clientX, clientY);
+    const to = over ? Number(over.getAttribute('data-photo-index')) : -1;
+    const from = dragFrom;
+    draggingEl.classList.remove('is-dragging');
+    clearDragOver();
+    draggingEl = null;
+    dragFrom = -1;
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) return;
+    if (from < 0 || to < 0 || from >= photosArr.length || to >= photosArr.length) return;
+    const [moved] = photosArr.splice(from, 1);
+    photosArr.splice(to, 0, moved);
+    rerender();
+    scheduleProductDraftAutosave();
+  }
 
   gridEl.querySelectorAll('.photo-preview-item').forEach(function (item) {
-    item.addEventListener('dragstart', function (e) {
-      if (e.target.closest('.photo-remove')) {
-        e.preventDefault();
-        return;
-      }
+    item.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('.photo-remove')) return;
+      if (e.button != null && e.button !== 0) return;
       dragFrom = Number(item.getAttribute('data-photo-index'));
+      draggingEl = item;
       item.classList.add('is-dragging');
-      try {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', String(dragFrom));
-      } catch (_) {}
+      try { item.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault();
     });
 
-    item.addEventListener('dragend', function () {
+    item.addEventListener('pointermove', function (e) {
+      if (draggingEl !== item) return;
+      clearDragOver();
+      const over = itemFromPoint(e.clientX, e.clientY);
+      if (over && over !== item) over.classList.add('is-drag-over');
+    });
+
+    item.addEventListener('pointerup', function (e) {
+      if (draggingEl !== item) return;
+      finishDrag(e.clientX, e.clientY);
+    });
+
+    item.addEventListener('pointercancel', function () {
+      if (draggingEl !== item) return;
       item.classList.remove('is-dragging');
-      gridEl.querySelectorAll('.photo-preview-item.is-drag-over').forEach(function (el) {
-        el.classList.remove('is-drag-over');
-      });
+      clearDragOver();
+      draggingEl = null;
       dragFrom = -1;
-    });
-
-    item.addEventListener('dragover', function (e) {
-      e.preventDefault();
-      try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
-      item.classList.add('is-drag-over');
-    });
-
-    item.addEventListener('dragleave', function () {
-      item.classList.remove('is-drag-over');
-    });
-
-    item.addEventListener('drop', function (e) {
-      e.preventDefault();
-      item.classList.remove('is-drag-over');
-      const to = Number(item.getAttribute('data-photo-index'));
-      const from = dragFrom >= 0 ? dragFrom : Number(e.dataTransfer.getData('text/plain'));
-      if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) return;
-      if (from < 0 || to < 0 || from >= photosArr.length || to >= photosArr.length) return;
-      const [moved] = photosArr.splice(from, 1);
-      photosArr.splice(to, 0, moved);
-      rerender();
-      scheduleProductDraftAutosave();
     });
   });
 }
 
 function renderPhotoPreviews() {
   if (!photoPreviewGrid) return;
-  photoPreviewGrid.innerHTML = uploadedPhotos.map((src, i) => `
-    <div class="photo-preview-item" draggable="true" data-photo-index="${i}" title="Перетащите, чтобы поменять порядок">
-      <span class="photo-drag-handle" aria-hidden="true">⋮⋮</span>
-      ${i === 0 ? '<span class="photo-main-badge">Главное</span>' : ''}
-      <img src="${src}" alt="Preview">
-      <button type="button" class="photo-remove" data-remove-photo="${i}" aria-label="Удалить фото">×</button>
-    </div>
-  `).join('');
+  photoPreviewGrid.innerHTML = uploadedPhotos
+    .map((src, i) => photoPreviewCardHtml(src, i, 'data-remove-photo'))
+    .join('');
   bindPhotoReorder(photoPreviewGrid, uploadedPhotos, renderPhotoPreviews);
   scheduleProductDraftAutosave();
 }
