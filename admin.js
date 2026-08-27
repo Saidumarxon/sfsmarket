@@ -1549,7 +1549,6 @@ function acceptProductCategoryStack() {
     categoryId: leaf.id
   });
   setCategoryPickerOpen(false);
-  activateEditorTab('specs');
 }
 
 function initCategoryTreePicker() {
