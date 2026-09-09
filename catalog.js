@@ -555,8 +555,23 @@ function applyFiltersAndSort() {
       : sourceProducts.filter(p => {
           if (catalogLinkedCategoryNames.length) {
             if (!catalogLinkedCategoryNames.includes(String(p.category || "").trim())) return false;
-          } else if (categories.length && !categories.includes(p.category)) {
-            return false;
+          } else {
+            const activeFilterCats = [...categories];
+            if (!activeFilterCats.length && categoryFilter) {
+              activeFilterCats.push(categoryFilter);
+              if (window.emirateCategories?.getCategoryByName) {
+                const matched = window.emirateCategories.getCategoryByName(categoryFilter);
+                if (matched) {
+                  if (matched.nameRu) activeFilterCats.push(matched.nameRu);
+                  if (matched.nameUz) activeFilterCats.push(matched.nameUz);
+                }
+              }
+            }
+            if (activeFilterCats.length) {
+              const pCat = String(p.category || "").trim().toLowerCase();
+              const isMatch = activeFilterCats.some((c) => String(c).trim().toLowerCase() === pCat);
+              if (!isMatch) return false;
+            }
           }
           const selectedBrands = brands.length ? brands : (brandFilter ? [brandFilterBrand || brandFilter] : []);
           if (selectedBrands.length && !productMatchesAnyBrand(p, selectedBrands)) return false;
@@ -885,11 +900,26 @@ function applyCategoryFilterFromUrl() {
     return;
   }
   if (!categoryFilter || brandFilter) return;
+  const filterKey = categoryFilter.toLowerCase();
+  let matchedCat = null;
+  if (window.emirateCategories?.getCategoryByName) {
+    matchedCat = window.emirateCategories.getCategoryByName(categoryFilter);
+  }
+  const matchNames = [filterKey];
+  if (matchedCat) {
+    if (matchedCat.nameRu) matchNames.push(matchedCat.nameRu.toLowerCase());
+    if (matchedCat.nameUz) matchNames.push(matchedCat.nameUz.toLowerCase());
+  }
+
   document.querySelectorAll(".filter-category").forEach((item) => {
-    item.checked = item.value === categoryFilter;
+    item.checked = matchNames.includes(String(item.value || "").trim().toLowerCase());
   });
   if (pageTitleEl) {
-    pageTitleEl.textContent = categoryFilter;
+    let title = categoryFilter;
+    if (matchedCat && window.emirateCategories?.getCategoryDisplayName) {
+      title = window.emirateCategories.getCategoryDisplayName(matchedCat, window.emirateLang?.() || "ru");
+    }
+    pageTitleEl.textContent = title;
   }
 }
 

@@ -1621,29 +1621,41 @@ function t(key) {
 }
 
 function defaultHeaderNavItems() {
+  const lang = currentLang || "ru";
+  if (window.emirateCategories?.getNavCategories) {
+    const navCats = window.emirateCategories.getNavCategories(lang);
+    if (navCats && navCats.length) {
+      return navCats.map((cat) => ({
+        id: cat.id,
+        href: window.emirateCategories.buildCategoryProductsUrl(cat),
+        label: window.emirateCategories.getCategoryDisplayName(cat, lang),
+        cat: cat
+      }));
+    }
+  }
   return [
-    { href: "catalog.html?catalog=elektronika", key: "navstrip.electronics" },
-    { href: "catalog.html?catalog=bytovaya-tehnika", key: "navstrip.appliances" },
-    { href: "catalog.html?catalog=aksessuary", key: "navstrip.accessories" },
-    { href: "catalog.html?catalog=kompyutery", key: "navstrip.computers" },
-    { href: "catalog.html?catalog=krasota-i-zdorove", key: "navstrip.beauty" },
-    { href: "delivery.html", key: "navstrip.delivery" },
-    { href: "faq.html", key: "navstrip.faq" },
-    { href: "catalogs.html", key: "navstrip.all" }
+    { href: "catalog.html?category=" + encodeURIComponent("Смартфоны"), label: lang === "uz" ? "Smartfonlar" : "Смартфоны" },
+    { href: "catalog.html?category=" + encodeURIComponent("Ноутбуки"), label: lang === "uz" ? "Noutbuklar" : "Ноутбуки" },
+    { href: "catalog.html?category=" + encodeURIComponent("ТВ и аудио"), label: lang === "uz" ? "TV va audio" : "ТВ и аудио" },
+    { href: "catalog.html?category=" + encodeURIComponent("Бытовая техника"), label: lang === "uz" ? "Maishiy texnika" : "Бытовая техника" },
+    { href: "catalog.html?category=" + encodeURIComponent("Аксессуары"), label: lang === "uz" ? "Aksessuarlar" : "Аксессуары" },
+    { href: "catalog.html?category=" + encodeURIComponent("Товары для дома"), label: lang === "uz" ? "Uy uchun tovarlar" : "Товары для дома" },
+    { href: "catalog.html?category=" + encodeURIComponent("Красота и здоровье"), label: lang === "uz" ? "Go'zallik va salomatlik" : "Красота и здоровье" }
   ];
 }
 
 function headerNavItems() {
   const lang = currentLang || "ru";
-  const live = window.emirateCatalogs?.getActiveCatalogs?.() || [];
-  if (live.length) {
-    const items = live.slice(0, 7).map((catalog) => ({
-      href: window.emirateCatalogs.buildCatalogProductsUrl(catalog),
-      label: window.emirateCatalogs.getCatalogDisplayName(catalog, lang)
-    }));
-    items.push({ href: "delivery.html", key: "navstrip.delivery" });
-    items.push({ href: "catalogs.html", key: "navstrip.all" });
-    return items;
+  if (window.emirateCategories?.getNavCategories) {
+    const navCats = window.emirateCategories.getNavCategories(lang);
+    if (navCats && navCats.length) {
+      return navCats.map((cat) => ({
+        id: cat.id,
+        href: window.emirateCategories.buildCategoryProductsUrl(cat),
+        label: window.emirateCategories.getCategoryDisplayName(cat, lang),
+        cat: cat
+      }));
+    }
   }
   return defaultHeaderNavItems();
 }
@@ -1651,15 +1663,24 @@ function headerNavItems() {
 function fillHeaderNavstrip() {
   const list = document.getElementById("headerNavstripList");
   if (!list) return;
-  const current = (window.location.pathname || "").split("/").pop() + (window.location.search || "");
+  const currentCategoryParam = (new URLSearchParams(window.location.search).get("category") || "").trim().toLowerCase();
   list.innerHTML = headerNavItems()
     .map((item) => {
-      const label = item.label || t(item.key) || "";
+      const label = item.label || (item.key ? t(item.key) : "") || "";
       const href = item.href || "#";
-      const active = current.indexOf(href) !== -1 ? " is-active" : "";
+      const catNameRu = String(item.cat?.nameRu || "").trim().toLowerCase();
+      const catNameUz = String(item.cat?.nameUz || "").trim().toLowerCase();
+      const catSlug = String(item.cat?.slug || "").trim().toLowerCase();
+      const isActive = currentCategoryParam && (
+        currentCategoryParam === catNameRu ||
+        currentCategoryParam === catNameUz ||
+        currentCategoryParam === catSlug
+      );
+      const activeClass = isActive ? " is-active" : "";
       const i18n = item.key ? ' data-i18n="' + item.key + '"' : "";
+      const dataId = item.id ? ' data-category-id="' + String(item.id).replace(/"/g, '&quot;') + '"' : "";
       return (
-        '<a class="header-navstrip-link' + active + '" href="' + href + '"' + i18n + ">" +
+        '<a class="header-navstrip-link' + activeClass + '" href="' + href + '"' + i18n + dataId + ">" +
         String(label).replace(/</g, "&lt;") +
         "</a>"
       );
@@ -1669,34 +1690,29 @@ function fillHeaderNavstrip() {
 
 function ensureStorefrontHeaderChrome() {
   if (!headerEl || document.body?.classList.contains("admin-page")) return;
-  if (!headerEl.querySelector(".topbar")) {
-    headerEl.insertAdjacentHTML(
-      "afterbegin",
-      '<div class="topbar">' +
-        '<div class="container topbar-inner">' +
-          '<div class="topbar-left">' +
-            '<span class="topbar-city" data-i18n="topbar.city">Ташкент</span>' +
-            '<span class="topbar-divider" aria-hidden="true"></span>' +
-            '<a class="topbar-link" href="delivery.html" data-i18n="topbar.delivery">Доставка и оплата</a>' +
-            '<a class="topbar-link" href="faq.html" data-i18n="topbar.faq">Вопрос-ответ</a>' +
-          "</div>" +
-          '<div class="topbar-right">' +
-            '<a class="topbar-phone" href="tel:+998508868844">+998 50 886-88-44</a>' +
-          "</div>" +
-        "</div>" +
-      "</div>"
-    );
-  }
+  const existingTopbar = headerEl.querySelector(".topbar");
+  if (existingTopbar) existingTopbar.remove();
+
   if (!headerEl.querySelector(".header-navstrip")) {
     headerEl.insertAdjacentHTML(
       "beforeend",
-      '<nav class="header-navstrip" aria-label="Каталоги">' +
+      '<nav class="header-navstrip" aria-label="Категории">' +
         '<div class="container header-navstrip-inner" id="headerNavstripList"></div>' +
       "</nav>"
     );
   }
   fillHeaderNavstrip();
 }
+
+window.addEventListener("storage", function (e) {
+  if (e.key === "emirate_admin_categories_v1") {
+    fillHeaderNavstrip();
+  }
+});
+
+window.addEventListener("emirate:categories-changed", function () {
+  fillHeaderNavstrip();
+});
 
 function applyTranslations() {
   /* data-i18n="key" → textContent */

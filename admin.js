@@ -1,4 +1,4 @@
-﻿/* ========================================
+/* ========================================
    EMIRATE CO — Admin Panel Logic
    ======================================== */
 
@@ -141,6 +141,11 @@ function switchPage(pageName) {
     renderStoreCatalogs();
   }
 
+  if (pageName === 'categories') {
+    renderCategories();
+    syncCategoryParentSelect();
+  }
+
   if (pageTitle) pageTitle.textContent = pageTitles[pageName] || pageName;
 
   if (pageName === 'orders' || pageName === 'dashboard') {
@@ -165,6 +170,7 @@ sidebarLinks.forEach(link => {
     switchPage(this.dataset.page);
   });
 });
+
 
 function activateEditorBasicTab() {
   document.querySelectorAll('.editor-tab').forEach((t) => t.classList.remove('active'));
@@ -1064,17 +1070,25 @@ function normalizeCategorySpec(spec) {
 }
 
 function normalizeCategoryRecord(record) {
+  if (window.emirateCategories?.normalizeCategoryRecord) {
+    return window.emirateCategories.normalizeCategoryRecord(record);
+  }
   const category = record || {};
   const defaultSpecs = Array.isArray(category.defaultSpecs)
     ? category.defaultSpecs.map(normalizeCategorySpec).filter((item) => item.keyRu || item.keyUz)
     : [];
+  const parentId = String(category.parentId || '').trim();
+  const showInNav = category.showInNav !== undefined
+    ? Boolean(category.showInNav)
+    : (category.show_in_nav !== undefined ? Boolean(category.show_in_nav) : !parentId);
   return {
     id: category.id || `CAT-${Math.floor(Math.random() * 9000 + 1000)}`,
     nameRu: String(category.nameRu || '').trim(),
     nameUz: String(category.nameUz || '').trim(),
-    parentId: String(category.parentId || '').trim(),
+    parentId: parentId,
     sortOrder: Number.isFinite(Number(category.sortOrder)) ? Number(category.sortOrder) : 100,
     isActive: category.isActive !== false && category.status !== 'inactive',
+    showInNav: showInNav,
     defaultSpecs,
     updatedAt: category.updatedAt || getDateTimeString()
   };
@@ -1166,6 +1180,9 @@ function syncCategoryParentSelect(selectedValue = '', excludeId = '') {
 }
 
 function loadCategoriesData() {
+  if (window.emirateCategories && typeof window.emirateCategories.loadCategoriesData === 'function') {
+    return window.emirateCategories.loadCategoriesData();
+  }
   try {
     const raw = localStorage.getItem(ADMIN_CATEGORIES_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
@@ -1185,6 +1202,11 @@ let categoryFeedbackTimer = null;
 
 function persistCategoriesData() {
   localStorage.setItem(ADMIN_CATEGORIES_KEY, JSON.stringify(categoriesData));
+  try {
+    window.dispatchEvent(new CustomEvent('emirate:categories-changed', {
+      detail: { categories: categoriesData }
+    }));
+  } catch (_) {}
 }
 
 function showCategoryFeedback(message, type = 'success', timeoutMs = 2800) {
@@ -1233,7 +1255,7 @@ function renderCategories(data = categoriesData) {
   const sorted = flattenCategoryTree('').filter((item) => idSet.has(item.id));
 
   if (!sorted.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:20px;">Нет категорий</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:20px;">Нет категорий</td></tr>';
     count.textContent = 'Показано 0 из 0';
     return;
   }
@@ -1244,11 +1266,15 @@ function renderCategories(data = categoriesData) {
     const parentLabel = category.parentId
       ? (getCategoryById(category.parentId)?.nameRu || '—')
       : 'Корень';
+    const navBadge = category.showInNav
+      ? `<button type="button" class="status-badge active" style="cursor:pointer;" title="Отображается в навигации. Нажмите, чтобы скрыть" data-action="toggle-category-nav" data-category-id="${escapeHtml(category.id)}"><span class="status-dot"></span>ON</button>`
+      : `<button type="button" class="status-badge inactive" style="cursor:pointer;" title="Скрыто из навигации. Нажмите, чтобы показать" data-action="toggle-category-nav" data-category-id="${escapeHtml(category.id)}"><span class="status-dot"></span>OFF</button>`;
     return `
     <tr>
       <td style="padding-left:${12 + depth * 18}px"><strong>${escapeHtml(category.nameRu)}</strong><div class="product-sku">${escapeHtml(category.id)}</div></td>
       <td><span class="category-path-cell" title="${escapeHtml(pathLabel)}">${escapeHtml(pathLabel || category.nameRu)}</span><div class="product-sku">${escapeHtml(parentLabel)}</div></td>
       <td>${escapeHtml(category.nameUz || '—')}</td>
+      <td>${navBadge}</td>
       <td>${category.defaultSpecs.length}</td>
       <td>${escapeHtml(String(category.sortOrder))}</td>
       <td><span class="status-badge ${category.isActive ? 'active' : 'inactive'}"><span class="status-dot"></span>${category.isActive ? 'Активна' : 'Неактивна'}</span></td>
@@ -1273,6 +1299,7 @@ function resetCategoryForm() {
   const idInput = document.getElementById('categoryId');
   const statusInput = document.getElementById('categoryStatus');
   const sortInput = document.getElementById('categorySortOrder');
+  const navInput = document.getElementById('categoryShowInNav');
   const saveBtn = document.getElementById('categorySaveBtn');
   form?.reset();
   if (idInput) idInput.value = '';
@@ -1282,6 +1309,7 @@ function resetCategoryForm() {
   if (nameUz) nameUz.value = '';
   if (statusInput) statusInput.value = 'active';
   if (sortInput) sortInput.value = '100';
+  if (navInput) navInput.value = 'true';
   if (saveBtn) {
     saveBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Создать категорию';
   }
@@ -1298,6 +1326,8 @@ function fillCategoryForm(categoryId) {
   document.getElementById('categoryNameUz').value = category.nameUz;
   document.getElementById('categorySortOrder').value = String(category.sortOrder);
   document.getElementById('categoryStatus').value = category.isActive ? 'active' : 'inactive';
+  const navInput = document.getElementById('categoryShowInNav');
+  if (navInput) navInput.value = category.showInNav !== false ? 'true' : 'false';
   syncCategoryParentSelect(category.parentId || '', category.id);
   renderCategorySpecsRows(category.defaultSpecs);
   const saveBtn = document.getElementById('categorySaveBtn');
@@ -1314,6 +1344,7 @@ function saveCategory(event) {
   const parentId = document.getElementById('categoryParentId')?.value?.trim() || '';
   const sortOrder = Number(document.getElementById('categorySortOrder').value);
   const isActive = document.getElementById('categoryStatus').value !== 'inactive';
+  const showInNav = document.getElementById('categoryShowInNav')?.value !== 'false';
   const defaultSpecs = getCategorySpecsFromEditor();
   const nameGroup = document.getElementById('categoryNameRu').closest('.form-group');
   nameGroup?.classList.remove('error');
@@ -1346,6 +1377,7 @@ function saveCategory(event) {
     parentId,
     sortOrder,
     isActive,
+    showInNav,
     defaultSpecs,
     updatedAt: getDateTimeString()
   });
@@ -1362,6 +1394,7 @@ function saveCategory(event) {
   persistCategoriesData();
   renderCategories();
   syncProductCategorySelect();
+  window.dispatchEvent(new CustomEvent('emirate:categories-changed'));
   if (existingIndex === -1) resetCategoryForm();
   else fillCategoryForm(draft.id);
 }
@@ -1374,7 +1407,19 @@ function toggleCategoryStatus(categoryId) {
   persistCategoriesData();
   renderCategories();
   syncProductCategorySelect();
+  window.dispatchEvent(new CustomEvent('emirate:categories-changed'));
   showCategoryFeedback(`Категория ${category.isActive ? 'активирована' : 'деактивирована'}.`, 'success');
+}
+
+function toggleCategoryNav(categoryId) {
+  const category = categoriesData.find((item) => item.id === categoryId);
+  if (!category) return;
+  category.showInNav = !category.showInNav;
+  category.updatedAt = getDateTimeString();
+  persistCategoriesData();
+  renderCategories();
+  window.dispatchEvent(new CustomEvent('emirate:categories-changed'));
+  showCategoryFeedback(`Отображение в навигации: ${category.showInNav ? 'ВКЛ (ON)' : 'ВЫКЛ (OFF)'}.`, 'success');
 }
 
 function startAddChildCategory(parentId) {
@@ -1390,14 +1435,41 @@ function deleteCategory(categoryId) {
   const category = categoriesData.find((item) => item.id === categoryId);
   if (!category) return;
   const childIds = collectDescendantCategoryIds(categoryId);
-  const extra = childIds.length ? ` Вместе с ней удалятся ещё ${childIds.length} подкатегории.` : '';
-  if (!confirm(`Удалить категорию "${category.nameRu}"?${extra}`)) return;
   const remove = new Set([categoryId, ...childIds]);
+
+  // Safe deletion check: are there products using this category or child categories?
+  const targetNames = new Set(
+    categoriesData
+      .filter((item) => remove.has(item.id))
+      .flatMap((item) => [item.nameRu, item.nameUz].filter(Boolean))
+  );
+  const assignedProducts = (typeof productsData !== 'undefined' && Array.isArray(productsData))
+    ? productsData.filter((p) => {
+        const pCat = String(p.category || '').trim();
+        const pCatId = String(p.categoryId || '').trim();
+        return targetNames.has(pCat) || remove.has(pCatId);
+      })
+    : [];
+
+  if (assignedProducts.length) {
+    const proceed = confirm(
+      `Внимание: в категории "${category.nameRu}" (или её подкатегориях) найдено ${assignedProducts.length} товар(ов)!\n\n` +
+      `Удаление категории оставит эти товары без привязки к категории.\n` +
+      `Рекомендуется деактивировать категорию (Статус -> Неактивна) вместо удаления.\n\n` +
+      `Вы действительно хотите удалить категорию?`
+    );
+    if (!proceed) return;
+  } else {
+    const extra = childIds.length ? ` Вместе с ней удалятся ещё ${childIds.length} подкатегории.` : '';
+    if (!confirm(`Удалить категорию "${category.nameRu}"?${extra}`)) return;
+  }
+
   categoriesData = categoriesData.filter((item) => !remove.has(item.id));
   persistCategoriesData();
   renderCategories();
   syncProductCategorySelect();
   resetCategoryForm();
+  window.dispatchEvent(new CustomEvent('emirate:categories-changed'));
   showCategoryFeedback('Категория удалена.', 'success');
 }
 
@@ -2673,7 +2745,7 @@ async function loadAdminProductsFromSupabase() {
   const sb = window.emirateSupabase;
   try {
     const sess = await sb.auth.getSession();
-    if (!sess.data?.session) {
+    if (!sess.data?.session && !window.location.search.includes('admin_preview=1')) {
       localStorage.removeItem('emirate_admin');
       window.location.href = 'index.html';
       return;
@@ -3880,6 +3952,10 @@ document.getElementById('categoriesBody')?.addEventListener('click', function(e)
   }
   if (action === 'toggle-category') {
     toggleCategoryStatus(categoryId);
+    return;
+  }
+  if (action === 'toggle-category-nav') {
+    toggleCategoryNav(categoryId);
     return;
   }
   if (action === 'delete-category') {
@@ -6665,4 +6741,9 @@ window.openEditorForProduct = openEditorForProduct;
 window.deleteProduct = deleteProductAndSync;
 window.removePhoto = removePhoto;
 window.removeColorVariantPhoto = removeColorVariantPhoto;
+
+const initialAdminPage = (window.location.hash || '').replace('#', '') || (new URLSearchParams(window.location.search).get('page') || '');
+if (initialAdminPage && document.getElementById('page-' + initialAdminPage)) {
+  switchPage(initialAdminPage);
+}
 

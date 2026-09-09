@@ -1,4 +1,4 @@
-﻿/* ========================================
+/* ========================================
    EMIRATE CO — Home Page v4
    Categories + Carousel + Lazy Loading
    (shared logic is in common.js)
@@ -25,7 +25,7 @@ const ADMIN_PRODUCTS_KEY = "emirate_admin_products";
 const ADMIN_BANNERS_KEY = "emirate_home_banners";
 const SELECTED_PRODUCT_KEY = "emirate_selected_product";
 
-const FEED_BATCH = 8; // products per batch
+const FEED_BATCH = 10; // products per batch (2 rows of 5)
 let feedIndex = 0;
 const allProductsByTitle = new Map();
 let homeStorefrontReady = false;
@@ -56,7 +56,7 @@ function renderCarouselSkeletonCard() {
 }
 
 function renderHomeCarouselSkeletons() {
-  const skeleton = renderCarouselSkeletonCard().repeat(4);
+  const skeleton = renderCarouselSkeletonCard().repeat(5);
   HOME_CAROUSEL_IDS.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = skeleton;

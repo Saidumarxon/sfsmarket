@@ -42,6 +42,7 @@ const JS_FILES = [
   "emirate-auth.js",
   "emirate-brands.js",
   "emirate-catalogs.js",
+  "emirate-categories.js",
   "emirate-telegram-config.js",
   "admin.js",
   "supabase-config.prod.js",

@@ -3,8 +3,8 @@ import ProductCard from "@/components/ProductCard";
 import { products } from "@/lib/products";
 
 export default function Home() {
-  const hit = products.slice(0, 4);
-  const fresh = products.slice(4, 8);
+  const hit = products.slice(0, 5);
+  const fresh = products.slice(3, 8);
 
   return (
     <main>
