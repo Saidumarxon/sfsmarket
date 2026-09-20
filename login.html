@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru" data-seo-noindex="1">
 <head>
   <meta charset="UTF-8">
@@ -16,7 +16,894 @@
   <link rel="stylesheet" href="styles.css?v=20260825g">
   <link rel="stylesheet" href="mobile.css">
   <script src="emirate-seo.js"></script>
-  <script src="theme.js"></script>
+  <style>
+    /* ============================================================
+       PROFILE ORDERS VIEW & TIMELINE STYLES
+       ============================================================ */
+    .profile-orders-head {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .profile-orders-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary, #0f172a);
+      margin: 0;
+      line-height: 1.2;
+    }
+    .profile-orders-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary, #64748b);
+      margin: 4px 0 0;
+    }
+    .profile-orders-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 16px;
+      gap: 16px;
+      color: var(--text-secondary, #64748b);
+    }
+    .profile-orders-spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(37, 99, 235, 0.15);
+      border-top-color: var(--accent, #2563eb);
+      border-radius: 50%;
+      animation: spinOrders 0.8s linear infinite;
+    }
+    @keyframes spinOrders {
+      to { transform: rotate(360deg); }
+    }
+    .profile-orders-empty {
+      text-align: center;
+      padding: 48px 20px;
+      background: var(--card-bg, #ffffff);
+      border: 1px solid var(--border, rgba(15, 23, 42, 0.08));
+      border-radius: 20px;
+      margin-top: 8px;
+    }
+    .profile-orders-empty-icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 16px;
+      background: rgba(37, 99, 235, 0.08);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent, #2563eb);
+    }
+    .profile-orders-empty-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary, #0f172a);
+      margin-bottom: 8px;
+    }
+    .profile-orders-empty-text {
+      font-size: 14px;
+      color: var(--text-secondary, #64748b);
+      max-width: 380px;
+      margin: 0 auto 20px;
+      line-height: 1.5;
+    }
+    .profile-orders-catalog-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 24px;
+      border-radius: 12px;
+      background: var(--accent, #2563eb);
+      color: #fff;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+    .profile-orders-catalog-btn:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+    .profile-orders-list {
+      display: grid;
+      gap: 16px;
+    }
+    .profile-order-card {
+      background: var(--card-bg, #ffffff);
+      border: 1px solid var(--border, rgba(15, 23, 42, 0.08));
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .profile-order-card:hover {
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+      border-color: rgba(37, 99, 235, 0.2);
+    }
+    .profile-order-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border, rgba(15, 23, 42, 0.06));
+      flex-wrap: wrap;
+    }
+    .profile-order-id-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .profile-order-number {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary, #0f172a);
+      letter-spacing: -0.01em;
+    }
+    .profile-order-date {
+      font-size: 13px;
+      color: var(--text-secondary, #64748b);
+    }
+    .profile-order-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      line-height: 1;
+    }
+    .profile-order-status-badge .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-badge-processing {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+    .status-badge-processing .status-dot { background: #2563eb; }
+    .status-badge-ready {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+    .status-badge-ready .status-dot { background: #d97706; }
+    .status-badge-success {
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+    }
+    .status-badge-success .status-dot { background: #10b981; }
+    .status-badge-warning {
+      background: #fff1f2;
+      color: #be123c;
+      border: 1px solid #fecdd3;
+    }
+    .status-badge-warning .status-dot { background: #e11d48; }
+
+    .profile-order-items {
+      padding: 14px 0;
+      display: grid;
+      gap: 10px;
+    }
+    .profile-order-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .profile-order-item-thumb {
+      width: 54px;
+      height: 54px;
+      border-radius: 10px;
+      background: var(--bg-muted, #f8fafc);
+      border: 1px solid var(--border, rgba(15, 23, 42, 0.06));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .profile-order-item-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 3px;
+    }
+    .profile-order-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .profile-order-item-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary, #0f172a);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .profile-order-item-meta {
+      font-size: 13px;
+      color: var(--text-secondary, #64748b);
+      margin-top: 2px;
+    }
+    .profile-order-item-price {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary, #0f172a);
+      white-space: nowrap;
+      margin-left: 12px;
+    }
+
+    .profile-order-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border, rgba(15, 23, 42, 0.06));
+      flex-wrap: wrap;
+    }
+    .profile-order-meta-chips {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .profile-order-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary, #64748b);
+      background: var(--bg-muted, #f8fafc);
+      padding: 4px 9px;
+      border-radius: 8px;
+      border: 1px solid var(--border, rgba(15, 23, 42, 0.06));
+    }
+    .profile-order-total {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary, #0f172a);
+    }
+    .profile-order-total span {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary, #64748b);
+      margin-right: 4px;
+    }
+
+    .profile-order-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: var(--bg-muted, #f8fafc);
+      border: 1px solid var(--border, rgba(15, 23, 42, 0.08));
+      color: var(--text-primary, #0f172a);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      justify-content: center;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .profile-order-toggle-btn:hover {
+      background: rgba(37, 99, 235, 0.06);
+      border-color: rgba(37, 99, 235, 0.2);
+      color: var(--accent, #2563eb);
+    }
+    .profile-order-toggle-btn svg {
+      transition: transform 0.2s ease;
+    }
+    .profile-order-card.is-expanded .profile-order-toggle-btn svg {
+      transform: rotate(180deg);
+    }
+
+    .profile-order-details {
+      display: none;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px dashed var(--border, rgba(15, 23, 42, 0.1));
+    }
+    .profile-order-card.is-expanded .profile-order-details {
+      display: block;
+    }
+
+    /* Client Timeline */
+    .profile-timeline-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary, #0f172a);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .profile-timeline {
+      position: relative;
+      padding-left: 24px;
+      display: grid;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .profile-timeline::before {
+      content: "";
+      position: absolute;
+      top: 6px;
+      bottom: 6px;
+      left: 7px;
+      width: 2px;
+      background: var(--border, rgba(15, 23, 42, 0.12));
+    }
+    .profile-timeline-step {
+      position: relative;
+    }
+    .profile-timeline-dot {
+      position: absolute;
+      left: -24px;
+      top: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid var(--border, #cbd5e1);
+      box-shadow: 0 0 0 2px #fff;
+      z-index: 1;
+    }
+    .profile-timeline-step.is-past .profile-timeline-dot {
+      border-color: var(--accent, #2563eb);
+      background: var(--accent, #2563eb);
+    }
+    .profile-timeline-step.is-current .profile-timeline-dot {
+      border-color: var(--accent, #2563eb);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+    .profile-timeline-step-content {
+      min-width: 0;
+    }
+    .profile-timeline-step-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .profile-timeline-step-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary, #0f172a);
+    }
+    .profile-timeline-step.is-current .profile-timeline-step-title {
+      color: var(--accent, #2563eb);
+    }
+    .profile-timeline-step-time {
+      font-size: 12px;
+      color: var(--text-secondary, #64748b);
+      white-space: nowrap;
+    }
+    .profile-timeline-step-desc {
+      font-size: 12.5px;
+      color: var(--text-secondary, #64748b);
+      margin-top: 2px;
+      line-height: 1.4;
+    }
+
+    /* Delivery Info Inside Details */
+    .profile-order-delivery-info {
+      background: var(--bg-muted, #f8fafc);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--text-secondary, #64748b);
+      line-height: 1.5;
+    }
+    .profile-order-delivery-info strong {
+      color: var(--text-primary, #0f172a);
+    }
+
+    /* Dark Mode Overrides */
+    html[data-theme="dark"] .profile-order-card,
+    html[data-theme="dark"] .profile-orders-empty {
+      background: #1e293b;
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    html[data-theme="dark"] .profile-order-header,
+    html[data-theme="dark"] .profile-order-summary {
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    html[data-theme="dark"] .profile-order-item-thumb,
+    html[data-theme="dark"] .profile-order-chip,
+    html[data-theme="dark"] .profile-order-toggle-btn,
+    html[data-theme="dark"] .profile-order-delivery-info {
+      background: rgba(15, 23, 42, 0.5);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    html[data-theme="dark"] .profile-timeline::before {
+      background: rgba(255, 255, 255, 0.12);
+    }
+    html[data-theme="dark"] .profile-timeline-dot {
+      background: #1e293b;
+      box-shadow: 0 0 0 2px #1e293b;
+      border-color: #475569;
+    }
+    html[data-theme="dark"] .profile-timeline-step.is-past .profile-timeline-dot {
+      background: var(--accent, #3b82f6);
+      border-color: var(--accent, #3b82f6);
+    }
+    html[data-theme="dark"] .profile-timeline-step.is-current .profile-timeline-dot {
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
+    html[data-theme="dark"] .status-badge-processing {
+      background: rgba(37, 99, 235, 0.15);
+      color: #93c5fd;
+      border-color: rgba(37, 99, 235, 0.3);
+    }
+    html[data-theme="dark"] .status-badge-ready {
+      background: rgba(217, 119, 6, 0.15);
+      color: #fcd34d;
+      border-color: rgba(217, 119, 6, 0.3);
+    }
+    html[data-theme="dark"] .status-badge-success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    html[data-theme="dark"] .status-badge-warning {
+      background: rgba(225, 29, 72, 0.15);
+      color: #fda4af;
+      border-color: rgba(225, 29, 72, 0.3);
+    }
+
+    /* ADDRESS BOOK STYLES */
+    .profile-addresses-head {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border, #e2e8f0);
+    }
+    .profile-addresses-head-text {
+      flex: 1;
+      min-width: 0;
+    }
+    .profile-addresses-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text, #0f172a);
+      margin: 0 0 4px;
+    }
+    .profile-addresses-subtitle {
+      font-size: 0.875rem;
+      color: var(--muted, #64748b);
+      margin: 0;
+    }
+    .profile-addresses-add-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: var(--accent, #0284c7);
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 9999px;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+    .profile-addresses-add-btn:hover {
+      background: #0369a1;
+      transform: translateY(-1px);
+    }
+    .profile-addresses-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .profile-address-card {
+      position: relative;
+      background: #fff;
+      border: 1px solid var(--border, #e2e8f0);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .profile-address-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    }
+    .profile-address-card.is-default {
+      border-color: #0284c7;
+      background: #f0f9ff;
+    }
+    .profile-address-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .profile-address-tag-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      background: #f1f5f9;
+      color: #334155;
+    }
+    .profile-address-default-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: #0284c7;
+      color: #ffffff;
+    }
+    .profile-address-main {
+      margin-bottom: 16px;
+    }
+    .profile-address-street {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text, #0f172a);
+      margin: 0 0 6px;
+      line-height: 1.4;
+    }
+    .profile-address-sub {
+      font-size: 0.875rem;
+      color: var(--muted, #64748b);
+      margin: 0;
+      line-height: 1.4;
+    }
+    .profile-address-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border, #e2e8f0);
+      flex-wrap: wrap;
+    }
+    .profile-address-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      border: 1px solid var(--border, #cbd5e1);
+      background: #fff;
+      color: #334155;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .profile-address-action-btn:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+    .profile-address-action-btn--default {
+      color: #0284c7;
+      border-color: #bae6fd;
+    }
+    .profile-address-action-btn--default:hover {
+      background: #e0f2fe;
+      border-color: #0284c7;
+    }
+    .profile-address-action-btn--delete {
+      color: #e11d48;
+      border-color: #fecdd3;
+      margin-left: auto;
+    }
+    .profile-address-action-btn--delete:hover {
+      background: #ffe4e6;
+      border-color: #e11d48;
+    }
+
+    /* MODAL */
+    .address-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .address-modal[hidden] {
+      display: none !important;
+    }
+    .address-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(4px);
+    }
+    .address-modal-dialog {
+      position: relative;
+      background: #ffffff;
+      border-radius: 20px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      z-index: 1;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .address-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border, #e2e8f0);
+    }
+    .address-modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text, #0f172a);
+      margin: 0;
+    }
+    .address-modal-close {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #94a3b8;
+      padding: 4px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .address-modal-close:hover {
+      color: #0f172a;
+      background: #f1f5f9;
+    }
+    .address-form {
+      padding: 20px 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .address-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .address-form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .address-form-label {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #475569;
+    }
+    .address-form-label .req {
+      color: #e11d48;
+    }
+    .address-type-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    .address-type-pill {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #334155;
+      transition: all 0.15s ease;
+    }
+    .address-type-pill input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .address-type-pill:has(input:checked) {
+      border-color: #0284c7;
+      background: #f0f9ff;
+      color: #0284c7;
+      font-weight: 600;
+    }
+    .address-form-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 0.9375rem;
+      background: #fff;
+      color: #0f172a;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .address-form-input:focus {
+      border-color: #0284c7;
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+    .address-form-checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #334155;
+      cursor: pointer;
+      user-select: none;
+      margin-top: 4px;
+    }
+    .address-form-checkbox {
+      width: 18px;
+      height: 18px;
+      accent-color: #0284c7;
+      cursor: pointer;
+    }
+    .address-form-error {
+      color: #e11d48;
+      font-size: 0.8125rem;
+      margin: 0;
+      padding: 8px 12px;
+      background: #fff1f2;
+      border-radius: 8px;
+      border: 1px solid #fecdd3;
+    }
+    .address-form-actions {
+      display: flex;
+      gap: 12px;
+      padding-top: 8px;
+    }
+    .address-form-cancel {
+      flex: 1;
+      padding: 11px 16px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+    }
+    .address-form-cancel:hover {
+      background: #f8fafc;
+    }
+    .address-form-submit {
+      flex: 1.5;
+      padding: 11px 16px;
+      border-radius: 10px;
+      border: none;
+      background: #0284c7;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .address-form-submit:hover {
+      background: #0369a1;
+    }
+    .address-form-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* DARK MODE */
+    html[data-theme="dark"] .profile-address-card {
+      background: #1e293b;
+      border-color: #334155;
+    }
+    html[data-theme="dark"] .profile-address-card:hover {
+      border-color: #475569;
+    }
+    html[data-theme="dark"] .profile-address-card.is-default {
+      background: rgba(2, 132, 199, 0.1);
+      border-color: #38bdf8;
+    }
+    html[data-theme="dark"] .profile-address-tag-badge {
+      background: #334155;
+      color: #f1f5f9;
+    }
+    html[data-theme="dark"] .profile-address-street {
+      color: #f8fafc;
+    }
+    html[data-theme="dark"] .profile-address-sub {
+      color: #94a3b8;
+    }
+    html[data-theme="dark"] .profile-address-actions {
+      border-top-color: #334155;
+    }
+    html[data-theme="dark"] .profile-address-action-btn {
+      background: #1e293b;
+      border-color: #334155;
+      color: #cbd5e1;
+    }
+    html[data-theme="dark"] .profile-address-action-btn:hover {
+      background: #334155;
+      color: #fff;
+    }
+    html[data-theme="dark"] .address-modal-dialog {
+      background: #1e293b;
+      border: 1px solid #334155;
+    }
+    html[data-theme="dark"] .address-modal-header {
+      border-bottom-color: #334155;
+    }
+    html[data-theme="dark"] .address-modal-title {
+      color: #f8fafc;
+    }
+    html[data-theme="dark"] .address-form-label {
+      color: #94a3b8;
+    }
+    html[data-theme="dark"] .address-type-pill {
+      border-color: #334155;
+      color: #cbd5e1;
+    }
+    html[data-theme="dark"] .address-type-pill:has(input:checked) {
+      background: rgba(2, 132, 199, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+    html[data-theme="dark"] .address-form-input {
+      background: #0f172a;
+      border-color: #334155;
+      color: #f8fafc;
+    }
+    html[data-theme="dark"] .address-form-checkbox-label {
+      color: #cbd5e1;
+    }
+    html[data-theme="dark"] .address-form-cancel {
+      background: #1e293b;
+      border-color: #334155;
+      color: #cbd5e1;
+    }
+    html[data-theme="dark"] .address-form-cancel:hover {
+      background: #334155;
+    }
+
+    @media (max-width: 640px) {
+      .profile-addresses-head {
+        flex-wrap: wrap;
+      }
+      .profile-addresses-add-btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .profile-addresses-grid {
+        grid-template-columns: 1fr;
+      }
+      .address-form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body class="profile-page">
 
@@ -95,6 +982,10 @@
           <a href="login.html#orders" class="profile-sidebar-link" data-profile-nav="orders">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
             <span data-i18n="profile.orders">Заказы</span>
+          </a>
+          <a href="login.html#addresses" class="profile-sidebar-link" data-profile-nav="addresses">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span data-i18n="profile.addresses">Адреса</span>
           </a>
           <a href="login.html#payments" class="profile-sidebar-link" data-profile-nav="payments">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
@@ -251,6 +1142,11 @@
       </div>
 
       <div class="profile-menu-group profile-app-only">
+        <a href="login.html#orders" class="profile-menu-item" id="profileMobileOrdersLink">
+          <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+          <span class="profile-menu-label" data-i18n="profile.orders">Мои заказы</span>
+          <svg class="profile-menu-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
         <button type="button" class="profile-menu-item" id="profilePromoLogged">
           <svg class="profile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           <span class="profile-menu-label" data-i18n="profile.promo">Промокод</span>
@@ -387,9 +1283,143 @@
         </form>
       </section>
     </div>
+
+    <div id="profileOrdersView" hidden>
+      <div class="profile-orders-head">
+        <button type="button" class="profile-edit-back" id="profileOrdersBack" aria-label="Назад">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+          <span data-i18n="profile.back">Назад</span>
+        </button>
+        <div class="profile-orders-head-text">
+          <h1 class="profile-orders-title" data-i18n="profile.orders">Мои заказы</h1>
+          <p class="profile-orders-subtitle" id="profileOrdersSubtitle">История покупок и текущий статус</p>
+        </div>
+      </div>
+
+      <div class="profile-orders-loading" id="profileOrdersLoading" hidden>
+        <div class="profile-orders-spinner"></div>
+        <p>Загрузка заказов...</p>
+      </div>
+
+      <div class="profile-orders-empty" id="profileOrdersEmpty" hidden>
+        <div class="profile-orders-empty-icon">
+          <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
+          </svg>
+        </div>
+        <h3 class="profile-orders-empty-title">У вас пока нет заказов</h3>
+        <p class="profile-orders-empty-text">Когда вы оформите заказ, он появится здесь с подробной историей и отслеживанием доставки.</p>
+        <a href="catalog.html" class="profile-orders-catalog-btn">Перейти в каталог</a>
+      </div>
+
+      <div class="profile-orders-list" id="profileOrdersList"></div>
+    </div>
+
+    <div id="profileAddressesView" hidden>
+      <div class="profile-addresses-head">
+        <button type="button" class="profile-edit-back" id="profileAddressesBack" aria-label="Назад">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+          <span data-i18n="profile.back">Назад</span>
+        </button>
+        <div class="profile-addresses-head-text">
+          <h1 class="profile-addresses-title" data-i18n="profile.addresses">Мои адреса</h1>
+          <p class="profile-addresses-subtitle">Сохранённые адреса доставки для быстрого заказа</p>
+        </div>
+        <button type="button" class="profile-addresses-add-btn" id="profileAddAddressBtn">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>Добавить адрес</span>
+        </button>
+      </div>
+
+      <div class="profile-orders-loading" id="profileAddressesLoading" hidden>
+        <div class="profile-orders-spinner"></div>
+        <p>Загрузка адресов...</p>
+      </div>
+
+      <div class="profile-orders-empty" id="profileAddressesEmpty" hidden>
+        <div class="profile-orders-empty-icon">
+          <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <h3 class="profile-orders-empty-title">У вас пока нет сохранённых адресов</h3>
+        <p class="profile-orders-empty-text">Добавьте адрес доставки (дом, работа или другой), чтобы оформлять заказы в один клик без повторного ввода.</p>
+        <button type="button" class="profile-orders-catalog-btn" id="profileEmptyAddAddressBtn">Добавить первый адрес</button>
+      </div>
+
+      <div class="profile-addresses-grid" id="profileAddressesList"></div>
+    </div>
     </div>
     </div>
   </main>
+
+  <div id="addressModal" class="address-modal" hidden>
+    <div class="address-modal-backdrop" id="addressModalBackdrop"></div>
+    <div class="address-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="addressModalTitle">
+      <div class="address-modal-header">
+        <h3 class="address-modal-title" id="addressModalTitle">Новый адрес</h3>
+        <button type="button" class="address-modal-close" id="addressModalClose" aria-label="Закрыть">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <form id="addressForm" class="address-form" novalidate>
+        <input type="hidden" id="addressFormId" value="">
+
+        <div class="address-form-group">
+          <label class="address-form-label">Тип адреса</label>
+          <div class="address-type-selector">
+            <label class="address-type-pill">
+              <input type="radio" name="addressType" value="Дом" checked>
+              <span>🏠 Дом</span>
+            </label>
+            <label class="address-type-pill">
+              <input type="radio" name="addressType" value="Работа">
+              <span>💼 Работа</span>
+            </label>
+            <label class="address-type-pill">
+              <input type="radio" name="addressType" value="Другой">
+              <span>📍 Другой</span>
+            </label>
+          </div>
+          <input type="text" id="addressFormCustomTitle" class="address-form-input" placeholder="Название адреса (например: Дача, Родители)" style="display:none; margin-top: 8px;">
+        </div>
+
+        <div class="address-form-group">
+          <label class="address-form-label" for="addressFormCity">Город / населённый пункт <span class="req">*</span></label>
+          <input type="text" id="addressFormCity" class="address-form-input" placeholder="Например: Ташкент, Самарканд" required autocomplete="address-level2">
+        </div>
+
+        <div class="address-form-group">
+          <label class="address-form-label" for="addressFormStreet">Улица, дом <span class="req">*</span></label>
+          <input type="text" id="addressFormStreet" class="address-form-input" placeholder="Например: ул. Амира Темура, дом 15" required autocomplete="street-address">
+        </div>
+
+        <div class="address-form-row">
+          <div class="address-form-group">
+            <label class="address-form-label" for="addressFormApartment">Кв. / Офис</label>
+            <input type="text" id="addressFormApartment" class="address-form-input" placeholder="Например: кв. 42">
+          </div>
+          <div class="address-form-group">
+            <label class="address-form-label" for="addressFormRegion">Регион / область</label>
+            <input type="text" id="addressFormRegion" class="address-form-input" placeholder="Например: Ташкентская обл.">
+          </div>
+        </div>
+
+        <label class="address-form-checkbox-label">
+          <input type="checkbox" id="addressFormIsDefault" class="address-form-checkbox">
+          <span>Сделать адресом по умолчанию</span>
+        </label>
+
+        <p class="address-form-error" id="addressFormError" hidden></p>
+
+        <div class="address-form-actions">
+          <button type="button" class="address-form-cancel" id="addressFormCancel">Отмена</button>
+          <button type="submit" class="address-form-submit" id="addressFormSubmit">Сохранить адрес</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <footer class="footer profile-web-only">
     <div class="container footer-inner">
@@ -471,6 +1501,15 @@
         <button type="button" class="profile-login-btn" id="loginOtpSubmit" data-i18n="auth.verifyCode">Подтвердить</button>
         <button type="button" class="profile-register-link" id="loginOtpBack" data-i18n="auth.changePhone">Изменить номер</button>
       </div>
+      <div id="loginNameStep" hidden>
+        <p class="profile-otp-hint" id="loginNameHint" data-i18n="auth.nameStepHint">Пожалуйста, укажите ваше имя, чтобы мы знали, как к вам обращаться</p>
+        <div class="profile-form-group">
+          <label for="loginNameInput" data-i18n="auth.nameLabel">Ваше имя *</label>
+          <input type="text" id="loginNameInput" data-i18n-placeholder="auth.namePlaceholder" placeholder="Имя и Фамилия" autocomplete="name" required minlength="2">
+        </div>
+        <p class="profile-form-error" id="loginNameError" hidden></p>
+        <button type="button" class="profile-login-btn" id="loginNameSubmit" data-i18n="auth.completeReg">Завершить регистрацию</button>
+      </div>
       <form id="loginForm" hidden>
         <div class="profile-form-group">
           <label for="loginEmail">Email (Supabase) или логин</label>
@@ -510,14 +1549,18 @@
       var loginForm = document.getElementById("loginForm");
       var loginPhoneForm = document.getElementById("loginPhoneForm");
       var loginOtpStep = document.getElementById("loginOtpStep");
+      var loginNameStep = document.getElementById("loginNameStep");
       var loginOtpPhone = "";
+      var pendingAuthSession = null;
       var toast = document.getElementById("profileToast");
       var toastTimer;
 
       function resetLoginPhoneAuth() {
         loginOtpPhone = "";
+        pendingAuthSession = null;
         if (loginPhoneForm) loginPhoneForm.hidden = false;
         if (loginOtpStep) loginOtpStep.hidden = true;
+        if (loginNameStep) loginNameStep.hidden = true;
         if (loginForm) loginForm.hidden = true;
         loginModal.classList.remove("is-admin-auth");
         var title = document.getElementById("loginSheetTitle");
@@ -531,8 +1574,12 @@
         if (googleBtn) googleBtn.hidden = false;
         var phoneErr = document.getElementById("loginPhoneError");
         var otpErr = document.getElementById("loginOtpError");
+        var nameErr = document.getElementById("loginNameError");
         if (phoneErr) phoneErr.hidden = true;
         if (otpErr) otpErr.hidden = true;
+        if (nameErr) nameErr.hidden = true;
+        var nameInput = document.getElementById("loginNameInput");
+        if (nameInput) nameInput.value = "";
         var loginErr = document.getElementById("loginError");
         if (loginErr) loginErr.classList.remove("visible");
         var otpCode = document.getElementById("loginOtpCode");
@@ -558,6 +1605,7 @@
       function showAdminLoginForm(seedValue) {
         if (loginPhoneForm) loginPhoneForm.hidden = true;
         if (loginOtpStep) loginOtpStep.hidden = true;
+        if (loginNameStep) loginNameStep.hidden = true;
         if (loginForm) loginForm.hidden = false;
         loginModal.classList.add("is-admin-auth");
         var title = document.getElementById("loginSheetTitle");
@@ -588,6 +1636,32 @@
         if (!err) return;
         err.textContent = message;
         err.hidden = !message;
+      }
+
+      function showLoginNameError(message) {
+        var err = document.getElementById("loginNameError");
+        if (!err) return;
+        err.textContent = message;
+        err.hidden = !message;
+      }
+
+      function showLoginNameStep() {
+        if (loginPhoneForm) loginPhoneForm.hidden = true;
+        if (loginOtpStep) loginOtpStep.hidden = true;
+        if (loginNameStep) loginNameStep.hidden = false;
+        var divider = document.querySelector(".profile-auth-divider");
+        var googleBtn = document.getElementById("profileGoogleBtn");
+        if (divider) divider.hidden = true;
+        if (googleBtn) googleBtn.hidden = true;
+        var title = document.getElementById("loginSheetTitle");
+        if (title) {
+          title.textContent = (window.emirateT && window.emirateT("auth.nameStepTitle")) || "Завершение регистрации";
+        }
+        var input = document.getElementById("loginNameInput");
+        if (input) {
+          input.value = "";
+          input.focus();
+        }
       }
 
       function showLoginOtpStep(meta) {
@@ -744,16 +1818,73 @@
           showLoginOtpError((window.emirateT && window.emirateT("auth.codeInvalid")) || "Введите код из SMS");
           return;
         }
-        var res = await window.emirateAuth.verifyPhoneOtp(loginOtpPhone, code, "login");
-        if (!res.ok) {
-          showLoginOtpError((res.error && res.error.message) || (window.emirateT && window.emirateT("auth.codeInvalid")) || "Неверный код");
+        var submitBtn = document.getElementById("loginOtpSubmit");
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+          var res = await window.emirateAuth.verifyPhoneOtp(loginOtpPhone, code, "login");
+          if (!res.ok) {
+            var msg = (res.error && res.error.message) || (window.emirateT && window.emirateT("auth.codeInvalid")) || "Неверный код";
+            showLoginOtpError(msg);
+            if (res.error && res.error.code === "google_account_exists") {
+              var gBtn = document.getElementById("profileGoogleBtn");
+              if (gBtn) {
+                gBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+                gBtn.style.outline = "2px solid #2563eb";
+                setTimeout(function () { gBtn.style.outline = ""; }, 2500);
+              }
+            }
+            return;
+          }
+
+          // Case A: New SMS registration strictly requires name before finishing!
+          if (res.is_new_user) {
+            pendingAuthSession = res.session;
+            showLoginNameStep();
+            return;
+          }
+
+          // Case B / G: Existing user
+          closeLoginModal();
+          if (res.session) {
+            showLoggedInProfile(res.session);
+            if (res.needs_name) {
+              showToast((window.emirateT && window.emirateT("auth.namePromptToast")) || "Пожалуйста, укажите ваше имя в настройках профиля", 5000);
+            }
+          } else {
+            window.location.reload();
+          }
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+
+      document.getElementById("loginNameSubmit")?.addEventListener("click", async function () {
+        showLoginNameError("");
+        var name = String(document.getElementById("loginNameInput")?.value || "").trim();
+        if (name.length < 2) {
+          showLoginNameError((window.emirateT && window.emirateT("auth.nameInvalid")) || "Пожалуйста, введите ваше имя (минимум 2 символа)");
           return;
         }
-        closeLoginModal();
-        if (res.session) {
-          showLoggedInProfile(res.session);
-        } else {
-          window.location.reload();
+        var saveBtn = document.getElementById("loginNameSubmit");
+        if (saveBtn) saveBtn.disabled = true;
+        try {
+          var updated = await window.emirateAuth.updateCustomerProfile({ fullName: name });
+          if (!updated.ok) {
+            showLoginNameError((updated.error && updated.error.message) || "Не удалось сохранить имя");
+            return;
+          }
+          closeLoginModal();
+          var sess = updated.session || pendingAuthSession;
+          if (sess) {
+            showLoggedInProfile(sess);
+          } else {
+            window.location.reload();
+          }
+          showToast(((window.emirateT && window.emirateT("profile.saved")) || "Изменения сохранены") + "! " + name);
+        } catch (err) {
+          showLoginNameError(err && err.message ? err.message : "Ошибка сохранения");
+        } finally {
+          if (saveBtn) saveBtn.disabled = false;
         }
       });
 
@@ -899,6 +2030,11 @@
         isLoggedIn = false;
         document.getElementById("profileGuestView").hidden = false;
         document.getElementById("profileAccountView").hidden = true;
+        document.getElementById("profileEditView").hidden = true;
+        var ordersView = document.getElementById("profileOrdersView");
+        if (ordersView) ordersView.hidden = true;
+        var addressesView = document.getElementById("profileAddressesView");
+        if (addressesView) addressesView.hidden = true;
         document.getElementById("profileGuestActions").hidden = false;
         document.getElementById("profileLoggedActions").hidden = true;
       }
@@ -937,12 +2073,23 @@
         document.getElementById("profileGuestView").hidden = true;
         document.getElementById("profileAccountView").hidden = false;
         document.getElementById("profileEditView").hidden = true;
+        var ordersView = document.getElementById("profileOrdersView");
+        if (ordersView) ordersView.hidden = true;
+        var addressesView = document.getElementById("profileAddressesView");
+        if (addressesView) addressesView.hidden = true;
         document.getElementById("profileGuestActions").hidden = true;
         document.getElementById("profileLoggedActions").hidden = false;
 
         document.getElementById("profileName").textContent = displayName;
         document.getElementById("profileId").textContent =
           ((window.emirateT && window.emirateT("profile.idLabel")) || "ID:") + " " + formatProfileId(user.id);
+
+        if ((!profile || !profile.name) && !sessionStorage.getItem("name_prompt_shown")) {
+          sessionStorage.setItem("name_prompt_shown", "1");
+          setTimeout(function () {
+            showToast((window.emirateT && window.emirateT("auth.namePromptToast")) || "Пожалуйста, укажите ваше имя в настройках профиля", 5000);
+          }, 800);
+        }
 
         var phoneChip = document.getElementById("profilePhoneChip");
         var emailChip = document.getElementById("profileEmailChip");
@@ -1014,6 +2161,21 @@
           }
         } else {
           showInitials();
+        }
+
+        if (window.emirateAuth && window.emirateAuth.loadCustomerAddresses) {
+          window.emirateAuth.loadCustomerAddresses().then(function (addresses) {
+            var countEl = document.getElementById("profileAddressCount");
+            if (countEl && addresses) {
+              countEl.textContent = String(addresses.length);
+            }
+          }).catch(function () {});
+        }
+
+        if (window.location.hash === "#orders") {
+          switchProfileTab("orders");
+        } else if (window.location.hash === "#addresses") {
+          switchProfileTab("addresses");
         }
       }
 
@@ -1142,10 +2304,666 @@
         document.getElementById("profileLogoutBtn").click();
       });
 
-      document.querySelectorAll(".profile-sidebar-link[href^='login.html#']").forEach(function (link) {
+      // ===== ORDERS & TIMELINE LOGIC =====
+      var CLIENT_STATUS_MAP = {
+        processing: {
+          label: "Заказ принят / В обработке",
+          cls: "status-badge-processing",
+          desc: "Менеджер проверяет наличие и комплектует заказ",
+          icon: "⏳"
+        },
+        ready_to_ship: {
+          label: "Готовится к отправке",
+          cls: "status-badge-ready",
+          desc: "Заказ собран и готов к передаче в доставку",
+          icon: "📦"
+        },
+        successful: {
+          label: "Доставлен / Заказ выполнен",
+          cls: "status-badge-success",
+          desc: "Заказ успешно доставлен и вручён покупателю",
+          icon: "✅"
+        },
+        out_of_stock: {
+          label: "Товар требует уточнения",
+          cls: "status-badge-warning",
+          desc: "Менеджер свяжется с вами для согласования деталей заказа",
+          icon: "ℹ️"
+        }
+      };
+
+      function formatOrderMoney(amount) {
+        var n = Number(amount) || 0;
+        return n.toLocaleString("ru-RU") + " сум";
+      }
+
+      function formatOrderDate(isoString) {
+        if (!isoString) return "—";
+        var d = new Date(isoString);
+        if (Number.isNaN(d.getTime())) return "—";
+        var day = String(d.getDate()).padStart(2, "0");
+        var month = String(d.getMonth() + 1).padStart(2, "0");
+        var year = d.getFullYear();
+        var hours = String(d.getHours()).padStart(2, "0");
+        var mins = String(d.getMinutes()).padStart(2, "0");
+        return day + "." + month + "." + year + " в " + hours + ":" + mins;
+      }
+
+      function formatOrderTimelineDate(isoString) {
+        if (!isoString) return "";
+        var d = new Date(isoString);
+        if (Number.isNaN(d.getTime())) return "";
+        var day = String(d.getDate()).padStart(2, "0");
+        var month = String(d.getMonth() + 1).padStart(2, "0");
+        var year = d.getFullYear();
+        var hours = String(d.getHours()).padStart(2, "0");
+        var mins = String(d.getMinutes()).padStart(2, "0");
+        return day + "." + month + "." + year + ", " + hours + ":" + mins;
+      }
+
+      function formatOrderPublicId(uuid, orderNumber) {
+        var n = Number(orderNumber);
+        if (Number.isFinite(n) && n > 0) return "#" + Math.trunc(n);
+        var raw = String(uuid || "").replace(/-/g, "");
+        if (!raw) return "#—";
+        return "#" + raw.slice(0, 8).toUpperCase();
+      }
+
+      function formatDeliveryMethodLabel(method) {
+        var m = String(method || "").trim().toLowerCase();
+        if (m === "quick_buy") return "Купить в один клик";
+        if (m === "pickup") return "Самовывоз из магазина";
+        if (m === "delivery" || m === "courier" || m === "door") return "Курьерская доставка";
+        return method || "Доставка";
+      }
+
+      function formatPaymentMethodLabel(method) {
+        var m = String(method || "").trim().toLowerCase();
+        if (m === "cash") return "Наличными при получении";
+        if (m === "card" || m === "app") return "Банковской картой";
+        if (m === "callback") return "При получении";
+        return method || "Оплата при получении";
+      }
+
+      function escapeHtml(str) {
+        return String(str || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function resolveItemImage(item) {
+        if (item.image) return item.image;
+        if (item.img) return item.img;
+        if (item.photo) return item.photo;
+        var title = item.title || item.name || "";
+        if (title && typeof window.emirateLookupProduct === "function") {
+          var found = window.emirateLookupProduct(title);
+          if (found && found.image) return found.image;
+        }
+        return "images/no-photo.svg";
+      }
+
+      var customerOrdersData = [];
+
+      async function renderCustomerOrders() {
+        var loadingEl = document.getElementById("profileOrdersLoading");
+        var emptyEl = document.getElementById("profileOrdersEmpty");
+        var listEl = document.getElementById("profileOrdersList");
+        var subtitleEl = document.getElementById("profileOrdersSubtitle");
+
+        if (!listEl) return;
+        if (loadingEl) loadingEl.hidden = false;
+        if (emptyEl) emptyEl.hidden = true;
+        listEl.innerHTML = "";
+
+        try {
+          var orders = (window.emirateAuth && window.emirateAuth.loadCustomerOrders)
+            ? await window.emirateAuth.loadCustomerOrders()
+            : [];
+          customerOrdersData = orders;
+
+          if (loadingEl) loadingEl.hidden = true;
+
+          if (!orders || orders.length === 0) {
+            if (emptyEl) emptyEl.hidden = false;
+            if (subtitleEl) subtitleEl.textContent = "У вас пока нет оформленных заказов";
+            return;
+          }
+
+          if (subtitleEl) {
+            subtitleEl.textContent = "Всего заказов: " + orders.length;
+          }
+
+          var html = orders.map(function (order) {
+            var publicId = formatOrderPublicId(order.id, order.order_number);
+            var dateStr = formatOrderDate(order.created_at);
+            var statusKey = String(order.status || "processing").toLowerCase();
+            var statusConf = CLIENT_STATUS_MAP[statusKey] || CLIENT_STATUS_MAP.processing;
+            var itemsList = Array.isArray(order.items) ? order.items : [];
+
+            var itemsHtml = itemsList.map(function (item) {
+              var title = String(item.title || item.name || "Товар").trim();
+              var qty = Number(item.qty) || 1;
+              var price = Number(item.price) || 0;
+              var imgUrl = resolveItemImage(item);
+              return `
+                <div class="profile-order-item">
+                  <div class="profile-order-item-thumb">
+                    <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(title)}" loading="lazy" onerror="this.src='images/no-photo.svg'">
+                  </div>
+                  <div class="profile-order-item-info">
+                    <div class="profile-order-item-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
+                    <div class="profile-order-item-meta">${qty} шт. × ${formatOrderMoney(price)}</div>
+                  </div>
+                  <div class="profile-order-item-price">${formatOrderMoney(price * qty)}</div>
+                </div>
+              `;
+            }).join("");
+
+            var deliveryLabel = formatDeliveryMethodLabel(order.delivery_method);
+            var paymentLabel = formatPaymentMethodLabel(order.payment_method);
+            var addressStr = [order.region, order.city, order.address].filter(Boolean).join(", ") || "Самовывоз / Не указан";
+
+            return `
+              <article class="profile-order-card" id="order-card-${order.id}" data-order-id="${order.id}">
+                <div class="profile-order-header">
+                  <div class="profile-order-id-wrap">
+                    <span class="profile-order-number">${escapeHtml(publicId)}</span>
+                    <span class="profile-order-date">от ${escapeHtml(dateStr)}</span>
+                  </div>
+                  <div class="profile-order-status-badge ${statusConf.cls}">
+                    <span class="status-dot"></span>
+                    <span>${escapeHtml(statusConf.label)}</span>
+                  </div>
+                </div>
+
+                <div class="profile-order-items">
+                  ${itemsHtml}
+                </div>
+
+                <div class="profile-order-summary">
+                  <div class="profile-order-meta-chips">
+                    <span class="profile-order-chip" title="Способ получения">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 18h14M5 14h14M3 6h18v4H3z"/></svg>
+                      ${escapeHtml(deliveryLabel)}
+                    </span>
+                    <span class="profile-order-chip" title="Способ оплаты">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                      ${escapeHtml(paymentLabel)}
+                    </span>
+                  </div>
+                  <div class="profile-order-total">
+                    <span>Итого:</span>${formatOrderMoney(order.total_amount)}
+                  </div>
+                </div>
+
+                <button type="button" class="profile-order-toggle-btn" data-toggle-order="${order.id}">
+                  <span>Детали заказа и история</span>
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+
+                <div class="profile-order-details" id="order-details-${order.id}">
+                  <h4 class="profile-timeline-title">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    История статусов заказа
+                  </h4>
+                  <div class="profile-timeline" id="order-timeline-${order.id}">
+                    <div class="profile-timeline-step is-current">
+                      <span class="profile-timeline-dot"></span>
+                      <div class="profile-timeline-step-content">
+                        <div class="profile-timeline-step-header">
+                          <span class="profile-timeline-step-title">${escapeHtml(statusConf.label)}</span>
+                          <span class="profile-timeline-step-time">${escapeHtml(formatOrderTimelineDate(order.created_at))}</span>
+                        </div>
+                        <p class="profile-timeline-step-desc">${escapeHtml(statusConf.desc)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="profile-order-delivery-info">
+                    <div><strong>Адрес доставки / получения:</strong> ${escapeHtml(addressStr)}</div>
+                    ${order.comment_text ? `<div style="margin-top:4px;"><strong>Комментарий к заказу:</strong> ${escapeHtml(order.comment_text)}</div>` : ""}
+                  </div>
+                </div>
+              </article>
+            `;
+          }).join("");
+
+          listEl.innerHTML = html;
+
+          // Wire toggle buttons
+          listEl.querySelectorAll("[data-toggle-order]").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              var orderId = btn.getAttribute("data-toggle-order");
+              var card = document.getElementById("order-card-" + orderId);
+              if (!card) return;
+              var isExpanded = card.classList.toggle("is-expanded");
+              if (isExpanded) {
+                loadAndRenderOrderTimeline(orderId);
+              }
+            });
+          });
+
+        } catch (err) {
+          console.error("[renderCustomerOrders]", err);
+          if (loadingEl) loadingEl.hidden = true;
+          listEl.innerHTML = `<p style="color:#ef4444;text-align:center;padding:24px;">Не удалось загрузить заказы. Попробуйте обновить страницу.</p>`;
+        }
+      }
+
+      async function loadAndRenderOrderTimeline(orderId) {
+        var timelineEl = document.getElementById("order-timeline-" + orderId);
+        if (!timelineEl) return;
+
+        var order = customerOrdersData.find(function (o) { return o.id === orderId; });
+        if (!order) return;
+
+        try {
+          var history = (window.emirateAuth && window.emirateAuth.loadOrderStatusHistory)
+            ? await window.emirateAuth.loadOrderStatusHistory(orderId)
+            : [];
+
+          if (history && history.length > 0) {
+            var stepsHtml = history.map(function (step, index) {
+              var isLast = index === history.length - 1;
+              var statusKey = String(step.status || "processing").toLowerCase();
+              var statusConf = CLIENT_STATUS_MAP[statusKey] || CLIENT_STATUS_MAP.processing;
+              var title = statusConf.label;
+              var desc = step.comment || statusConf.desc;
+              var timeStr = formatOrderTimelineDate(step.created_at);
+
+              return `
+                <div class="profile-timeline-step ${isLast ? 'is-current' : 'is-past'}">
+                  <span class="profile-timeline-dot"></span>
+                  <div class="profile-timeline-step-content">
+                    <div class="profile-timeline-step-header">
+                      <span class="profile-timeline-step-title">${escapeHtml(title)}</span>
+                      <span class="profile-timeline-step-time">${escapeHtml(timeStr)}</span>
+                    </div>
+                    <p class="profile-timeline-step-desc">${escapeHtml(desc)}</p>
+                  </div>
+                </div>
+              `;
+            }).join("");
+
+            timelineEl.innerHTML = stepsHtml;
+          }
+        } catch (e) {
+          console.warn("[loadAndRenderOrderTimeline] error", e);
+        }
+      }
+
+      var customerAddressesData = [];
+
+      function getAddressTagIcon(title) {
+        var t = String(title || "").toLowerCase();
+        if (t.indexOf("дом") !== -1 || t.indexOf("uy") !== -1 || t.indexOf("home") !== -1) return "🏠";
+        if (t.indexOf("работ") !== -1 || t.indexOf("ish") !== -1 || t.indexOf("work") !== -1 || t.indexOf("офис") !== -1) return "💼";
+        return "📍";
+      }
+
+      async function renderCustomerAddresses() {
+        var loadingEl = document.getElementById("profileAddressesLoading");
+        var emptyEl = document.getElementById("profileAddressesEmpty");
+        var listEl = document.getElementById("profileAddressesList");
+        var countEl = document.getElementById("profileAddressCount");
+        if (!listEl) return;
+
+        if (loadingEl) loadingEl.hidden = false;
+        if (emptyEl) emptyEl.hidden = true;
+        listEl.innerHTML = "";
+
+        try {
+          var addresses = (window.emirateAuth && window.emirateAuth.loadCustomerAddresses)
+            ? await window.emirateAuth.loadCustomerAddresses()
+            : [];
+
+          customerAddressesData = addresses || [];
+          if (loadingEl) loadingEl.hidden = true;
+          if (countEl) countEl.textContent = String(customerAddressesData.length);
+
+          if (!customerAddressesData || customerAddressesData.length === 0) {
+            if (emptyEl) emptyEl.hidden = false;
+            return;
+          }
+
+          var html = customerAddressesData.map(function (addr) {
+            var icon = getAddressTagIcon(addr.title);
+            var isDefault = Boolean(addr.is_default);
+            var title = escapeHtml(addr.title || "Дом");
+            var street = escapeHtml(addr.street_address || "");
+            var apt = addr.apartment_office ? `кв./офис ${escapeHtml(addr.apartment_office)}` : "";
+            var city = escapeHtml(addr.city || "");
+            var region = addr.region ? escapeHtml(addr.region) : "";
+            var locLine = [city, region].filter(Boolean).join(", ");
+            var fullStreet = [street, apt].filter(Boolean).join(", ");
+
+            return `
+              <article class="profile-address-card ${isDefault ? 'is-default' : ''}" id="address-card-${addr.id}">
+                <div class="profile-address-card-header">
+                  <span class="profile-address-tag-badge">
+                    <span>${icon}</span>
+                    <span>${title}</span>
+                  </span>
+                  ${isDefault ? `<span class="profile-address-default-badge">★ Основной</span>` : ""}
+                </div>
+
+                <div class="profile-address-main">
+                  <h4 class="profile-address-street">${fullStreet}</h4>
+                  <p class="profile-address-sub">${locLine}</p>
+                </div>
+
+                <div class="profile-address-actions">
+                  ${!isDefault ? `
+                    <button type="button" class="profile-address-action-btn profile-address-action-btn--default" data-set-default-addr="${addr.id}">
+                      Сделать основным
+                    </button>
+                  ` : ""}
+                  <button type="button" class="profile-address-action-btn" data-edit-addr="${addr.id}">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Изменить
+                  </button>
+                  <button type="button" class="profile-address-action-btn profile-address-action-btn--delete" data-delete-addr="${addr.id}">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    Удалить
+                  </button>
+                </div>
+              </article>
+            `;
+          }).join("");
+
+          listEl.innerHTML = html;
+
+          listEl.querySelectorAll("[data-set-default-addr]").forEach(function (btn) {
+            btn.addEventListener("click", async function () {
+              var id = btn.getAttribute("data-set-default-addr");
+              btn.disabled = true;
+              try {
+                var res = await window.emirateAuth.setDefaultCustomerAddress(id);
+                if (res && res.ok) {
+                  showToast("Адрес установлен по умолчанию");
+                  await renderCustomerAddresses();
+                } else {
+                  showToast(res && res.error ? res.error : "Ошибка при сохранении");
+                  btn.disabled = false;
+                }
+              } catch (e) {
+                btn.disabled = false;
+              }
+            });
+          });
+
+          listEl.querySelectorAll("[data-edit-addr]").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              var id = btn.getAttribute("data-edit-addr");
+              var addr = customerAddressesData.find(function (a) { return a.id === id; });
+              if (addr) openAddressModal(addr);
+            });
+          });
+
+          listEl.querySelectorAll("[data-delete-addr]").forEach(function (btn) {
+            btn.addEventListener("click", async function () {
+              var id = btn.getAttribute("data-delete-addr");
+              if (!confirm("Удалить этот адрес из списка?")) return;
+              btn.disabled = true;
+              try {
+                var res = await window.emirateAuth.deleteCustomerAddress(id);
+                if (res && res.ok) {
+                  showToast("Адрес удалён");
+                  await renderCustomerAddresses();
+                } else {
+                  showToast(res && res.error ? res.error : "Ошибка при удалении");
+                  btn.disabled = false;
+                }
+              } catch (e) {
+                btn.disabled = false;
+              }
+            });
+          });
+
+        } catch (err) {
+          console.error("[renderCustomerAddresses]", err);
+          if (loadingEl) loadingEl.hidden = true;
+          listEl.innerHTML = `<p style="color:#ef4444;text-align:center;padding:24px;">Не удалось загрузить адреса. Попробуйте обновить страницу.</p>`;
+        }
+      }
+
+      function openAddressModal(address) {
+        var modal = document.getElementById("addressModal");
+        var form = document.getElementById("addressForm");
+        var titleEl = document.getElementById("addressModalTitle");
+        var errorEl = document.getElementById("addressFormError");
+        var customTitleInput = document.getElementById("addressFormCustomTitle");
+        var submitBtn = document.getElementById("addressFormSubmit");
+
+        if (!modal || !form) return;
+        errorEl.hidden = true;
+        errorEl.textContent = "";
+        submitBtn.disabled = false;
+
+        if (address) {
+          titleEl.textContent = "Редактировать адрес";
+          document.getElementById("addressFormId").value = address.id || "";
+          document.getElementById("addressFormCity").value = address.city || "";
+          document.getElementById("addressFormStreet").value = address.street_address || "";
+          document.getElementById("addressFormApartment").value = address.apartment_office || "";
+          document.getElementById("addressFormRegion").value = address.region || "";
+          document.getElementById("addressFormIsDefault").checked = Boolean(address.is_default);
+
+          var title = String(address.title || "Дом");
+          var typeRadios = form.elements["addressType"];
+          if (title === "Дом" || title === "Работа") {
+            if (typeRadios) typeRadios.value = title;
+            customTitleInput.style.display = "none";
+            customTitleInput.value = "";
+          } else {
+            if (typeRadios) typeRadios.value = "Другой";
+            customTitleInput.style.display = "block";
+            customTitleInput.value = title;
+          }
+        } else {
+          titleEl.textContent = "Новый адрес";
+          document.getElementById("addressFormId").value = "";
+          document.getElementById("addressFormCity").value = "";
+          document.getElementById("addressFormStreet").value = "";
+          document.getElementById("addressFormApartment").value = "";
+          document.getElementById("addressFormRegion").value = "";
+          document.getElementById("addressFormIsDefault").checked = customerAddressesData.length === 0;
+
+          var typeRadios = form.elements["addressType"];
+          if (typeRadios) typeRadios.value = "Дом";
+          customTitleInput.style.display = "none";
+          customTitleInput.value = "";
+        }
+
+        modal.hidden = false;
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeAddressModal() {
+        var modal = document.getElementById("addressModal");
+        if (modal) modal.hidden = true;
+        document.body.style.overflow = "";
+      }
+
+      document.getElementById("addressModalClose")?.addEventListener("click", closeAddressModal);
+      document.getElementById("addressModalBackdrop")?.addEventListener("click", closeAddressModal);
+      document.getElementById("addressFormCancel")?.addEventListener("click", closeAddressModal);
+
+      document.querySelectorAll("input[name='addressType']").forEach(function (radio) {
+        radio.addEventListener("change", function () {
+          var customInput = document.getElementById("addressFormCustomTitle");
+          if (!customInput) return;
+          if (this.value === "Другой") {
+            customInput.style.display = "block";
+            customInput.focus();
+          } else {
+            customInput.style.display = "none";
+          }
+        });
+      });
+
+      document.getElementById("addressForm")?.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        var errorEl = document.getElementById("addressFormError");
+        var submitBtn = document.getElementById("addressFormSubmit");
+        errorEl.hidden = true;
+
+        var id = document.getElementById("addressFormId").value.trim();
+        var city = document.getElementById("addressFormCity").value.trim();
+        var street = document.getElementById("addressFormStreet").value.trim();
+        var apt = document.getElementById("addressFormApartment").value.trim();
+        var region = document.getElementById("addressFormRegion").value.trim();
+        var isDefault = document.getElementById("addressFormIsDefault").checked;
+
+        if (!city || !street) {
+          errorEl.textContent = "Пожалуйста, укажите город и улицу с номером дома.";
+          errorEl.hidden = false;
+          return;
+        }
+
+        var typeRadios = this.elements["addressType"];
+        var typeVal = typeRadios ? typeRadios.value : "Дом";
+        var customTitle = document.getElementById("addressFormCustomTitle").value.trim();
+        var title = typeVal === "Другой" ? (customTitle || "Другой") : typeVal;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Сохранение...";
+
+        try {
+          var payload = {
+            id: id || undefined,
+            title: title,
+            city: city,
+            street_address: street,
+            apartment_office: apt,
+            region: region,
+            is_default: isDefault
+          };
+
+          var res = await window.emirateAuth.saveCustomerAddress(payload);
+          if (res && res.ok) {
+            showToast(id ? "Адрес обновлён" : "Адрес добавлен");
+            closeAddressModal();
+            await renderCustomerAddresses();
+          } else {
+            errorEl.textContent = (res && res.error) ? res.error : "Не удалось сохранить адрес.";
+            errorEl.hidden = false;
+          }
+        } catch (err) {
+          errorEl.textContent = "Произошла ошибка при сохранении адреса.";
+          errorEl.hidden = false;
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Сохранить адрес";
+        }
+      });
+
+      document.getElementById("profileAddAddressBtn")?.addEventListener("click", function () {
+        openAddressModal();
+      });
+      document.getElementById("profileEmptyAddAddressBtn")?.addEventListener("click", function () {
+        openAddressModal();
+      });
+      document.getElementById("profileAddressesBack")?.addEventListener("click", function () {
+        window.location.hash = "";
+      });
+      document.getElementById("profileViewAddresses")?.addEventListener("click", function (e) {
+        e.preventDefault();
+        window.location.hash = "addresses";
+      });
+      document.getElementById("profileAddresses")?.addEventListener("click", function (e) {
+        e.preventDefault();
+        window.location.hash = "addresses";
+      });
+
+      function switchProfileTab(tab) {
+        var isOrders = tab === "orders";
+        var isAddresses = tab === "addresses";
+        var accountView = document.getElementById("profileAccountView");
+        var ordersView = document.getElementById("profileOrdersView");
+        var addressesView = document.getElementById("profileAddressesView");
+        var editView = document.getElementById("profileEditView");
+        var sidebar = document.getElementById("profileSidebar");
+
+        if (editView) editView.hidden = true;
+
+        if (isOrders) {
+          if (accountView) accountView.hidden = true;
+          if (addressesView) addressesView.hidden = true;
+          if (ordersView) ordersView.hidden = false;
+          if (sidebar) {
+            sidebar.querySelectorAll(".profile-sidebar-link").forEach(function (link) {
+              var nav = link.getAttribute("data-profile-nav");
+              link.classList.toggle("is-active", nav === "orders");
+            });
+          }
+          renderCustomerOrders();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } else if (isAddresses) {
+          if (accountView) accountView.hidden = true;
+          if (ordersView) ordersView.hidden = true;
+          if (addressesView) addressesView.hidden = false;
+          if (sidebar) {
+            sidebar.querySelectorAll(".profile-sidebar-link").forEach(function (link) {
+              var nav = link.getAttribute("data-profile-nav");
+              link.classList.toggle("is-active", nav === "addresses");
+            });
+          }
+          renderCustomerAddresses();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+          if (ordersView) ordersView.hidden = true;
+          if (addressesView) addressesView.hidden = true;
+          if (accountView) accountView.hidden = false;
+          if (sidebar) {
+            sidebar.querySelectorAll(".profile-sidebar-link").forEach(function (link) {
+              var nav = link.getAttribute("data-profile-nav");
+              link.classList.toggle("is-active", nav === "home");
+            });
+          }
+        }
+      }
+
+      window.addEventListener("hashchange", function () {
+        var hash = window.location.hash.replace(/^#/, "");
+        if (hash === "orders") {
+          switchProfileTab("orders");
+        } else if (hash === "addresses") {
+          switchProfileTab("addresses");
+        } else if (!hash) {
+          switchProfileTab("home");
+        }
+      });
+
+      document.getElementById("profileOrdersBack")?.addEventListener("click", function () {
+        window.location.hash = "";
+      });
+
+      document.getElementById("profileMobileOrdersLink")?.addEventListener("click", function (e) {
+        e.preventDefault();
+        window.location.hash = "orders";
+      });
+
+      document.querySelectorAll(".profile-sidebar-link").forEach(function (link) {
         link.addEventListener("click", function (e) {
-          e.preventDefault();
-          showToast((window.emirateT && window.emirateT("profile.registerSoon")) || "Скоро будет доступно");
+          var nav = link.getAttribute("data-profile-nav");
+          if (nav === "orders") {
+            e.preventDefault();
+            window.location.hash = "orders";
+          } else if (nav === "addresses") {
+            e.preventDefault();
+            window.location.hash = "addresses";
+          } else if (nav === "home") {
+            e.preventDefault();
+            window.location.hash = "";
+            switchProfileTab("home");
+          } else if (link.getAttribute("href") && link.getAttribute("href").indexOf("login.html#payments") !== -1) {
+            e.preventDefault();
+            showToast((window.emirateT && window.emirateT("profile.registerSoon")) || "Скоро будет доступно");
+          }
         });
       });
 

@@ -61,8 +61,9 @@ async function handleVerify(req, res, body) {
   const phone = body.phone || body.mobile_phone || "";
   const code = body.code || body.otp || "";
   const purpose = String(body.purpose || "login").trim() || "login";
+  const fullName = String(body.full_name || body.fullName || body.name || "").trim();
 
-  const result = await otpLib.completeOtpLogin(phone, code, purpose);
+  const result = await otpLib.completeOtpLogin(phone, code, purpose, fullName);
   if (!result.ok) {
     const statusMap = {
       invalid_phone: 400,
@@ -71,6 +72,8 @@ async function handleVerify(req, res, body) {
       otp_expired: 400,
       otp_invalid: 400,
       otp_locked: 429,
+      google_account_exists: 409,
+      duplicate_phone_detected: 409,
       supabase_not_configured: 503,
       session_failed: 503,
       user_create_failed: 503,
@@ -84,7 +87,34 @@ async function handleVerify(req, res, body) {
     access_token: result.access_token,
     refresh_token: result.refresh_token,
     phone: result.phone,
+    is_new_user: Boolean(result.is_new_user),
+    needs_name: Boolean(result.needs_name),
   });
+}
+
+async function handleCheckPhone(req, res, body) {
+  const phone = body.phone || body.mobile_phone || "";
+  const currentUserId = String(body.user_id || body.userId || "").trim();
+  const normalized = eskiz.normalizeUzPhone(phone);
+  if (!normalized) {
+    return otpLib.corsJson(res, 400, {
+      ok: false,
+      error: "invalid_phone",
+      message: "Неверный формат номера телефона",
+    });
+  }
+  const profiles = await otpLib.findCustomerProfilesByPhone(normalized);
+  const otherProfiles = currentUserId ? profiles.filter(p => p.user_id !== currentUserId) : profiles;
+  if (otherProfiles.length > 0) {
+    return otpLib.corsJson(res, 200, {
+      ok: true,
+      available: false,
+      error: "phone_already_taken",
+      message: "Этот номер телефона уже привязан к другому аккаунту",
+      provider: otherProfiles[0].provider || "unknown",
+    });
+  }
+  return otpLib.corsJson(res, 200, { ok: true, available: true, phone: normalized });
 }
 
 module.exports = async function handler(req, res) {
@@ -100,6 +130,9 @@ module.exports = async function handler(req, res) {
     const action = String(body.action || "").trim().toLowerCase();
     const hasCode = Boolean(String(body.code || body.otp || "").replace(/\D/g, ""));
 
+    if (action === "check_phone" || action === "checkphone") {
+      return handleCheckPhone(req, res, body);
+    }
     if (action === "verify" || hasCode) {
       return handleVerify(req, res, body);
     }

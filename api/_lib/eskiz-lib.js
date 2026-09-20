@@ -27,19 +27,18 @@ function isTestMode() {
   return true;
 }
 
+const phoneLib = require("./phone-lib");
+
 function normalizeUzPhone(value) {
-  let digits = String(value || "").replace(/\D/g, "");
-  if (digits.startsWith("998")) digits = digits.slice(3);
-  digits = digits.slice(0, 9);
-  if (digits.length !== 9) return "";
-  return "998" + digits;
+  return phoneLib.normalizeUzPhone(value);
+}
+
+function toEskizPhone(value) {
+  return phoneLib.toEskizPhone(value);
 }
 
 function formatPhoneDisplay(phone) {
-  const digits = normalizeUzPhone(phone);
-  if (!digits) return "";
-  const local = digits.slice(3);
-  return "+998 (" + local.slice(0, 2) + ") " + local.slice(2, 5) + "-" + local.slice(5, 7) + "-" + local.slice(7, 9);
+  return phoneLib.formatPhoneDisplay(phone);
 }
 
 async function login(force) {
@@ -158,7 +157,7 @@ async function sendSms(phone, message, options) {
     };
   }
   const form = new FormData();
-  form.append("mobile_phone", normalized);
+  form.append("mobile_phone", phoneLib.toEskizPhone(normalized));
   form.append("message", text);
   if (ESKIZ_FROM) form.append("from", ESKIZ_FROM);
   if (opts.callbackUrl) form.append("callback_url", String(opts.callbackUrl));
@@ -178,17 +177,22 @@ async function sendSms(phone, message, options) {
     } catch (err) {
       return {
         ok: false,
-        error: (err && err.message) || "eskiz_login_failed",
+        error: (err && err.message) || "eskiz_refresh_failed",
         details: (err && err.details) || null,
       };
     }
+    const retryForm = new FormData();
+    retryForm.append("mobile_phone", phoneLib.toEskizPhone(normalized));
+    retryForm.append("message", text);
+    if (ESKIZ_FROM) retryForm.append("from", ESKIZ_FROM);
+    if (opts.callbackUrl) retryForm.append("callback_url", String(opts.callbackUrl));
     res = await fetch(ESKIZ_BASE + "/message/sms/send", {
       method: "POST",
       headers: {
         Authorization: "Bearer " + token,
         Accept: "application/json",
       },
-      body: form,
+      body: retryForm,
     });
   }
 
@@ -196,14 +200,19 @@ async function sendSms(phone, message, options) {
     return null;
   });
   if (!res.ok) {
-    console.error("[eskiz-lib] sendSms", res.status, json);
-    return { ok: false, error: "eskiz_send_failed", status: res.status, details: json };
+    return {
+      ok: false,
+      error: "eskiz_send_failed",
+      status: res.status,
+      details: json,
+    };
   }
-  return { ok: true, phone: normalized, data: json };
+  return { ok: true, data: json };
 }
 
 async function sendOtpSms(phone, code) {
-  return sendSms(phone, buildOtpMessage(code));
+  const message = buildOtpMessage(code);
+  return sendSms(phone, message);
 }
 
 async function sendOrderSms(phone, orderId, lang) {
@@ -219,7 +228,9 @@ module.exports = {
   isConfigured: isConfigured,
   isTestMode: isTestMode,
   normalizeUzPhone: normalizeUzPhone,
+  toEskizPhone: toEskizPhone,
   formatPhoneDisplay: formatPhoneDisplay,
+  isValidUzPhone: phoneLib.isValidUzPhone,
   buildOtpMessage: buildOtpMessage,
   buildOrderMessage: buildOrderMessage,
   sendSms: sendSms,

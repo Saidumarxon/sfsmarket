@@ -40,12 +40,16 @@ function hashOtp(code, phone, purpose) {
     .digest("hex");
 }
 
+function phoneDigits(phone) {
+  return String(phone || "").replace(/\D/g, "");
+}
+
 function phoneEmail(phone) {
-  return "p" + phone + "@phone.emirateco.uz";
+  return "p" + phoneDigits(phone) + "@phone.emirateco.uz";
 }
 
 function phonePassword(phone) {
-  return crypto.createHmac("sha256", PHONE_AUTH_SECRET).update(String(phone)).digest("hex");
+  return crypto.createHmac("sha256", PHONE_AUTH_SECRET).update(phoneDigits(phone)).digest("hex");
 }
 
 async function storeOtp(phone, purpose, code) {
@@ -122,12 +126,67 @@ async function verifyOtp(phone, purpose, code) {
   return { ok: true };
 }
 
-async function ensurePhoneUser(phone) {
+function maskEmail(email) {
+  if (!email || typeof email !== "string" || email.indexOf("@") === -1) return "";
+  const parts = email.split("@");
+  const name = parts[0];
+  const domain = parts[1];
+  if (name.length <= 2) return name.charAt(0) + "***@" + domain;
+  return name.slice(0, 2) + "***" + name.slice(-2) + "@" + domain;
+}
+
+async function findCustomerProfilesByPhone(canonicalPhone) {
+  if (!SUPABASE_SERVICE) return [];
+  const raw12 = canonicalPhone.replace(/\D/g, "");
+  const raw9 = raw12.slice(-9);
+
+  const filter =
+    "or=(phone.eq." +
+    encodeURIComponent(canonicalPhone) +
+    ",phone.eq." +
+    encodeURIComponent(raw12) +
+    ",phone.ilike.*" +
+    encodeURIComponent(raw9) +
+    ")";
+  const url =
+    SUPABASE_URL +
+    "/rest/v1/customer_profiles?" +
+    filter +
+    "&select=user_id,email,full_name,phone,provider";
+
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        apikey: SUPABASE_SERVICE,
+        Authorization: "Bearer " + SUPABASE_SERVICE,
+      },
+    });
+    if (!res.ok) {
+      console.warn("[sms-otp-lib] findCustomerProfilesByPhone status", res.status);
+      return [];
+    }
+    const rows = await res.json();
+    if (!Array.isArray(rows)) return [];
+
+    return rows.filter(function (r) {
+      const norm = eskiz.normalizeUzPhone(r.phone);
+      return norm === canonicalPhone;
+    });
+  } catch (err) {
+    console.error("[sms-otp-lib] findCustomerProfilesByPhone error", err);
+    return [];
+  }
+}
+
+async function ensurePhoneUser(phone, fullName) {
   const email = phoneEmail(phone);
   const password = phonePassword(phone);
   if (!SUPABASE_SERVICE || !SUPABASE_ANON) {
     return { ok: false, error: "supabase_not_configured" };
   }
+
+  const cleanName = (fullName && typeof fullName === "string" ? fullName.trim() : "") || "";
 
   const signInRes = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=password", {
     method: "POST",
@@ -147,6 +206,7 @@ async function ensurePhoneUser(phone) {
       access_token: signInJson.access_token,
       refresh_token: signInJson.refresh_token,
       user: signInJson.user || null,
+      is_new_user: false,
     };
   }
 
@@ -164,7 +224,8 @@ async function ensurePhoneUser(phone) {
       user_metadata: {
         phone: phone,
         phone_number: phone,
-        full_name: "",
+        full_name: cleanName,
+        name: cleanName,
         provider: "phone",
       },
       app_metadata: {
@@ -201,11 +262,22 @@ async function ensurePhoneUser(phone) {
     access_token: retryJson.access_token,
     refresh_token: retryJson.refresh_token,
     user: retryJson.user || null,
+    is_new_user: true,
   };
 }
 
-async function upsertCustomerProfile(user, phone) {
+async function upsertCustomerProfile(user, phone, fullName) {
   if (!SUPABASE_SERVICE || !user || !user.id) return;
+  const body = {
+    user_id: user.id,
+    phone: phone,
+    provider: "phone",
+    last_seen_at: new Date().toISOString(),
+    registered_at: user.created_at || new Date().toISOString(),
+  };
+  if (fullName && typeof fullName === "string" && fullName.trim()) {
+    body.full_name = fullName.trim();
+  }
   await fetch(SUPABASE_URL + "/rest/v1/customer_profiles?on_conflict=user_id", {
     method: "POST",
     headers: {
@@ -214,13 +286,7 @@ async function upsertCustomerProfile(user, phone) {
       Authorization: "Bearer " + SUPABASE_SERVICE,
       Prefer: "resolution=merge-duplicates",
     },
-    body: JSON.stringify({
-      user_id: user.id,
-      phone: phone,
-      provider: "phone",
-      last_seen_at: new Date().toISOString(),
-      registered_at: user.created_at || new Date().toISOString(),
-    }),
+    body: JSON.stringify(body),
   }).catch(function () {});
 }
 
@@ -279,7 +345,7 @@ async function issueOtp(phone, purpose) {
   return pending;
 }
 
-async function completeOtpLogin(phone, code, purpose) {
+async function completeOtpLogin(phone, code, purpose, fullName) {
   const normalized = eskiz.normalizeUzPhone(phone);
   if (!normalized) {
     return { ok: false, error: "invalid_phone" };
@@ -294,17 +360,61 @@ async function completeOtpLogin(phone, code, purpose) {
     return { ok: false, error: verified.error || "otp_invalid" };
   }
 
-  const session = await ensurePhoneUser(normalized);
+  // Pre-create lookup in customer_profiles
+  const existingProfiles = await findCustomerProfilesByPhone(normalized);
+
+  // Case D: Multiple profiles found for this phone -> technical conflict!
+  if (existingProfiles.length > 1) {
+    console.warn(
+      "[sms-otp-lib] Conflict: multiple customer_profiles found for phone: " +
+        normalized +
+        " (count: " +
+        existingProfiles.length +
+        ")"
+    );
+    return {
+      ok: false,
+      error: "duplicate_phone_detected",
+      message:
+        "Обнаружено несколько аккаунтов с этим номером. Пожалуйста, обратитесь в службу поддержки.",
+    };
+  }
+
+  // Case C: Exactly one profile found and provider is Google -> do NOT create duplicate SMS account
+  if (existingProfiles.length === 1 && existingProfiles[0].provider === "google") {
+    return {
+      ok: false,
+      error: "google_account_exists",
+      message: "Этот номер уже привязан к аккаунту Google. Пожалуйста, войдите через Google.",
+      email_hint: existingProfiles[0].email ? maskEmail(existingProfiles[0].email) : null,
+      provider: "google",
+    };
+  }
+
+  // Case B: Exactly one profile found and provider is phone -> existing SMS account
+  const isExistingPhoneUser = existingProfiles.length === 1 && existingProfiles[0].provider === "phone";
+
+  const session = await ensurePhoneUser(normalized, fullName);
   if (!session.ok) {
     return session;
   }
-  await upsertCustomerProfile(session.user, normalized);
+
+  const effectiveFullName =
+    (fullName && typeof fullName === "string" && fullName.trim()) ||
+    (isExistingPhoneUser && existingProfiles[0].full_name ? existingProfiles[0].full_name.trim() : "");
+
+  await upsertCustomerProfile(session.user, normalized, effectiveFullName);
+
+  const needsName = !effectiveFullName || !effectiveFullName.trim();
+
   return {
     ok: true,
     access_token: session.access_token,
     refresh_token: session.refresh_token,
     phone: normalized,
     user: session.user,
+    is_new_user: !isExistingPhoneUser,
+    needs_name: needsName,
   };
 }
 
@@ -313,4 +423,7 @@ module.exports = {
   corsJson: corsJson,
   issueOtp: issueOtp,
   completeOtpLogin: completeOtpLogin,
+  findCustomerProfilesByPhone: findCustomerProfilesByPhone,
+  ensurePhoneUser: ensurePhoneUser,
+  upsertCustomerProfile: upsertCustomerProfile,
 };
