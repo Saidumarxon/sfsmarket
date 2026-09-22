@@ -415,6 +415,7 @@ async function completeOtpLogin(phone, code, purpose, fullName) {
     user: session.user,
     is_new_user: !isExistingPhoneUser,
     needs_name: needsName,
+    full_name: effectiveFullName || null,
   };
 }
 

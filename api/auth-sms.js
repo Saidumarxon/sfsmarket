@@ -89,6 +89,7 @@ async function handleVerify(req, res, body) {
     phone: result.phone,
     is_new_user: Boolean(result.is_new_user),
     needs_name: Boolean(result.needs_name),
+    full_name: result.full_name || (result.user && result.user.user_metadata && result.user.user_metadata.full_name) || null,
   });
 }
 

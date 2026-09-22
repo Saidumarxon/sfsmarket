@@ -342,6 +342,7 @@ function normalizeViewedProduct(product) {
     rating: normalizeNumber(product.rating),
     reviews: normalizeNumber(product.reviews),
     badge: typeof product.badge === "string" ? product.badge : "",
+    express: product.express === "yes" ? "yes" : "no",
     image: typeof product.image === "string" ? product.image : "",
     photos: Array.isArray(product.photos)
       ? product.photos.map((url) => String(url || "").trim()).filter(Boolean)
@@ -653,9 +654,13 @@ function emirateRenderProductCard(product) {
   const lang = typeof window.emirateLang === "function" ? window.emirateLang() : "ru";
   const ratingHtml = emirateProductRatingHtml(product, lang) || "";
   const productHref = emirateProductHref(product);
-  const discount = Math.round((1 - product.price / product.oldPrice) * 100);
-  const discountText = Number.isFinite(discount) && discount > 0 ? "-" + discount + "%" : "";
-  const badgeHTML = discountText ? '<span class="badge-sale">' + discountText + "</span>" : "";
+  const isExpress = product.status === "active" && product.express === "yes";
+  const expressBadge = isExpress
+    ? '<span class="badge-delivery-24" title="Доставка за 24 часа по Ташкенту">⚡ 24ч</span>'
+    : '';
+  const badgeHTML = [discountText ? '<span class="badge-sale">' + discountText + "</span>" : "", expressBadge]
+    .filter(Boolean)
+    .join("");
   const media = emirateResolveProductMedia(product) || {
     image: product.image,
     photos: product.photos || []
@@ -1193,6 +1198,131 @@ window.emirateGetFavorites = () => Array.from(favoriteIds);
 window.emirateSyncFavoritesUI = syncFavoritesUI;
 window.emirateAddViewedProduct = addViewedProduct;
 window.emirateGetViewedProducts = getViewedProducts;
+
+function isTashkentCity(cityStr) {
+  if (!cityStr) return false;
+  var s = String(cityStr).toLowerCase().trim()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, " ")
+    .replace(/\s+/g, " ");
+
+  if (s.includes("ташкент") || s.includes("toshkent") || s.includes("tashkent")) {
+    return true;
+  }
+
+  var tashkentDistricts = [
+    "чиланзар", "chilonzor",
+    "юнусабад", "yunusobod",
+    "миробод", "мирабад", "mirobod",
+    "мирзо улугбек", "мирзо-улугбек", "mirzo ulug",
+    "яккасарай", "yakkasaroy",
+    "шайхантахур", "shayxontohur", "shayxontoxur",
+    "учтепа", "uchtepa",
+    "алмазар", "olmazor",
+    "сергели", "sergeli",
+    "бектемир", "bektemir",
+    "яшнабад", "yashnobod",
+    "янгихаёт", "yangihayot"
+  ];
+
+  for (var i = 0; i < tashkentDistricts.length; i++) {
+    if (s.includes(tashkentDistricts[i])) return true;
+  }
+
+  return false;
+}
+
+function getTashkentTime(dateObj) {
+  var d = dateObj || new Date();
+  try {
+    var str = d.toLocaleTimeString("en-US", { timeZone: "Asia/Tashkent", hour12: false, hour: "numeric", minute: "numeric" });
+    var parts = str.split(":");
+    return { hour: parseInt(parts[0], 10), minute: parseInt(parts[1], 10) };
+  } catch (_) {
+    var utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    var tashkentDate = new Date(utc + (3600000 * 5));
+    return { hour: tashkentDate.getHours(), minute: tashkentDate.getMinutes() };
+  }
+}
+
+function calculateDeliveryEstimate(params) {
+  var method = (params && params.deliveryMethod) || "door";
+  var cityStr = String((params && params.city) || "").trim();
+  var itemsList = Array.isArray(params && params.items) ? params.items : [];
+  var now = (params && params.now) || new Date();
+
+  if (method === "pickup") {
+    return {
+      type: "pickup",
+      text: "Самовывоз: ул. Мустакиллик, 1",
+      badge: "Самовывоз",
+      desc: "Готов к выдаче в офисе (Пн–Вс 09:00–21:00)",
+      priceHint: "Бесплатно"
+    };
+  }
+
+  var isTashkent = isTashkentCity(cityStr);
+
+  if (!cityStr) {
+    return {
+      type: "unknown_city",
+      text: "Укажите город для расчёта срока доставки",
+      badge: "Срок доставки",
+      desc: "Ташкент: до 24 ч. / Регионы: 2–5 дней",
+      priceHint: "Бесплатно от 500 000 сум"
+    };
+  }
+
+  if (isTashkent) {
+    var hasItems = itemsList.length > 0;
+    var allExpress = hasItems && itemsList.every(function (it) {
+      return (it && it.express === "yes");
+    });
+
+    if (allExpress) {
+      var t = getTashkentTime(now);
+      var isBeforeCutoff = t.hour < 17;
+      if (isBeforeCutoff) {
+        return {
+          type: "express_24h",
+          text: "Доставка в течение 24 часов",
+          badge: "⚡ 24 часа",
+          desc: "Курьер до двери по Ташкенту",
+          priceHint: "Бесплатно от 500 000 сум"
+        };
+      } else {
+        return {
+          type: "express_next_day",
+          text: "Доставка на следующий день",
+          badge: "⚡ На следующий день",
+          desc: "Заказ оформлен после 17:00, курьер доставит завтра",
+          priceHint: "Бесплатно от 500 000 сум"
+        };
+      }
+    } else {
+      return {
+        type: "standard_tashkent",
+        text: "Ориентировочный срок доставки: 2–5 рабочих дней",
+        badge: "2–5 дней",
+        desc: "В заказе есть товар с увеличенным сроком доставки. Ориентировочный срок доставки: 2–5 рабочих дней.",
+        priceHint: "Бесплатно от 500 000 сум"
+      };
+    }
+  } else {
+    return {
+      type: "region",
+      text: "Доставка 2–5 рабочих дней",
+      badge: "2–5 дней",
+      desc: "Курьерская доставка по Узбекистану",
+      priceHint: "Бесплатно от 500 000 сум"
+    };
+  }
+}
+
+window.emirateDelivery = {
+  isTashkentCity: isTashkentCity,
+  getTashkentTime: getTashkentTime,
+  calculateDeliveryEstimate: calculateDeliveryEstimate
+};
 
 window.addEventListener("storage", (event) => {
   if (event.key === FAVORITES_KEY) {
@@ -1975,13 +2105,29 @@ function resetAuthCustomerMode(modal) {
   var otpStep = modal.querySelector("#authOtpStep");
   var otpCode = modal.querySelector("#authOtpCode");
   var otpHint = modal.querySelector("#authOtpHint");
+  var nameStep = modal.querySelector("#authNameStep");
+  var nameInput = modal.querySelector("#authNameInput");
+  var nameError = modal.querySelector("#authNameError");
+  var closeBtn = modal.querySelector("#authModalClose");
+  var divider = modal.querySelector(".auth-divider");
+  var socialRow = modal.querySelector(".auth-social-row");
+
   if (phoneInput) phoneInput.value = "";
   if (emailInput) emailInput.value = "";
   if (passInput) passInput.value = "";
   if (otpCode) otpCode.value = "";
   if (otpHint) otpHint.textContent = "";
+  if (nameInput) nameInput.value = "";
+  if (nameError) {
+    nameError.textContent = "";
+    nameError.setAttribute("hidden", "");
+  }
   if (authForm) authForm.removeAttribute("hidden");
   if (otpStep) otpStep.setAttribute("hidden", "");
+  if (nameStep) nameStep.setAttribute("hidden", "");
+  if (divider) divider.removeAttribute("hidden");
+  if (socialRow) socialRow.removeAttribute("hidden");
+  if (closeBtn) closeBtn.style.display = "";
   modal.dataset.otpPhone = "";
 }
 
@@ -2076,6 +2222,85 @@ async function submitAuthPhoneOtp() {
   showAuthOtpStep(modal, res.phone || digits, res);
 }
 
+function showAuthNameStep(modal, res) {
+  if (!modal) return;
+  var authForm = modal.querySelector("#authForm");
+  var otpStep = modal.querySelector("#authOtpStep");
+  var nameStep = modal.querySelector("#authNameStep");
+  var divider = modal.querySelector(".auth-divider");
+  var socialRow = modal.querySelector(".auth-social-row");
+  var closeBtn = modal.querySelector("#authModalClose");
+  var title = modal.querySelector("#authModalTitle");
+
+  if (authForm) authForm.setAttribute("hidden", "");
+  if (otpStep) otpStep.setAttribute("hidden", "");
+  if (divider) divider.setAttribute("hidden", "");
+  if (socialRow) socialRow.setAttribute("hidden", "");
+  if (closeBtn) closeBtn.style.display = "none";
+  if (nameStep) nameStep.removeAttribute("hidden");
+
+  if (title) {
+    title.removeAttribute("data-i18n");
+    title.textContent = t("auth.nameStepTitle") || "Завершение регистрации";
+  }
+  var nameInput = modal.querySelector("#authNameInput");
+  if (nameInput) {
+    nameInput.value = "";
+    nameInput.focus();
+  }
+}
+
+async function submitAuthNameSave() {
+  var modal = document.getElementById("authModal");
+  var nameInput = modal ? modal.querySelector("#authNameInput") : null;
+  var nameError = modal ? modal.querySelector("#authNameError") : null;
+  var val = nameInput ? String(nameInput.value || "").trim() : "";
+  if (val.length < 2) {
+    if (nameError) {
+      nameError.textContent = t("auth.nameInvalid") || "Пожалуйста, введите ваше имя (минимум 2 символа)";
+      nameError.removeAttribute("hidden");
+    }
+    return;
+  }
+  if (nameError) {
+    nameError.textContent = "";
+    nameError.setAttribute("hidden", "");
+  }
+  var saveBtn = modal ? modal.querySelector("#authNameSubmit") : null;
+  if (saveBtn) saveBtn.disabled = true;
+  try {
+    if (!window.emirateAuth) {
+      await loadScriptOnce("emirate-auth.js");
+    }
+    var updated = await window.emirateAuth.updateCustomerProfile({ fullName: val });
+    if (!updated.ok) {
+      if (nameError) {
+        nameError.textContent = (updated.error && updated.error.message) || "Не удалось сохранить имя";
+        nameError.removeAttribute("hidden");
+      }
+      return;
+    }
+    closeAuthModal();
+    if (window.emirateShowToast) {
+      window.emirateShowToast(((t("profile.saved") || "Изменения сохранены") + "! " + val));
+    }
+    if (window.location.pathname.includes("login") || /login\.html/i.test(window.location.pathname)) {
+      window.location.reload();
+      return;
+    }
+    if (window.emirateAuth && window.emirateAuth.syncCustomerAuthUi) {
+      window.emirateAuth.syncCustomerAuthUi();
+    }
+  } catch (err) {
+    if (nameError) {
+      nameError.textContent = err && err.message ? err.message : "Ошибка сохранения";
+      nameError.removeAttribute("hidden");
+    }
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
 async function submitAuthOtpVerify() {
   var modal = document.getElementById("authModal");
   var codeEl = document.getElementById("authOtpCode");
@@ -2096,7 +2321,18 @@ async function submitAuthOtpVerify() {
     return;
   }
   showAuthMessage("");
+
+  // Case A: New SMS registration strictly requires name before finishing!
+  if (res.is_new_user) {
+    showAuthNameStep(modal, res);
+    return;
+  }
+
+  // Case B / G: Existing user
   closeAuthModal();
+  if (res.needs_name && window.emirateShowToast) {
+    window.emirateShowToast(t("auth.namePromptToast") || "Пожалуйста, укажите ваше имя в настройках профиля");
+  }
   if (window.location.pathname.includes("login") || /login\.html/i.test(window.location.pathname)) {
     window.location.reload();
     return;
@@ -2138,6 +2374,13 @@ function ensureAuthModal() {
             '<input class="auth-phone-input" type="text" id="authOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">' +
             '<button type="button" class="auth-primary-btn" id="authOtpSubmit" data-i18n="auth.verifyCode">Подтвердить</button>' +
             '<button type="button" class="auth-link-btn" id="authOtpBack" data-i18n="auth.changePhone">Изменить номер</button>' +
+          '</div>' +
+          '<div id="authNameStep" class="auth-customer-block" hidden>' +
+            '<p class="auth-otp-hint" id="authNameHint" data-i18n="auth.nameStepHint">Пожалуйста, укажите ваше имя для завершения регистрации</p>' +
+            '<label class="auth-field-label" for="authNameInput" data-i18n="auth.nameLabel">Ваше имя *</label>' +
+            '<input class="auth-phone-input" type="text" id="authNameInput" autocomplete="name" data-i18n-placeholder="auth.namePlaceholder" placeholder="Имя и Фамилия">' +
+            '<p class="auth-error" id="authNameError" aria-live="polite" hidden></p>' +
+            '<button type="button" class="auth-primary-btn" id="authNameSubmit" data-i18n="auth.completeReg">Завершить регистрацию</button>' +
           '</div>' +
           '<div class="auth-customer-block auth-divider"><span data-i18n="auth.or">Или</span></div>' +
           '<div class="auth-customer-block auth-social-row">' +
@@ -2185,9 +2428,17 @@ function ensureAuthModal() {
     phoneInput.value = formatUzPhone(phoneInput.value);
   });
 
-  modal.querySelector("#authModalClose").addEventListener("click", closeAuthModal);
+  modal.querySelector("#authModalClose").addEventListener("click", function () {
+    var nameStep = modal.querySelector("#authNameStep");
+    if (nameStep && !nameStep.hasAttribute("hidden")) return;
+    closeAuthModal();
+  });
   modal.addEventListener("click", function (e) {
-    if (e.target === modal) closeAuthModal();
+    if (e.target === modal) {
+      var nameStep = modal.querySelector("#authNameStep");
+      if (nameStep && !nameStep.hasAttribute("hidden")) return;
+      closeAuthModal();
+    }
   });
 
   modal.querySelector("#authGoogleBtn").addEventListener("click", async function () {
@@ -2235,6 +2486,17 @@ function ensureAuthModal() {
     }
   });
 
+  modal.querySelector("#authNameSubmit")?.addEventListener("click", function () {
+    void submitAuthNameSave();
+  });
+
+  modal.querySelector("#authNameInput")?.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void submitAuthNameSave();
+    }
+  });
+
   modal.querySelector("#authEmailSubmit").addEventListener("click", function () {
     var modalEl = document.getElementById("authModal");
     if (modalEl && !modalEl.classList.contains("is-admin-auth")) return;
@@ -2242,7 +2504,11 @@ function ensureAuthModal() {
   });
 
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && modal && !modal.hidden) closeAuthModal();
+    if (e.key === "Escape" && modal && !modal.hidden) {
+      var nameStep = modal.querySelector("#authNameStep");
+      if (nameStep && !nameStep.hasAttribute("hidden")) return;
+      closeAuthModal();
+    }
   });
 
   return modal;

@@ -546,6 +546,7 @@
         phone: data.phone || canon,
         is_new_user: Boolean(data.is_new_user),
         needs_name: Boolean(data.needs_name),
+        full_name: data.full_name || (customer && customer.name) || (session && session.user && session.user.user_metadata && session.user.user_metadata.full_name) || null,
       };
     } catch (err) {
       return { ok: false, error: { message: err && err.message ? err.message : "network_error" } };

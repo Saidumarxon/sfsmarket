@@ -1570,8 +1570,10 @@
         }
         var divider = document.querySelector(".profile-auth-divider");
         var googleBtn = document.getElementById("profileGoogleBtn");
+        var closeBtn = document.getElementById("closeLoginModal");
         if (divider) divider.hidden = false;
         if (googleBtn) googleBtn.hidden = false;
+        if (closeBtn) closeBtn.style.display = "";
         var phoneErr = document.getElementById("loginPhoneError");
         var otpErr = document.getElementById("loginOtpError");
         var nameErr = document.getElementById("loginNameError");
@@ -1615,8 +1617,10 @@
         }
         var divider = document.querySelector(".profile-auth-divider");
         var googleBtn = document.getElementById("profileGoogleBtn");
+        var closeBtn = document.getElementById("closeLoginModal");
         if (divider) divider.hidden = true;
         if (googleBtn) googleBtn.hidden = true;
+        if (closeBtn) closeBtn.style.display = "";
         var emailInput = document.getElementById("loginEmail");
         var seed = String(seedValue || "").trim();
         if (emailInput && seed.indexOf("@") !== -1) emailInput.value = seed;
@@ -1651,8 +1655,10 @@
         if (loginNameStep) loginNameStep.hidden = false;
         var divider = document.querySelector(".profile-auth-divider");
         var googleBtn = document.getElementById("profileGoogleBtn");
+        var closeBtn = document.getElementById("closeLoginModal");
         if (divider) divider.hidden = true;
         if (googleBtn) googleBtn.hidden = true;
+        if (closeBtn) closeBtn.style.display = "none";
         var title = document.getElementById("loginSheetTitle");
         if (title) {
           title.textContent = (window.emirateT && window.emirateT("auth.nameStepTitle")) || "Завершение регистрации";
@@ -1735,9 +1741,15 @@
         if (isLoggedIn) return;
         openLoginModal();
       });
-      document.getElementById("closeLoginModal").addEventListener("click", closeLoginModal);
+      document.getElementById("closeLoginModal").addEventListener("click", function () {
+        if (loginNameStep && !loginNameStep.hidden) return;
+        closeLoginModal();
+      });
       loginModal.addEventListener("click", function (e) {
-        if (e.target === loginModal) closeLoginModal();
+        if (e.target === loginModal) {
+          if (loginNameStep && !loginNameStep.hidden) return;
+          closeLoginModal();
+        }
       });
 
       document.getElementById("openRegisterLink").addEventListener("click", function (e) {
@@ -1885,6 +1897,13 @@
           showLoginNameError(err && err.message ? err.message : "Ошибка сохранения");
         } finally {
           if (saveBtn) saveBtn.disabled = false;
+        }
+      });
+
+      document.getElementById("loginNameInput")?.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          document.getElementById("loginNameSubmit")?.click();
         }
       });
 
