@@ -769,6 +769,91 @@
     }
   }
 
+  function calculateLoyaltyTier(turnover) {
+    var t = Number(turnover) || 0;
+    if (t >= 30000000) {
+      return { tier: "platinum", pct: 5, next_tier: null, next_threshold: 30000000, amount_needed: 0 };
+    }
+    if (t >= 15000000) {
+      return { tier: "gold", pct: 3, next_tier: "platinum", next_threshold: 30000000, amount_needed: 30000000 - t };
+    }
+    if (t >= 5000000) {
+      return { tier: "silver", pct: 2, next_tier: "gold", next_threshold: 15000000, amount_needed: 15000000 - t };
+    }
+    return { tier: "standard", pct: 1, next_tier: "silver", next_threshold: 5000000, amount_needed: 5000000 - t };
+  }
+
+  async function loadLoyaltySummary() {
+    var sb = supabaseClient();
+    if (!sb) {
+      return {
+        ok: true,
+        bonus_balance: 0,
+        loyalty_tier: "standard",
+        cashback_percent: 1,
+        turnover_successful: 0,
+        next_tier: "silver",
+        next_tier_threshold: 5000000,
+        amount_to_next_tier: 5000000,
+        pending_cashback: 0,
+        is_emirate_plus: false,
+        recent_transactions: [],
+      };
+    }
+    var sessionRes = await sb.auth.getSession();
+    var user = sessionRes.data && sessionRes.data.session && sessionRes.data.session.user;
+    if (!user || !user.id) {
+      return { ok: false, error: "unauthorized" };
+    }
+
+    try {
+      var rpcRes = await sb.rpc("get_customer_loyalty_summary");
+      if (!rpcRes.error && rpcRes.data && rpcRes.data.ok) {
+        return rpcRes.data;
+      }
+
+      // Safe fallback if RPC is not yet created in DB
+      var profileRes = await sb
+        .from("customer_profiles")
+        .select("bonus_balance, loyalty_tier, is_emirate_plus, emirate_plus_until")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      var ordersRes = await sb
+        .from("orders")
+        .select("total_amount, status")
+        .eq("user_id", user.id)
+        .eq("status", "successful");
+
+      var successfulTurnover = (ordersRes.data || []).reduce(function (sum, o) {
+        return sum + (Number(o.total_amount) || 0);
+      }, 0);
+
+      var p = profileRes.data || {};
+      var tierInfo = calculateLoyaltyTier(successfulTurnover);
+
+      return {
+        ok: true,
+        bonus_balance: Number(p.bonus_balance) || 0,
+        loyalty_tier: p.loyalty_tier || tierInfo.tier,
+        cashback_percent: tierInfo.pct,
+        turnover_successful: successfulTurnover,
+        next_tier: tierInfo.next_tier,
+        next_tier_threshold: tierInfo.next_threshold,
+        amount_to_next_tier: tierInfo.amount_needed,
+        pending_cashback: 0,
+        is_emirate_plus: Boolean(p.is_emirate_plus),
+        emirate_plus_until: p.emirate_plus_until || null,
+        recent_transactions: [],
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err && err.message ? err.message : String(err),
+      };
+    }
+  }
+
   window.emirateAuth = {
     signInWithGoogle: signInWithGoogle,
     requestPhoneOtp: requestPhoneOtp,
@@ -803,6 +888,8 @@
     saveCustomerAddress: saveCustomerAddress,
     deleteCustomerAddress: deleteCustomerAddress,
     setDefaultCustomerAddress: setDefaultCustomerAddress,
+    calculateLoyaltyTier: calculateLoyaltyTier,
+    loadLoyaltySummary: loadLoyaltySummary,
   };
 
   window.emirateNormalizeUzPhone = normalizeUzPhone;
