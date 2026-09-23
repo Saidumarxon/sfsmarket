@@ -123,8 +123,10 @@ begin
 end;
 $$;
 
--- 6. Trigger to handle order cashback lifecycle
-create or replace function public.trg_order_cashback_handler()
+-- 6. Triggers to handle order cashback lifecycle (BEFORE/AFTER architecture for FK integrity)
+
+-- 6A. BEFORE trigger: sets cashback_earned and cashback_status on NEW row
+create or replace function public.trg_order_cashback_before_handler()
 returns trigger
 language plpgsql
 security definer
@@ -135,7 +137,6 @@ declare
   v_tier text := 'standard';
   v_pct numeric := 1;
   v_cashback numeric := 0;
-  v_new_balance numeric := 0;
   v_is_admin boolean := false;
 begin
   -- 1. Ignore orders without user_id (guest checkout)
@@ -171,51 +172,14 @@ begin
   if tg_op = 'INSERT' then
     NEW.cashback_earned := v_cashback;
     if NEW.status = 'successful' then
-      -- Immediate successful order
       NEW.cashback_status := 'credited';
-      
-      -- Bypass client guard for system loyalty update (transaction-local)
-      perform set_config('emirate.loyalty_bypass', 'true', true);
-
-      -- Upsert customer profile (creates if missing, updates if exists)
-      insert into public.customer_profiles (
-        user_id, bonus_balance, orders_count, orders_total, loyalty_tier
-      ) values (
-        NEW.user_id, v_cashback, 1, coalesce(NEW.total_amount, 0),
-        (select t.tier from public.calc_loyalty_tier(v_turnover + NEW.total_amount) t)
-      )
-      on conflict (user_id) do update
-      set bonus_balance = coalesce(public.customer_profiles.bonus_balance, 0) + v_cashback,
-          orders_count = coalesce(public.customer_profiles.orders_count, 0) + 1,
-          orders_total = coalesce(public.customer_profiles.orders_total, 0) + NEW.total_amount,
-          loyalty_tier = (select t.tier from public.calc_loyalty_tier(v_turnover + NEW.total_amount) t)
-      returning bonus_balance into v_new_balance;
-
-      insert into public.bonus_transactions (
-        user_id, order_id, type, amount, balance_after, description, status, expires_at
-      ) values (
-        NEW.user_id, NEW.id, 'cashback_earned', v_cashback, coalesce(v_new_balance, v_cashback),
-        'Кэшбэк за заказ #' || coalesce(NEW.order_number::text, substring(NEW.id::text, 1, 8)),
-        'completed', now() + interval '180 days'
-      ) on conflict (order_id) where (type = 'cashback_earned') do nothing;
-
     else
-      -- Pending order (processing, ready_to_ship, etc.)
       NEW.cashback_status := 'pending';
-
-      insert into public.bonus_transactions (
-        user_id, order_id, type, amount, balance_after, description, status, expires_at
-      ) values (
-        NEW.user_id, NEW.id, 'cashback_earned', v_cashback, 0,
-        'Кэшбэк за заказ #' || coalesce(NEW.order_number::text, substring(NEW.id::text, 1, 8)) || ' (ожидает вручения)',
-        'pending', null
-      ) on conflict (order_id) where (type = 'cashback_earned') do nothing;
     end if;
-
     return NEW;
   end if;
 
-  -- UPDATE: Status changed
+  -- UPDATE: Status or order changed
   if tg_op = 'UPDATE' then
     -- Guard 1: Already credited or archived orders must NEVER receive cashback again
     if OLD.cashback_status in ('credited', 'archived') then
@@ -233,54 +197,12 @@ begin
       v_cashback := coalesce(NEW.cashback_earned, v_cashback);
       if v_cashback <= 0 then
         v_cashback := round((coalesce(NEW.total_amount, 0) * v_pct) / 100.0);
-        NEW.cashback_earned := v_cashback;
       end if;
-
-      -- Bypass client guard for system loyalty update (transaction-local)
-      perform set_config('emirate.loyalty_bypass', 'true', true);
-
-      -- Upsert customer profile (creates if missing, updates if exists)
-      insert into public.customer_profiles (
-        user_id, bonus_balance, orders_count, orders_total, loyalty_tier
-      ) values (
-        NEW.user_id, v_cashback, 1, coalesce(NEW.total_amount, 0),
-        (select t.tier from public.calc_loyalty_tier(v_turnover + NEW.total_amount) t)
-      )
-      on conflict (user_id) do update
-      set bonus_balance = coalesce(public.customer_profiles.bonus_balance, 0) + v_cashback,
-          orders_count = coalesce(public.customer_profiles.orders_count, 0) + 1,
-          orders_total = coalesce(public.customer_profiles.orders_total, 0) + NEW.total_amount,
-          loyalty_tier = (select t.tier from public.calc_loyalty_tier(v_turnover + NEW.total_amount) t)
-      returning bonus_balance into v_new_balance;
-
-      -- Update or insert completed transaction
-      update public.bonus_transactions
-      set status = 'completed',
-          amount = v_cashback,
-          balance_after = coalesce(v_new_balance, v_cashback),
-          description = 'Кэшбэк за заказ #' || coalesce(NEW.order_number::text, substring(NEW.id::text, 1, 8)),
-          expires_at = now() + interval '180 days'
-      where order_id = NEW.id and type = 'cashback_earned';
-
-      if not found then
-        insert into public.bonus_transactions (
-          user_id, order_id, type, amount, balance_after, description, status, expires_at
-        ) values (
-          NEW.user_id, NEW.id, 'cashback_earned', v_cashback, coalesce(v_new_balance, v_cashback),
-          'Кэшбэк за заказ #' || coalesce(NEW.order_number::text, substring(NEW.id::text, 1, 8)),
-          'completed', now() + interval '180 days'
-        ) on conflict (order_id) where (type = 'cashback_earned') do nothing;
-      end if;
-
+      NEW.cashback_earned := v_cashback;
       NEW.cashback_status := 'credited';
 
     -- Case B: Order cancelled or out of stock
     elsif NEW.status = 'out_of_stock' and OLD.cashback_status = 'pending' then
-      update public.bonus_transactions
-      set status = 'cancelled',
-          description = description || ' (отменён)'
-      where order_id = NEW.id and type = 'cashback_earned' and status = 'pending';
-
       NEW.cashback_status := 'cancelled';
     end if;
 
@@ -291,10 +213,162 @@ begin
 end;
 $$;
 
+-- 6B. AFTER trigger: handles bonus_transactions and customer_profiles once the orders row exists
+create or replace function public.trg_order_cashback_after_handler()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_turnover numeric := 0;
+  v_new_balance numeric := 0;
+  v_is_admin boolean := false;
+begin
+  -- 1. Ignore orders without user_id (guest checkout)
+  if NEW.user_id is null then
+    return NEW;
+  end if;
+
+  -- 2. Ignore admin users
+  select exists (select 1 from public.admin_users where user_id = NEW.user_id) into v_is_admin;
+  if v_is_admin or NEW.user_id = '7e7a515a-5727-434a-a313-4fc3d27313be'::uuid then
+    return NEW;
+  end if;
+
+  -- INSERT: The row in public.orders now exists!
+  if tg_op = 'INSERT' then
+    if NEW.cashback_status = 'credited' and coalesce(NEW.cashback_earned, 0) > 0 then
+      -- Calculate turnover from prior successful orders
+      select coalesce(sum(total_amount), 0)
+      into v_turnover
+      from public.orders
+      where user_id = NEW.user_id
+        and status = 'successful'
+        and id <> NEW.id;
+
+      -- Bypass client guard for system loyalty update
+      perform set_config('emirate.loyalty_bypass', 'true', true);
+
+      -- Upsert customer profile
+      insert into public.customer_profiles (
+        user_id, bonus_balance, orders_count, orders_total, loyalty_tier
+      ) values (
+        NEW.user_id, NEW.cashback_earned, 1, coalesce(NEW.total_amount, 0),
+        (select t.tier from public.calc_loyalty_tier(v_turnover + NEW.total_amount) t)
+      )
+      on conflict (user_id) do update
+      set bonus_balance = coalesce(public.customer_profiles.bonus_balance, 0) + NEW.cashback_earned,
+          orders_count = coalesce(public.customer_profiles.orders_count, 0) + 1,
+          orders_total = coalesce(public.customer_profiles.orders_total, 0) + NEW.total_amount,
+          loyalty_tier = (select t.tier from public.calc_loyalty_tier(v_turnover + NEW.total_amount) t)
+      returning bonus_balance into v_new_balance;
+
+      -- Insert completed bonus transaction
+      insert into public.bonus_transactions (
+        user_id, order_id, type, amount, balance_after, description, status, expires_at
+      ) values (
+        NEW.user_id, NEW.id, 'cashback_earned', NEW.cashback_earned, coalesce(v_new_balance, NEW.cashback_earned),
+        'Кэшбэк за заказ #' || substring(NEW.id::text, 1, 8),
+        'completed', now() + interval '180 days'
+      ) on conflict (order_id) where (type = 'cashback_earned') do nothing;
+
+    elsif NEW.cashback_status = 'pending' and coalesce(NEW.cashback_earned, 0) > 0 then
+      -- Insert pending bonus transaction
+      insert into public.bonus_transactions (
+        user_id, order_id, type, amount, balance_after, description, status, expires_at
+      ) values (
+        NEW.user_id, NEW.id, 'cashback_earned', NEW.cashback_earned, 0,
+        'Кэшбэк за заказ #' || substring(NEW.id::text, 1, 8) || ' (ожидает вручения)',
+        'pending', null
+      ) on conflict (order_id) where (type = 'cashback_earned') do nothing;
+    end if;
+
+    return NEW;
+  end if;
+
+  -- UPDATE: Handled only when cashback state changes
+  if tg_op = 'UPDATE' then
+    -- Guard 1: Idempotency - if already credited or archived prior to this update, do nothing
+    if OLD.cashback_status in ('credited', 'archived') then
+      return NEW;
+    end if;
+
+    -- Case A: Order transitioned into credited
+    if NEW.cashback_status = 'credited' and OLD.cashback_status is distinct from 'credited' then
+      -- Calculate turnover from other successful orders
+      select coalesce(sum(total_amount), 0)
+      into v_turnover
+      from public.orders
+      where user_id = NEW.user_id
+        and status = 'successful'
+        and id <> NEW.id;
+
+      -- Bypass client guard for system loyalty update
+      perform set_config('emirate.loyalty_bypass', 'true', true);
+
+      -- Upsert customer profile
+      insert into public.customer_profiles (
+        user_id, bonus_balance, orders_count, orders_total, loyalty_tier
+      ) values (
+        NEW.user_id, NEW.cashback_earned, 1, coalesce(NEW.total_amount, 0),
+        (select t.tier from public.calc_loyalty_tier(v_turnover + NEW.total_amount) t)
+      )
+      on conflict (user_id) do update
+      set bonus_balance = coalesce(public.customer_profiles.bonus_balance, 0) + NEW.cashback_earned,
+          orders_count = coalesce(public.customer_profiles.orders_count, 0) + 1,
+          orders_total = coalesce(public.customer_profiles.orders_total, 0) + NEW.total_amount,
+          loyalty_tier = (select t.tier from public.calc_loyalty_tier(v_turnover + NEW.total_amount) t)
+      returning bonus_balance into v_new_balance;
+
+      -- Update existing pending transaction or insert if none
+      update public.bonus_transactions
+      set status = 'completed',
+          amount = NEW.cashback_earned,
+          balance_after = coalesce(v_new_balance, NEW.cashback_earned),
+          description = 'Кэшбэк за заказ #' || substring(NEW.id::text, 1, 8),
+          expires_at = now() + interval '180 days'
+      where order_id = NEW.id and type = 'cashback_earned';
+
+      if not found then
+        insert into public.bonus_transactions (
+          user_id, order_id, type, amount, balance_after, description, status, expires_at
+        ) values (
+          NEW.user_id, NEW.id, 'cashback_earned', NEW.cashback_earned, coalesce(v_new_balance, NEW.cashback_earned),
+          'Кэшбэк за заказ #' || substring(NEW.id::text, 1, 8),
+          'completed', now() + interval '180 days'
+        ) on conflict (order_id) where (type = 'cashback_earned') do nothing;
+      end if;
+
+    -- Case B: Order cancelled or out of stock
+    elsif NEW.cashback_status = 'cancelled' and OLD.cashback_status = 'pending' then
+      update public.bonus_transactions
+      set status = 'cancelled',
+          description = description || ' (отменён)'
+      where order_id = NEW.id and type = 'cashback_earned' and status = 'pending';
+    end if;
+
+    return NEW;
+  end if;
+
+  return NEW;
+end;
+$$;
+
+-- Drop previous triggers if exist
 drop trigger if exists trg_order_cashback on public.orders;
-create trigger trg_order_cashback
-  before insert or update of status on public.orders
-  for each row execute function public.trg_order_cashback_handler();
+drop trigger if exists trg_order_cashback_before on public.orders;
+drop trigger if exists trg_order_cashback_after on public.orders;
+
+-- Attach BEFORE trigger: sets cashback_earned and cashback_status
+create trigger trg_order_cashback_before
+  before insert or update on public.orders
+  for each row execute function public.trg_order_cashback_before_handler();
+
+-- Attach AFTER trigger: manages bonus_transactions and customer_profiles
+create trigger trg_order_cashback_after
+  after insert or update on public.orders
+  for each row execute function public.trg_order_cashback_after_handler();
 
 -- 7. Client RPC: get_customer_loyalty_summary
 create or replace function public.get_customer_loyalty_summary()
