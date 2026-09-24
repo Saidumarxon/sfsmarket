@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru" data-seo-noindex="1">
 <head>
   <meta charset="UTF-8">
@@ -17,7 +17,302 @@
   <link rel="stylesheet" href="styles.css?v=20260825g">
   <link rel="stylesheet" href="mobile.css">
   <script src="emirate-seo.js"></script>
-  <script src="theme.js"></script>
+  <style>
+    .checkout-saved-addresses {
+      margin-bottom: 16px;
+      padding: 14px 16px;
+      background: var(--bg-muted, #f8fafc);
+      border: 1px solid var(--border, rgba(15, 23, 42, 0.08));
+      border-radius: 14px;
+    }
+    .checkout-saved-addresses-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .checkout-saved-addresses-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary, #0f172a);
+    }
+    .checkout-manage-addresses-link {
+      font-size: 12px;
+      color: var(--accent, #2563eb);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .checkout-manage-addresses-link:hover {
+      text-decoration: underline;
+    }
+    .checkout-address-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .checkout-address-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1.5px solid var(--border, rgba(15, 23, 42, 0.12));
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-primary, #0f172a);
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+    .checkout-address-chip:hover {
+      border-color: var(--accent, #2563eb);
+      background: #f0f7ff;
+    }
+    .checkout-address-chip.is-selected {
+      border-color: var(--accent, #2563eb);
+      background: #eff6ff;
+      color: var(--accent, #2563eb);
+      font-weight: 600;
+      box-shadow: 0 0 0 1px var(--accent, #2563eb);
+    }
+    .checkout-address-chip .chip-badge {
+      font-size: 10.5px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      color: #475569;
+      font-weight: 600;
+    }
+    .checkout-address-chip.is-selected .chip-badge {
+      background: #bfdbfe;
+      color: #1d4ed8;
+    }
+    html[data-theme="dark"] .checkout-saved-addresses {
+      background: rgba(30, 41, 59, 0.5);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    html[data-theme="dark"] .checkout-address-chip {
+      background: #1e293b;
+      border-color: rgba(255, 255, 255, 0.12);
+      color: #f1f5f9;
+    }
+    html[data-theme="dark"] .checkout-address-chip.is-selected {
+      background: rgba(37, 99, 235, 0.2);
+      border-color: #3b82f6;
+      color: #93c5fd;
+    }
+    html[data-theme="dark"] .checkout-address-chip .chip-badge {
+      background: #334155;
+      color: #94a3b8;
+    }
+    html[data-theme="dark"] .checkout-address-chip.is-selected .chip-badge {
+      background: rgba(37, 99, 235, 0.3);
+      color: #93c5fd;
+    }
+
+    /* DELIVERY ESTIMATE CARD */
+    .checkout-delivery-estimate-card {
+      margin: 16px 0;
+      padding: 14px 18px;
+      border-radius: 14px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .checkout-delivery-estimate-card.is-standard {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+    }
+    .checkout-delivery-estimate-card.is-pickup {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+    .checkout-delivery-estimate-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .checkout-delivery-estimate-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #16a34a;
+      color: #fff;
+    }
+    .checkout-delivery-estimate-card.is-standard .checkout-delivery-estimate-badge {
+      background: #64748b;
+    }
+    .checkout-delivery-estimate-card.is-pickup .checkout-delivery-estimate-badge {
+      background: #2563eb;
+    }
+    .checkout-delivery-estimate-title {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .checkout-delivery-estimate-desc {
+      font-size: 0.8125rem;
+      color: #475569;
+      margin: 0;
+      line-height: 1.4;
+    }
+    .checkout-delivery-price-hint {
+      font-size: 0.75rem;
+      color: #16a34a;
+      font-weight: 600;
+      margin: 0;
+    }
+    .checkout-delivery-estimate-card.is-standard .checkout-delivery-price-hint {
+      color: #64748b;
+    }
+    .checkout-delivery-estimate-card.is-pickup .checkout-delivery-price-hint {
+      color: #2563eb;
+    }
+    html[data-theme="dark"] .checkout-delivery-estimate-card {
+      background: rgba(22, 163, 74, 0.15);
+      border-color: rgba(22, 163, 74, 0.3);
+    }
+    html[data-theme="dark"] .checkout-delivery-estimate-card.is-standard {
+      background: rgba(30, 41, 59, 0.5);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+    html[data-theme="dark"] .checkout-delivery-estimate-card.is-pickup {
+      background: rgba(37, 99, 235, 0.15);
+      border-color: rgba(37, 99, 235, 0.3);
+    }
+    html[data-theme="dark"] .checkout-delivery-estimate-title {
+      color: #f1f5f9;
+    }
+    html[data-theme="dark"] .checkout-delivery-estimate-desc {
+      color: #94a3b8;
+    }
+
+    /* BONUS SPENDING CARD */
+    .checkout-bonus-card {
+      margin: 16px 0;
+      padding: 14px 18px;
+      border-radius: 14px;
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+      transition: all 0.2s ease;
+    }
+    .checkout-bonus-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .checkout-bonus-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      color: #6b21a8;
+      margin: 0;
+    }
+    .checkout-bonus-label input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #9333ea;
+      cursor: pointer;
+    }
+    .checkout-bonus-avail {
+      font-size: 0.8125rem;
+      color: #7e22ce;
+      font-weight: 500;
+    }
+    .checkout-bonus-avail strong {
+      font-weight: 700;
+      color: #581c87;
+    }
+    .checkout-bonus-input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .checkout-bonus-input-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 220px;
+    }
+    .checkout-bonus-input-wrap input {
+      width: 100%;
+      padding: 8px 45px 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #d8b4fe;
+      background: #fff;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: #581c87;
+    }
+    .checkout-bonus-currency {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.8125rem;
+      color: #9333ea;
+      pointer-events: none;
+    }
+    .checkout-bonus-all-btn {
+      padding: 8px 14px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      border-radius: 8px;
+      background: #9333ea;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .checkout-bonus-all-btn:hover {
+      background: #7e22ce;
+    }
+    .checkout-bonus-hint {
+      margin: 6px 0 0;
+      font-size: 0.75rem;
+      color: #9333ea;
+    }
+    .checkout-side-bonus {
+      display: flex;
+      justify-content: space-between;
+      color: #9333ea;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin: 8px 0;
+    }
+    html[data-theme="dark"] .checkout-bonus-card {
+      background: rgba(147, 51, 234, 0.12);
+      border-color: rgba(147, 51, 234, 0.3);
+    }
+    html[data-theme="dark"] .checkout-bonus-label {
+      color: #d8b4fe;
+    }
+    html[data-theme="dark"] .checkout-bonus-avail {
+      color: #c084fc;
+    }
+    html[data-theme="dark"] .checkout-bonus-avail strong {
+      color: #e9d5ff;
+    }
+    html[data-theme="dark"] .checkout-bonus-input-wrap input {
+      background: #1e1b4b;
+      border-color: #6b21a8;
+      color: #f3e8ff;
+    }
+    html[data-theme="dark"] .checkout-side-bonus {
+      color: #c084fc;
+    }
+  </style>
 </head>
 <body class="checkout-page">
   <header class="header">
@@ -83,7 +378,22 @@
             <label><input type="radio" name="delivery" value="door" checked> Доставка до двери</label>
             <label><input type="radio" name="delivery" value="pickup"> Самовывоз</label>
           </div>
-          <label>Адрес*<input name="address" type="text" required placeholder="Улица, дом, квартира"></label>
+          <div class="checkout-saved-addresses" id="checkoutSavedAddressesBlock" hidden>
+            <div class="checkout-saved-addresses-header">
+              <span class="checkout-saved-addresses-title">Сохранённые адреса</span>
+              <a href="login.html#addresses" class="checkout-manage-addresses-link" target="_blank">Мои адреса ↗</a>
+            </div>
+            <div class="checkout-address-chips" id="checkoutAddressChips"></div>
+          </div>
+          <label id="checkoutAddressField">Адрес*<input name="address" type="text" required placeholder="Улица, дом, квартира"></label>
+          <div class="checkout-delivery-estimate-card" id="checkoutDeliveryEstimateCard">
+            <div class="checkout-delivery-estimate-top">
+              <span class="checkout-delivery-estimate-badge" id="checkoutDeliveryEstimateBadge">⚡ 24 часа</span>
+              <span class="checkout-delivery-estimate-title" id="checkoutDeliveryEstimateTitle">Доставка в течение 24 часов</span>
+            </div>
+            <p class="checkout-delivery-estimate-desc" id="checkoutDeliveryEstimateDesc">Курьер до двери по Ташкенту</p>
+            <p class="checkout-delivery-price-hint" id="checkoutDeliveryPriceHint">Бесплатно от 500 000 сум</p>
+          </div>
           <label>Комментарий к заказу<textarea name="comment" rows="4" placeholder="Дополнительные пожелания"></textarea></label>
           <h4>Способ оплаты</h4>
           <div class="checkout-radio-group">
@@ -98,6 +408,25 @@
             <button type="button" class="btn-filter-reset" id="checkoutPromoApply">Применить</button>
             <p class="checkout-promo-status" id="checkoutPromoStatus"></p>
           </div>
+          <div class="checkout-bonus-card" id="checkoutBonusBlock" hidden>
+            <div class="checkout-bonus-header">
+              <label class="checkout-bonus-label">
+                <input type="checkbox" id="checkoutUseBonus">
+                <span class="checkout-bonus-title" data-i18n="checkout.useBonuses">Списать бонусы</span>
+              </label>
+              <span class="checkout-bonus-avail" id="checkoutBonusAvailBadge">
+                <span data-i18n="checkout.available">Доступно:</span> <strong id="checkoutBonusAvail">0 сум</strong>
+              </span>
+            </div>
+            <div class="checkout-bonus-input-row" id="checkoutBonusInputRow" hidden>
+              <div class="checkout-bonus-input-wrap">
+                <input type="number" id="checkoutBonusInput" min="0" step="1000" placeholder="0">
+                <span class="checkout-bonus-currency">сум</span>
+              </div>
+              <button type="button" class="btn-filter-reset checkout-bonus-all-btn" id="checkoutBonusAllBtn" data-i18n="checkout.spendMax">Списать все</button>
+            </div>
+            <p class="checkout-bonus-hint" id="checkoutBonusHint" hidden></p>
+          </div>
           <label class="checkout-agree"><input type="checkbox" required> Я согласен с правилами покупки товаров</label>
           <div class="checkout-actions">
             <button type="submit" class="btn-primary">Заказать</button>
@@ -107,6 +436,7 @@
         <aside class="checkout-side">
           <h4>В корзине <span id="checkoutCount">0</span> товар(ов)</h4>
           <p class="checkout-side-discount" id="checkoutDiscountRow" hidden>Скидка по промокоду: <strong id="checkoutDiscount">0 сум</strong></p>
+          <p class="checkout-side-bonus" id="checkoutBonusRow" hidden><span data-i18n="checkout.bonusDeduction">Списание бонусов:</span> <strong id="checkoutBonusDiscount">−0 сум</strong></p>
           <p class="checkout-side-total" id="checkoutTotal">0 сум</p>
           <div id="checkoutItemsPreview"></div>
         </aside>

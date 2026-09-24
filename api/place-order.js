@@ -23,11 +23,37 @@ module.exports = async function handler(req, res) {
     if (promoCode && !String(orderRow.user_id || "").trim()) {
       return res.status(401).json({ ok: false, error: "auth_required" });
     }
+
+    // Recompute items subtotal authoritatively from submitted items
+    const items = Array.isArray(orderRow.items) ? orderRow.items : [];
+    const subtotal = items.reduce(function (sum, item) {
+      const price = Math.max(0, Number(item && item.price) || 0);
+      const qty = Math.max(1, Math.min(99, Number(item && item.qty) || 1));
+      return sum + price * qty;
+    }, 0);
+
+    let promoDiscount = 0;
     if (promoCode) {
+      const promoCheck = await bot.validateAndGetPromoViaService(promoCode, subtotal);
+      if (!promoCheck.ok) {
+        return res.status(400).json({ ok: false, error: promoCheck.error || "promo_invalid" });
+      }
+      promoDiscount = promoCheck.discount;
       const note = String(orderRow.comment_text || "").trim();
-      const discount = Number(orderRow.promo_discount) || 0;
-      orderRow.comment_text = (note ? note + "\n" : "") + "[PROMO " + promoCode + (discount ? " −" + discount : "") + "]";
+      orderRow.comment_text = (note ? note + "\n" : "") + "[PROMO " + promoCode + (promoDiscount ? " −" + promoDiscount : "") + "]";
     }
+
+    const grossTotal = Math.max(0, subtotal - promoDiscount);
+    const requestedBonus = Math.max(0, Math.round(Number(orderRow.bonus_used) || 0));
+    if (requestedBonus > 0 && !String(orderRow.user_id || "").trim()) {
+      return res.status(401).json({ ok: false, error: "auth_required" });
+    }
+    const bonusUsed = Math.min(requestedBonus, grossTotal);
+    const authoritativeTotal = Math.max(0, grossTotal - bonusUsed);
+
+    orderRow.total_amount = authoritativeTotal;
+    orderRow.bonus_used = bonusUsed;
+    orderRow.promo_discount = promoDiscount;
 
     const inserted = await bot.insertOrderViaService(orderRow);
     if (!inserted.ok) {

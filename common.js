@@ -1005,15 +1005,33 @@ async function emiratePlaceOrder(orderRow) {
       };
     }
     if (data?.error === "service_role_missing") {
+      if (Number(orderRow && orderRow.bonus_used) > 0) {
+        return {
+          ok: false,
+          error: "Для оплаты бонусами требуется защищенное соединение. Пожалуйста, повторите попытку позже.",
+        };
+      }
       return emiratePlaceOrderDirect(orderRow);
     }
     return { ok: false, error: data?.error || "order_failed" };
   } catch (err) {
+    if (Number(orderRow && orderRow.bonus_used) > 0) {
+      return {
+        ok: false,
+        error: "Для оплаты бонусами требуется защищенное соединение. Пожалуйста, повторите попытку позже.",
+      };
+    }
     return emiratePlaceOrderDirect(orderRow);
   }
 }
 
 async function emiratePlaceOrderDirect(orderRow) {
+  if (Number(orderRow && orderRow.bonus_used) > 0) {
+    return {
+      ok: false,
+      error: "Оплата бонусами через прямое подключение запрещена.",
+    };
+  }
   const api = window.emirateSupabaseApi;
   if (!api?.isConfigured?.()) {
     return { ok: false, error: "Заказы временно недоступны. Позвоните нам." };

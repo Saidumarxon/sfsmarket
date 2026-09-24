@@ -464,7 +464,10 @@ function sanitizeOrderPayload(input) {
   const items = Array.isArray(input.items) ? input.items : [];
   if (!items.length) return null;
   const total = Number(input.total_amount != null ? input.total_amount : input.total) || 0;
-  if (total <= 0) return null;
+  const bonusUsed = Math.max(0, Math.round(Number(input.bonus_used) || 0));
+  const promoDiscount = Math.max(0, Math.round(Number(input.promo_discount) || 0));
+  if (total < 0) return null;
+  if (total === 0 && bonusUsed <= 0) return null;
   const payload = {
     phone,
     full_name,
@@ -481,9 +484,12 @@ function sanitizeOrderPayload(input) {
         category: String(item.category || "").trim(),
         price: Number(item.price) || 0,
         qty: Math.max(1, Math.min(99, Number(item.qty) || 1)),
+        image: String(item.image || item.img || item.photo || "").trim(),
       };
     }),
     total_amount: total,
+    bonus_used: bonusUsed,
+    promo_discount: promoDiscount,
   };
   const userId = String(input.user_id || "").trim();
   const email = String(input.customer_email || input.email || "").trim();
@@ -527,6 +533,38 @@ async function insertOrderViaService(orderRow) {
       order_number: Number.isFinite(orderNumber) && orderNumber > 0 ? Math.trunc(orderNumber) : null,
     }),
   };
+}
+
+async function validateAndGetPromoViaService(code, subtotal) {
+  if (!SUPABASE_SERVICE) return { ok: false, error: "service_role_missing" };
+  const key = String(code || "").trim().toUpperCase();
+  if (!key) return { ok: false, error: "empty_code" };
+  const read = await fetch(
+    SUPABASE_URL + "/rest/v1/promos?code=eq." + encodeURIComponent(key) + "&select=admin_id,code,used_count,max_uses,is_active,payload",
+    {
+      headers: {
+        apikey: SUPABASE_SERVICE,
+        Authorization: "Bearer " + SUPABASE_SERVICE,
+        Accept: "application/json",
+      },
+    }
+  );
+  if (!read.ok) return { ok: false, error: "promo_read_failed" };
+  const rows = await read.json();
+  const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
+  if (!row) return { ok: false, error: "not_found" };
+  if (row.is_active === false) return { ok: false, error: "inactive" };
+  const used = Number(row.used_count) || 0;
+  const maxUses = Number(row.max_uses) || 1;
+  if (used >= maxUses) return { ok: false, error: "limit" };
+  const payload = row.payload && typeof row.payload === "object" ? row.payload : {};
+  const sum = Math.max(0, Math.round(Number(subtotal) || 0));
+  const type = payload.type === "percent" ? "percent" : "fixed";
+  const val = Math.max(0, Number(payload.value) || 0);
+  let discount = type === "percent" ? Math.round((sum * val) / 100) : Math.round(val);
+  if (discount < 0) discount = 0;
+  if (discount > sum) discount = sum;
+  return { ok: true, code: key, discount: discount, promo: row };
 }
 
 async function redeemPromoViaService(code) {
@@ -598,6 +636,9 @@ function formatOrderMessage(order, options) {
   const location = [order.region, order.city, order.address].filter(Boolean).join(", ");
   if (location) lines.push("📍 " + escapeHtml(location));
   lines.push("💰 <b>" + formatSum(order.total_amount) + "</b>");
+  if (Number(order.bonus_used) > 0) {
+    lines.push("🎁 Списано бонусов: <b>" + formatSum(order.bonus_used) + "</b>");
+  }
   lines.push("📦 " + (order.items || []).length + " поз.");
   lines.push("");
   lines.push(formatOrderItems(order));
@@ -1070,6 +1111,7 @@ module.exports = {
   fetchOrderById,
   notifyAdminNewOrder,
   insertOrderViaService,
+  validateAndGetPromoViaService,
   redeemPromoViaService,
   sanitizeOrderPayload,
 };
