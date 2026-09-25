@@ -45,6 +45,36 @@
       animation: admin-auth-spin 0.8s linear infinite;
     }
     @keyframes admin-auth-spin { to { transform: rotate(360deg); } }
+    @media print {
+      body * { visibility: hidden !important; }
+      #receiptDetailModal, #receiptDetailModal * { visibility: visible !important; }
+      #receiptDetailModal {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        padding: 0 !important;
+        background: transparent !important;
+        display: block !important;
+        z-index: 999999 !important;
+      }
+      #receiptDetailModal .admin-modal-backdrop,
+      #receiptDetailModal .admin-modal-close,
+      #receiptDetailModal .no-print {
+        display: none !important;
+      }
+      #receiptDetailModal .admin-modal-panel {
+        box-shadow: none !important;
+        border: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        overflow: visible !important;
+      }
+      .print-only-header { display: block !important; }
+      .print-only-signatures { display: flex !important; }
+    }
   </style>
 </head>
 <body class="admin-auth-pending">
@@ -117,6 +147,11 @@
       <a class="sidebar-link" data-page="suppliers">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h6"/><path d="M9 13h6"/></svg>
         Поставщики
+      </a>
+
+      <a class="sidebar-link" data-page="receipts">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6M9 16h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+        Приёмка товаров
       </a>
 
       <a class="sidebar-link" data-page="finance">
@@ -311,10 +346,28 @@
       </div>
 
       <!-- ==================== PRODUCTS ==================== -->
+      <!-- ==================== SUPPLIERS / CONTRACTORS ==================== -->
       <div class="admin-page" id="page-suppliers">
+        <!-- Import Banner -->
+        <div class="supplier-import-banner" id="supplierImportBanner" hidden style="background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(16,185,129,0.1)); border: 1px solid rgba(59,130,246,0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(59,130,246,0.15); display: flex; align-items: center; justify-content: center; color: #3b82f6;">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+            <div>
+              <div style="font-weight: 600; color: #0f172a;" id="supplierImportBannerTitle">В браузере найдено 0 поставщиков</div>
+              <div style="font-size: 13px; color: #64748b;">Их можно перенести в общую базу данных Supabase с проверкой дубликатов.</div>
+            </div>
+          </div>
+          <button type="button" class="btn-add" id="openSupplierImportBtn" style="white-space: nowrap;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            Импорт из браузера
+          </button>
+        </div>
+
         <div class="table-card supplier-editor-card">
           <div class="table-card-header">
-            <h3>Create Supplier</h3>
+            <h3>Создать / Редактировать контрагента</h3>
           </div>
           <div class="supplier-feedback" id="supplierFeedback" hidden></div>
           <form id="supplierForm" class="supplier-form">
@@ -322,28 +375,28 @@
 
             <div class="supplier-grid">
               <div class="form-group">
-                <label class="required" for="supplierName">Name</label>
-                <input type="text" id="supplierName" placeholder="Название поставщика" required>
-                <span class="form-hint">Необходимо заполнить поле Name.</span>
+                <label class="required" for="supplierName">Название контрагента / компании</label>
+                <input type="text" id="supplierName" placeholder="ООО / ИП / Бренд" required>
+                <span class="form-hint">Необходимо заполнить поле Название.</span>
+              </div>
+              <div class="form-group">
+                <label for="supplierContactPerson">Контактное лицо</label>
+                <input type="text" id="supplierContactPerson" placeholder="ФИО представителя">
               </div>
               <div class="form-group">
                 <label for="supplierPhone">Телефон</label>
                 <input type="text" id="supplierPhone" placeholder="+998 90 123 45 67">
               </div>
               <div class="form-group">
-                <label for="supplierStatus">Status</label>
+                <label for="supplierInn">ИНН</label>
+                <input type="text" id="supplierInn" placeholder="123456789">
+              </div>
+              <div class="form-group">
+                <label for="supplierStatus">Статус</label>
                 <select id="supplierStatus">
                   <option value="active">Активный</option>
                   <option value="inactive">Неактивный</option>
                 </select>
-              </div>
-              <div class="form-group">
-                <label for="supplierLat">Lat</label>
-                <input type="text" id="supplierLat" placeholder="41.311081">
-              </div>
-              <div class="form-group">
-                <label for="supplierLng">Lng</label>
-                <input type="text" id="supplierLng" placeholder="69.240562">
               </div>
             </div>
 
@@ -351,7 +404,7 @@
               <button type="button" class="btn-filter-reset" id="supplierResetBtn">Очистить</button>
               <button type="submit" class="btn-add" id="supplierSaveBtn">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                Создать поставщика
+                Сохранить контрагента
               </button>
             </div>
           </form>
@@ -359,23 +412,43 @@
 
         <div class="table-card">
           <div class="table-card-header">
-            <h3>Поставщики</h3>
-            <div class="table-toolbar">
+            <h3>Поставщики и контрагенты</h3>
+            <div class="table-toolbar" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <input type="search" class="admin-inline-search" id="supplierSearch" placeholder="Поиск: название, телефон, ИНН, контакт" style="min-width: 240px;">
+              <select id="supplierStatusFilter" class="admin-inline-select" style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px;">
+                <option value="all">Статус: все</option>
+                <option value="active">Активные</option>
+                <option value="inactive">Неактивные</option>
+              </select>
+              <select id="supplierDebtFilter" class="admin-inline-select" style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px;">
+                <option value="all">Долг: все</option>
+                <option value="has_debt">Есть долг</option>
+              </select>
               <button class="btn-add" id="addSupplierBtn">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                Новый поставщик
+                Новый контрагент
               </button>
             </div>
           </div>
           <table class="admin-table" id="suppliersTable">
             <thead>
-              <tr><th>Name</th><th>Телефон</th><th>Status</th><th>Координаты</th><th>Обновлено</th><th>Действия</th></tr>
+              <tr>
+                <th>Название</th>
+                <th>Контактное лицо</th>
+                <th>Телефон</th>
+                <th>ИНН</th>
+                <th>Приёмок</th>
+                <th>Оборот</th>
+                <th>Оплачено</th>
+                <th>Долг</th>
+                <th>Статус</th>
+                <th>Действия</th>
+              </tr>
             </thead>
             <tbody id="suppliersBody"></tbody>
           </table>
           <div class="table-footer">
             <span id="suppliersCount">Показано 0</span>
-            <div class="pagination"><button class="active">1</button></div>
           </div>
         </div>
       </div>
@@ -904,6 +977,89 @@
         </div>
       </div>
 
+      <!-- ==================== RECEIPTS / GOODS INTAKE ==================== -->
+      <div class="admin-page" id="page-receipts">
+        <div class="table-card">
+          <div class="table-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <h3 style="margin: 0; font-size: 18px; font-weight: 600;">Приёмка товаров</h3>
+              <p style="margin: 4px 0 0; font-size: 13px; color: #64748b;">Управление поступлением товаров, остатками складов и расчётами с контрагентами</p>
+            </div>
+            <div class="table-toolbar" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <button type="button" class="btn-filter-reset" id="btnRefreshReceipts" title="Обновить список из базы">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.13-3.36L23 10M1 14l5.36 4.36A9 9 0 0020.49 15"/></svg>
+                Обновить
+              </button>
+              <button type="button" class="btn-add" id="btnNewReceipt">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Новая приёмка
+              </button>
+            </div>
+          </div>
+
+          <!-- Filters Bar -->
+          <div class="receipt-filters" style="display: flex; gap: 10px; padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 1; min-width: 220px; position: relative;">
+              <input type="search" id="receiptSearch" placeholder="Поиск по номеру накладной или заказа..." class="admin-inline-search" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;">
+            </div>
+            <select id="receiptFilterContractor" class="admin-inline-select" style="padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; min-width: 160px;">
+              <option value="all">Все контрагенты</option>
+            </select>
+            <select id="receiptFilterWarehouse" class="admin-inline-select" style="padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; min-width: 150px;">
+              <option value="all">Все склады</option>
+            </select>
+            <select id="receiptFilterStatus" class="admin-inline-select" style="padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;">
+              <option value="all">Все статусы</option>
+              <option value="draft">Черновик</option>
+              <option value="posted">Проведено</option>
+              <option value="cancelled">Отменено</option>
+            </select>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 12px; color: #64748b;">Создано:</span>
+              <input type="date" id="receiptFilterCreatedFrom" title="Создано с" style="padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
+              <span style="font-size: 12px; color: #94a3b8;">—</span>
+              <input type="date" id="receiptFilterCreatedTo" title="Создано по" style="padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 12px; color: #64748b;">Приход:</span>
+              <input type="date" id="receiptFilterReceivedFrom" title="Приход с" style="padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
+              <span style="font-size: 12px; color: #94a3b8;">—</span>
+              <input type="date" id="receiptFilterReceivedTo" title="Приход по" style="padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
+            </div>
+            <button type="button" class="btn-filter-reset" id="receiptFilterResetBtn" style="font-size: 12px; padding: 6px 12px;">Сброс</button>
+          </div>
+
+          <!-- Table -->
+          <div style="overflow-x: auto;">
+            <table class="admin-table" id="receiptsTable" style="width: 100%; margin: 0;">
+              <thead>
+                <tr>
+                  <th>Номер</th>
+                  <th>Контрагент</th>
+                  <th>Склад</th>
+                  <th>Дата создания</th>
+                  <th>Дата прихода</th>
+                  <th style="text-align: right;">Позиций</th>
+                  <th style="text-align: right;">Сумма</th>
+                  <th style="text-align: right;">Оплачено</th>
+                  <th style="text-align: right;">Долг</th>
+                  <th style="text-align: center;">Статус</th>
+                  <th style="text-align: right;">Действия</th>
+                </tr>
+              </thead>
+              <tbody id="receiptsBody">
+                <tr><td colspan="11" style="text-align: center; color: #94a3b8; padding: 24px;">Загрузка накладных...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px;">
+            <span id="receiptsCountText" style="font-size: 13px; color: #64748b;">Показано 0 накладных</span>
+            <div class="pagination" id="receiptsPagination"><button class="active">1</button></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ==================== FINANCE ==================== -->
       <div class="admin-page" id="page-finance">
         <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
@@ -924,115 +1080,26 @@
           </div>
         </div>
 
-        <div class="table-card intake-card">
-          <div class="table-card-header">
-            <h3>Приёмка товаров</h3>
-            <div class="table-toolbar">
-              <button class="btn-add" id="addIntakeBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Новая приёмка</button>
+        <div class="table-card" style="padding: 28px 24px; text-align: center; background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 24px;">
+          <div style="max-width: 520px; margin: 0 auto;">
+            <div style="width: 52px; height: 52px; border-radius: 12px; background: rgba(37,99,235,0.1); color: #2563eb; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+              <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6M9 16h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
             </div>
+            <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 600; color: #0f172a;">Управление приёмкой товаров</h3>
+            <p style="color: #64748b; font-size: 14px; margin: 0 0 20px; line-height: 1.5;">
+              Модуль приёмки товаров, остатков на складах и расчётов с контрагентами переведён в специализированный раздел с поддержкой товарных позиций, цен закупки и автоматического журнала движений.
+            </p>
+            <button type="button" class="btn-add" id="btnGoToReceiptsFromFinance" style="padding: 10px 22px; font-size: 14px; display: inline-flex; align-items: center; gap: 8px;">
+              Перейти в «Приёмка товаров»
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
           </div>
-          <div class="intake-filters">
-            <div class="intake-filter-control intake-filter-search">
-              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              <input type="search" id="intakeSearch" placeholder="Поиск по накладной или контрагенту">
-            </div>
-            <select id="intakeCounterpartyTypeFilter" class="intake-filter-control">
-              <option value="all">Тип контрагента: все</option>
-              <option value="Поставщик">Поставщик</option>
-              <option value="Сервис">Сервис</option>
-              <option value="Логистика">Логистика</option>
-            </select>
-            <select id="intakeCounterpartyFilter" class="intake-filter-control">
-              <option value="all">Контрагент: все</option>
-            </select>
-            <select id="intakeTypeFilter" class="intake-filter-control">
-              <option value="all">Тип операции: все</option>
-              <option value="income">Приёмка</option>
-              <option value="expense">Списание</option>
-              <option value="transfer">Перемещение</option>
-            </select>
-          </div>
+        </div>
 
-          <div class="intake-create-panel" id="intakeCreatePanel" hidden>
-            <h4>Новая приёмка</h4>
-            <form id="intakeCreateForm" class="intake-create-form">
-              <div class="intake-create-grid">
-                <div class="form-group">
-                  <label class="required" for="intakeCreateInvoice">Накладная</label>
-                  <input type="text" id="intakeCreateInvoice" placeholder="P252200" required>
-                </div>
-                <div class="form-group">
-                  <label for="intakeCreateCounterpartyType">Тип контрагента</label>
-                  <select id="intakeCreateCounterpartyType">
-                    <option value="Поставщик">Поставщик</option>
-                    <option value="Сервис">Сервис</option>
-                    <option value="Логистика">Логистика</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="intakeCreateCounterparty">Контрагент</label>
-                  <select id="intakeCreateCounterparty"></select>
-                </div>
-                <div class="form-group" id="intakeCreateCounterpartyManualWrap" hidden>
-                  <label class="required" for="intakeCreateCounterpartyManual">Контрагент (вручную)</label>
-                  <input type="text" id="intakeCreateCounterpartyManual" placeholder="Введите название">
-                </div>
-                <div class="form-group">
-                  <label for="intakeCreateType">Тип операции</label>
-                  <select id="intakeCreateType">
-                    <option value="income">Приёмка</option>
-                    <option value="expense">Списание</option>
-                    <option value="transfer">Перемещение</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="intakeCreateDescription">Описание</label>
-                  <input type="text" id="intakeCreateDescription" placeholder="Описание операции">
-                </div>
-                <div class="form-group">
-                  <label for="intakeCreateValue1">Значение 1</label>
-                  <input type="text" id="intakeCreateValue1" placeholder="0 сум">
-                </div>
-                <div class="form-group">
-                  <label for="intakeCreateValue2">Значение 2</label>
-                  <input type="text" id="intakeCreateValue2" placeholder="0 UZS">
-                </div>
-                <div class="form-group">
-                  <label for="intakeCreatePin">ПИН</label>
-                  <input type="text" id="intakeCreatePin" placeholder="T123456">
-                </div>
-              </div>
-              <div class="intake-create-actions">
-                <button type="button" class="btn-filter-reset" id="intakeCreateCancelBtn">Отмена</button>
-                <button type="submit" class="btn-add">
-                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                  Сохранить приёмку
-                </button>
-              </div>
-            </form>
-          </div>
-          <table class="admin-table intake-table">
-            <thead>
-              <tr>
-                <th>№</th>
-                <th>Накладная</th>
-                <th>Контрагент</th>
-                <th>Тип контрагента</th>
-                <th>Тип</th>
-                <th>Описание</th>
-                <th>Значение 1</th>
-                <th>Значение 2</th>
-                <th>Дата</th>
-                <th>ПИН</th>
-                <th>Действия</th>
-              </tr>
-            </thead>
-            <tbody id="intakeBody"></tbody>
-          </table>
-          <div class="table-footer">
-            <span id="intakeCountText">Показано 0</span>
-            <div class="pagination"><button class="active">1</button></div>
-          </div>
+        <!-- Hidden legacy compatibility stubs for deprecated intake UI -->
+        <div hidden id="intakeCreatePanel">
+          <tbody id="intakeBody"></tbody>
+          <span id="intakeCountText"></span>
         </div>
       </div>
 
@@ -1123,6 +1190,13 @@
                     <select id="pStatus">
                       <option value="active">Включено</option>
                       <option value="inactive">Отключено</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Express доставка (24ч)</label>
+                    <select id="pExpress">
+                      <option value="no">Обычная</option>
+                      <option value="yes">Экспресс 24ч (Ташкент)</option>
                     </select>
                   </div>
                   <div class="form-group">
@@ -1552,6 +1626,303 @@
         <button type="button" class="admin-modal-close" data-close-order-modal aria-label="Закрыть">×</button>
       </div>
       <div id="orderModalBody" class="admin-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Supplier Import Modal -->
+  <div id="supplierImportModal" class="admin-modal" hidden>
+    <div class="admin-modal-backdrop" id="closeSupplierImportBackdrop"></div>
+    <div class="admin-modal-panel" role="dialog" aria-labelledby="supplierImportModalTitle" style="max-width: 840px;">
+      <div class="admin-modal-header">
+        <h3 id="supplierImportModalTitle">Импорт поставщиков из браузера в Supabase</h3>
+        <button type="button" class="admin-modal-close" id="closeSupplierImportBtn" aria-label="Закрыть">×</button>
+      </div>
+      <div class="admin-modal-body">
+        <p style="color: #64748b; font-size: 14px; margin-bottom: 16px;">
+          Проверьте список поставщиков, сохраненных в локальной памяти браузера. Выберите записи для безопасного переноса в базу данных.
+        </p>
+        <div style="max-height: 380px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 20px;">
+          <table class="admin-table" style="margin: 0; width: 100%;">
+            <thead>
+              <tr>
+                <th style="width: 44px; text-align: center;"><input type="checkbox" id="supplierImportSelectAll" title="Выбрать все"></th>
+                <th>Название</th>
+                <th>Телефон</th>
+                <th>Статус в файле</th>
+                <th>Результат проверки</th>
+              </tr>
+            </thead>
+            <tbody id="supplierImportBody"></tbody>
+          </table>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div id="supplierImportStats" style="font-size: 13px; color: #64748b;">Выбрано для импорта: 0 из 0</div>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn-filter-reset" id="supplierImportCancelBtn">Отмена</button>
+            <button type="button" class="btn-add" id="supplierImportSubmitBtn" disabled>
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+              Импортировать выбранные (0)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Editor Modal (Draft creation / modification) -->
+  <div id="receiptEditorModal" class="admin-modal" hidden>
+    <div class="admin-modal-backdrop" id="closeReceiptEditorBackdrop"></div>
+    <div class="admin-modal-panel" role="dialog" aria-labelledby="receiptEditorTitle" style="width: min(1000px, 96vw); max-height: 92vh;">
+      <div class="admin-modal-header">
+        <div>
+          <h3 id="receiptEditorTitle" style="font-size: 18px; font-weight: 600;">Новая приёмка товаров</h3>
+          <span id="receiptEditorSubNumber" style="font-size: 13px; color: #64748b; font-family: monospace;"></span>
+        </div>
+        <button type="button" class="admin-modal-close" id="closeReceiptEditorBtn" aria-label="Закрыть">×</button>
+      </div>
+      <div class="admin-modal-body" style="padding: 16px 20px 24px;">
+        <div id="receiptEditorFeedback" class="supplier-feedback" hidden style="margin-bottom: 14px;"></div>
+        <input type="hidden" id="receiptEditorId">
+
+        <!-- Document Header Fields -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
+          <div class="form-group" style="margin: 0;">
+            <label class="required" for="receiptEditorContractor" style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Контрагент</label>
+            <select id="receiptEditorContractor" style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;" required>
+              <option value="">Выберите контрагента</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label class="required" for="receiptEditorWarehouse" style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Склад поступления</label>
+            <select id="receiptEditorWarehouse" style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;" required></select>
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label for="receiptEditorCreatedAt" style="font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 4px; display: block;">Дата создания (системная)</label>
+            <input type="text" id="receiptEditorCreatedAt" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; background: #f8fafc; color: #64748b;" value="Автоматически (now)">
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label class="required" for="receiptEditorReceivedAt" style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Дата фактического прихода</label>
+            <input type="date" id="receiptEditorReceivedAt" style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;" required>
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label for="receiptEditorExtOrder" style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Входящий номер накладной / ТТН</label>
+            <input type="text" id="receiptEditorExtOrder" placeholder="Напр. ТТН-4589" style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;">
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label for="receiptEditorPaymentMethod" style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Условие оплаты</label>
+            <select id="receiptEditorPaymentMethod" style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;">
+              <option value="debt">В долг (отсрочка платежа)</option>
+              <option value="cash">Наличный расчёт</option>
+              <option value="bank_transfer">Безналичный расчёт (банк)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin: 0; grid-column: 1 / -1;">
+            <label for="receiptEditorDescription" style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Примечание / комментарий к приёмке</label>
+            <input type="text" id="receiptEditorDescription" placeholder="Дополнительная информация об условиях поставки или партии..." style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;">
+          </div>
+        </div>
+
+        <!-- Product Autocomplete Picker -->
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">Добавить товары в накладную</label>
+          <div style="position: relative;">
+            <input type="text" id="receiptProductSearch" placeholder="Начните вводить название товара, артикул (SKU) или ID для добавления..." style="width: 100%; padding: 10px 14px; border: 1.5px solid #3b82f6; border-radius: 8px; font-size: 14px;" autocomplete="off">
+            <div id="receiptProductSuggestions" hidden style="position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 260px; overflow-y: auto; z-index: 100;"></div>
+          </div>
+        </div>
+
+        <!-- Line Items Table -->
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 18px;">
+          <table class="admin-table" id="receiptEditorItemsTable" style="width: 100%; margin: 0;">
+            <thead style="background: #f8fafc;">
+              <tr>
+                <th style="width: 50px;">Фото</th>
+                <th>Товар</th>
+                <th style="width: 110px; text-align: right;">Кол-во (шт)</th>
+                <th style="width: 140px; text-align: right;">Цена закупки</th>
+                <th style="width: 140px; text-align: right;">Цена продажи</th>
+                <th style="width: 140px; text-align: right;">Итого закупки</th>
+                <th style="width: 44px; text-align: center;"></th>
+              </tr>
+            </thead>
+            <tbody id="receiptEditorItemsBody">
+              <tr id="receiptEditorEmptyRow"><td colspan="7" style="text-align: center; color: #94a3b8; padding: 24px;">Товары ещё не добавлены. Воспользуйтесь поиском выше.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Financial Summary Block -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+          <div style="width: 360px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 14px;">
+              <span style="color: #64748b;">Итого по накладной:</span>
+              <strong id="receiptSummaryTotal" style="font-size: 16px; color: #0f172a;">0 UZS</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 14px;">
+              <span style="color: #64748b;">Оплачено сразу:</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <input type="number" id="receiptEditorPaidAmount" min="0" value="0" step="100" style="width: 130px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; text-align: right; font-weight: 600;">
+                <span style="font-size: 12px; color: #64748b;">UZS</span>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px dashed #cbd5e1; font-size: 14px;">
+              <span style="color: #64748b; font-weight: 500;">Долг перед поставщиком:</span>
+              <strong id="receiptSummaryDebt" style="font-size: 16px; color: #dc2626;">0 UZS</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <button type="button" class="btn-filter-reset" id="receiptEditorCancelBtn">Отмена</button>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn-filter-reset" id="receiptEditorSaveDraftBtn" style="border: 1px solid #cbd5e1; font-weight: 500;">
+              Сохранить черновик
+            </button>
+            <button type="button" class="btn-add" id="receiptEditorPostDirectBtn" style="background: #16a34a; border-color: #16a34a;">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+              Провести приёмку
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Detail View Modal (Read-only for posted & cancelled receipts) -->
+  <div id="receiptDetailModal" class="admin-modal" hidden>
+    <div class="admin-modal-backdrop" id="closeReceiptDetailBackdrop"></div>
+    <div class="admin-modal-panel" role="dialog" aria-labelledby="receiptDetailNumber" style="width: min(960px, 95vw); max-height: 92vh;">
+      <div class="admin-modal-header" style="align-items: center;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <h3 id="receiptDetailNumber" style="margin: 0; font-family: monospace; font-size: 19px;">REC-2026-0001</h3>
+          <span id="receiptDetailStatusBadge" class="status-badge"></span>
+        </div>
+        <button type="button" class="admin-modal-close" id="closeReceiptDetailBtn" aria-label="Закрыть">×</button>
+      </div>
+      <div class="admin-modal-body" id="receiptPrintArea" style="padding: 20px;">
+        <!-- Header Print Title (shows nicely in print) -->
+        <div class="print-only-header" style="display: none; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+          <h2 style="margin: 0 0 4px; font-size: 20px;">EMIRATE CO / SFS MARKET</h2>
+          <h3 style="margin: 0; font-size: 16px; font-weight: normal;">ПРИХОДНАЯ НАКЛАДНАЯ / АКТ ПРИЁМКИ № <span id="printReceiptNumber"></span></h3>
+        </div>
+
+        <!-- Metadata Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; padding: 16px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+          <div>
+            <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Контрагент:</div>
+            <strong id="receiptDetailContractor" style="font-size: 14px; color: #0f172a;">—</strong>
+            <div id="receiptDetailContractorMeta" style="font-size: 12px; color: #64748b;"></div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Склад:</div>
+            <strong id="receiptDetailWarehouse" style="font-size: 14px; color: #0f172a;">—</strong>
+            <div id="receiptDetailWarehouseMeta" style="font-size: 12px; color: #64748b;"></div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Дата создания:</div>
+            <div id="receiptDetailCreatedAt" style="font-size: 13px; color: #0f172a;">—</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Дата фактического прихода:</div>
+            <strong id="receiptDetailReceivedAt" style="font-size: 13px; color: #0f172a;">—</strong>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Внешний документ / ТТН:</div>
+            <div id="receiptDetailExtOrder" style="font-size: 13px; color: #0f172a;">—</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Способ оплаты:</div>
+            <div id="receiptDetailPaymentMethod" style="font-size: 13px; color: #0f172a;">—</div>
+          </div>
+          <div style="grid-column: 1 / -1;" id="receiptDetailDescWrap">
+            <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Примечание:</div>
+            <div id="receiptDetailDesc" style="font-size: 13px; color: #334155;">—</div>
+          </div>
+        </div>
+
+        <!-- Items Table -->
+        <h4 style="margin: 0 0 10px; font-size: 15px; font-weight: 600;">Товарные позиции</h4>
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 20px;">
+          <table class="admin-table" style="width: 100%; margin: 0;">
+            <thead style="background: #f8fafc;">
+              <tr>
+                <th style="width: 44px;">Фото</th>
+                <th>Товар</th>
+                <th>Артикул / ID</th>
+                <th style="text-align: right;">Кол-во</th>
+                <th style="text-align: right;">Цена закупки</th>
+                <th style="text-align: right;">Цена продажи</th>
+                <th style="text-align: right;">Сумма закупки</th>
+                <th id="receiptDetailStockTh" style="text-align: right;">Остаток на складе</th>
+              </tr>
+            </thead>
+            <tbody id="receiptDetailItemsBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Financial Summary -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+          <div style="width: 320px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;">
+              <span style="color: #64748b;">Общая сумма:</span>
+              <strong id="receiptDetailTotalCost">0 UZS</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;">
+              <span style="color: #64748b;">Оплачено:</span>
+              <strong id="receiptDetailPaidAmount" style="color: #16a34a;">0 UZS</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px dashed #cbd5e1; font-size: 14px;">
+              <span style="color: #64748b;">Остаток долга:</span>
+              <strong id="receiptDetailDebtAmount" style="color: #dc2626;">0 UZS</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ledger Movements (for posted/cancelled receipts) -->
+        <div id="receiptDetailMovementsWrap" style="margin-bottom: 20px;">
+          <h4 style="margin: 0 0 10px; font-size: 14px; font-weight: 600; color: #475569;">Записи складского журнала (движения остатков)</h4>
+          <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+            <table class="admin-table" style="width: 100%; margin: 0; font-size: 13px;">
+              <thead style="background: #f8fafc;">
+                <tr>
+                  <th>Товар</th>
+                  <th>Тип движения</th>
+                  <th style="text-align: right;">Изменение остатка</th>
+                  <th>Время записи</th>
+                </tr>
+              </thead>
+              <tbody id="receiptDetailMovementsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Print Signatures Block -->
+        <div class="print-only-signatures" style="display: none; margin-top: 40px; padding-top: 20px; border-top: 1px solid #000; justify-content: space-between;">
+          <div style="width: 45%;">
+            <div>Товар сдал (Поставщик): _______________________</div>
+            <div style="margin-top: 4px; font-size: 12px; color: #666;">Подпись и печать</div>
+          </div>
+          <div style="width: 45%;">
+            <div>Товар принял (Кладовщик): _______________________</div>
+            <div style="margin-top: 4px; font-size: 12px; color: #666;">Подпись и дата</div>
+          </div>
+        </div>
+
+        <!-- Modal Bottom Actions (hidden on print) -->
+        <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+          <button type="button" class="btn-filter-reset" id="receiptDetailCloseBtn">Закрыть</button>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn-filter-reset" id="receiptDetailPrintBtn" style="border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Печать накладной
+            </button>
+            <button type="button" class="btn-filter-reset" id="receiptDetailCancelBtn" style="color: #dc2626; border-color: #fca5a5;">
+              Отменить приёмку
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -90,6 +90,7 @@ const pageTitles = {
   orders: 'CRM / Заказы',
   clients: 'Клиенты',
   suppliers: 'Поставщики',
+  receipts: 'Приёмка товаров',
   products: 'Продукты',
   banners: 'Баннеры',
   finance: 'Финансы',
@@ -154,6 +155,15 @@ function switchPage(pageName) {
 
   if (pageName === 'clients') {
     void loadClientsFromSupabase();
+  }
+
+  if (pageName === 'suppliers') {
+    void loadSuppliersDataFromSupabase();
+    checkLocalStorageSuppliersForImport();
+  }
+
+  if (pageName === 'receipts') {
+    void loadReceiptsPageData();
   }
 
   syncOrdersPolling(pageName);
@@ -708,86 +718,129 @@ function getDateTimeString() {
     .replace(',', '');
 }
 
-function defaultSuppliersData() {
-  return [];
-}
+let suppliersData = [];
+let suppliersLoading = false;
+let supplierFeedbackTimer = null;
+let supplierSearchQuery = '';
+let supplierStatusFilterValue = 'all';
+let supplierDebtFilterValue = 'all';
 
 function normalizeSupplierRecord(record) {
   const supplier = record || {};
   return {
-    id: supplier.id || `SUP-${Math.floor(Math.random() * 9000 + 1000)}`,
+    id: String(supplier.id || '').trim(),
     name: String(supplier.name || '').trim(),
     phone: String(supplier.phone || '').trim(),
+    contact_person: String(supplier.contact_person || '').trim(),
+    inn: String(supplier.inn || '').trim(),
     status: supplier.status === 'inactive' ? 'inactive' : 'active',
-    lat: String(supplier.lat || '').trim(),
-    lng: String(supplier.lng || '').trim(),
-    updatedAt: supplier.updatedAt || getDateTimeString()
+    receipts_count: Number(supplier.receipts_count) || 0,
+    total_received_units: Number(supplier.total_received_units) || 0,
+    total_receipt_amount: Number(supplier.total_receipt_amount) || 0,
+    total_paid: Number(supplier.total_paid) || 0,
+    current_debt: Number(supplier.current_debt) || 0,
+    created_at: supplier.created_at || null,
+    updated_at: supplier.updated_at || null
   };
 }
 
-function loadSuppliersData() {
-  try {
-    const raw = localStorage.getItem(ADMIN_SUPPLIERS_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (!Array.isArray(parsed)) {
-      return defaultSuppliersData();
-    }
-    return parsed;
-  } catch (_) {
-    return defaultSuppliersData();
-  }
-}
-
-let suppliersData = loadSuppliersData().map(normalizeSupplierRecord);
-let supplierFeedbackTimer = null;
-
-function persistSuppliersData() {
-  localStorage.setItem(ADMIN_SUPPLIERS_KEY, JSON.stringify(suppliersData));
-}
-
-function showSupplierFeedback(message, type = 'success', timeoutMs = 2800) {
+function showSupplierFeedback(message, type = 'success', timeoutMs = 3200) {
   const node = document.getElementById('supplierFeedback');
   if (!node) return;
   node.textContent = message;
-  node.classList.remove('success', 'error');
-  node.classList.add(type === 'error' ? 'error' : 'success');
+  node.classList.remove('success', 'error', 'warning');
+  node.classList.add(type);
   node.removeAttribute('hidden');
   if (supplierFeedbackTimer) clearTimeout(supplierFeedbackTimer);
   supplierFeedbackTimer = setTimeout(() => {
     node.setAttribute('hidden', 'hidden');
-    node.classList.remove('success', 'error');
+    node.classList.remove('success', 'error', 'warning');
   }, timeoutMs);
 }
 
-function renderSuppliers(data = suppliersData) {
+function getFilteredSuppliers() {
+  return (suppliersData || []).filter((s) => {
+    if (supplierStatusFilterValue !== 'all' && s.status !== supplierStatusFilterValue) {
+      return false;
+    }
+    if (supplierDebtFilterValue === 'has_debt' && (Number(s.current_debt) || 0) <= 0) {
+      return false;
+    }
+    if (supplierSearchQuery) {
+      const q = supplierSearchQuery.toLowerCase();
+      const matchName = String(s.name || '').toLowerCase().includes(q);
+      const matchPhone = String(s.phone || '').toLowerCase().includes(q);
+      const matchInn = String(s.inn || '').toLowerCase().includes(q);
+      const matchContact = String(s.contact_person || '').toLowerCase().includes(q);
+      if (!matchName && !matchPhone && !matchInn && !matchContact) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+function renderSuppliers(data = getFilteredSuppliers()) {
   const tbody = document.getElementById('suppliersBody');
   const count = document.getElementById('suppliersCount');
   if (!tbody || !count) return;
 
+  if (suppliersLoading) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:24px;">Загрузка контрагентов...</td></tr>';
+    count.textContent = 'Загрузка...';
+    return;
+  }
+
   if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">Нет поставщиков</td></tr>';
-    count.textContent = 'Показано 0 из 0';
+    const isFiltered = supplierSearchQuery || supplierStatusFilterValue !== 'all' || supplierDebtFilterValue !== 'all';
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:24px;">${isFiltered ? 'Ничего не найдено по заданным фильтрам' : 'Нет контрагентов'}</td></tr>`;
+    count.textContent = `Показано 0 из ${suppliersData.length}`;
     return;
   }
 
   tbody.innerHTML = data.map((supplier) => `
     <tr>
       <td><strong>${escapeHtml(supplier.name)}</strong><div class="product-sku">${escapeHtml(supplier.id)}</div></td>
+      <td>${escapeHtml(supplier.contact_person || '—')}</td>
       <td>${escapeHtml(supplier.phone || '—')}</td>
+      <td>${escapeHtml(supplier.inn || '—')}</td>
+      <td><span class="badge-neutral">${supplier.receipts_count || 0}</span></td>
+      <td>${money(supplier.total_receipt_amount || 0)}</td>
+      <td>${money(supplier.total_paid || 0)}</td>
+      <td>${supplier.current_debt > 0 ? `<span style="color:#ef4444;font-weight:600;">${money(supplier.current_debt)}</span>` : '<span style="color:#10b981;">0 UZS</span>'}</td>
       <td><span class="status-badge ${supplier.status}"><span class="status-dot"></span>${supplier.status === 'active' ? 'Активный' : 'Неактивный'}</span></td>
-      <td>${escapeHtml((supplier.lat && supplier.lng) ? `${supplier.lat}, ${supplier.lng}` : '—')}</td>
-      <td>${escapeHtml(supplier.updatedAt)}</td>
       <td>
         <div class="action-btns">
           <button class="action-btn" title="Редактировать" data-action="edit-supplier" data-supplier-id="${escapeHtml(supplier.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          <button class="action-btn" title="Вкл/выкл" data-action="toggle-supplier" data-supplier-id="${escapeHtml(supplier.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/></svg></button>
-          <button class="action-btn delete" title="Удалить" data-action="delete-supplier" data-supplier-id="${escapeHtml(supplier.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+          <button class="action-btn" title="Вкл/выкл статус" data-action="toggle-supplier" data-supplier-id="${escapeHtml(supplier.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/></svg></button>
+          <button class="action-btn delete" title="Удалить / Деактивировать" data-action="delete-supplier" data-supplier-id="${escapeHtml(supplier.id)}"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
         </div>
       </td>
     </tr>
   `).join('');
 
   count.textContent = `Показано ${data.length} из ${suppliersData.length}`;
+}
+
+async function loadSuppliersDataFromSupabase() {
+  if (!window.emirateSupabaseApi?.fetchAdminContractors) return;
+  suppliersLoading = true;
+  renderSuppliers();
+  try {
+    const res = await window.emirateSupabaseApi.fetchAdminContractors();
+    if (res && res.ok && Array.isArray(res.data)) {
+      suppliersData = res.data.map(normalizeSupplierRecord);
+    } else {
+      console.warn('[Supabase] loadSuppliersDataFromSupabase error', res?.error);
+    }
+  } catch (err) {
+    console.error('[Supabase] loadSuppliersDataFromSupabase fail', err);
+  } finally {
+    suppliersLoading = false;
+    renderSuppliers();
+    syncIntakeCounterpartyControls();
+    checkLocalStorageSuppliersForImport();
+  }
 }
 
 function resetSupplierForm() {
@@ -798,87 +851,1244 @@ function resetSupplierForm() {
   form?.reset();
   if (idInput) idInput.value = '';
   if (statusInput) statusInput.value = 'active';
-  if (saveBtn) saveBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Создать поставщика';
+  if (saveBtn) saveBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Сохранить контрагента';
   document.getElementById('supplierName')?.closest('.form-group')?.classList.remove('error');
 }
 
 function fillSupplierForm(supplierId) {
   const supplier = suppliersData.find((item) => item.id === supplierId);
   if (!supplier) return;
-  document.getElementById('supplierId').value = supplier.id;
-  document.getElementById('supplierName').value = supplier.name;
-  document.getElementById('supplierPhone').value = supplier.phone;
-  document.getElementById('supplierStatus').value = supplier.status;
-  document.getElementById('supplierLat').value = supplier.lat;
-  document.getElementById('supplierLng').value = supplier.lng;
+  const idInput = document.getElementById('supplierId');
+  const nameInput = document.getElementById('supplierName');
+  const contactInput = document.getElementById('supplierContactPerson');
+  const phoneInput = document.getElementById('supplierPhone');
+  const innInput = document.getElementById('supplierInn');
+  const statusInput = document.getElementById('supplierStatus');
   const saveBtn = document.getElementById('supplierSaveBtn');
+
+  if (idInput) idInput.value = supplier.id;
+  if (nameInput) nameInput.value = supplier.name || '';
+  if (contactInput) contactInput.value = supplier.contact_person || '';
+  if (phoneInput) phoneInput.value = supplier.phone || '';
+  if (innInput) innInput.value = supplier.inn || '';
+  if (statusInput) statusInput.value = supplier.status || 'active';
   if (saveBtn) saveBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Сохранить изменения';
 }
 
-function saveSupplier(event) {
+async function saveSupplier(event) {
   event.preventDefault();
-  const id = document.getElementById('supplierId').value.trim();
-  const name = document.getElementById('supplierName').value.trim();
-  const phone = document.getElementById('supplierPhone').value.trim();
-  const status = document.getElementById('supplierStatus').value === 'inactive' ? 'inactive' : 'active';
-  const lat = document.getElementById('supplierLat').value.trim();
-  const lng = document.getElementById('supplierLng').value.trim();
-  const nameGroup = document.getElementById('supplierName').closest('.form-group');
+  const id = document.getElementById('supplierId')?.value.trim();
+  const name = document.getElementById('supplierName')?.value.trim();
+  const contactPerson = document.getElementById('supplierContactPerson')?.value.trim() || null;
+  const phone = document.getElementById('supplierPhone')?.value.trim() || null;
+  const inn = document.getElementById('supplierInn')?.value.trim() || null;
+  const status = document.getElementById('supplierStatus')?.value === 'inactive' ? 'inactive' : 'active';
+  const nameGroup = document.getElementById('supplierName')?.closest('.form-group');
   nameGroup?.classList.remove('error');
 
-  if (name.length < 2) {
+  if (!name || name.length < 2) {
     nameGroup?.classList.add('error');
-    showSupplierFeedback('Введите корректное название поставщика.', 'error', 3200);
+    showSupplierFeedback('Введите корректное название контрагента (от 2 символов).', 'error', 3200);
     return;
   }
 
-  const draft = normalizeSupplierRecord({
-    id: id || undefined,
+  const payload = {
     name,
+    contact_person: contactPerson,
     phone,
-    status,
-    lat,
-    lng,
-    updatedAt: getDateTimeString()
-  });
+    inn,
+    status
+  };
 
-  const existingIndex = suppliersData.findIndex((item) => item.id === draft.id);
-  if (existingIndex === -1) {
-    suppliersData.unshift(draft);
-    showSupplierFeedback('Поставщик успешно создан.', 'success');
-  } else {
-    suppliersData[existingIndex] = draft;
-    showSupplierFeedback('Данные поставщика обновлены.', 'success');
+  const saveBtn = document.getElementById('supplierSaveBtn');
+  if (saveBtn) saveBtn.disabled = true;
+
+  try {
+    let res;
+    if (id) {
+      res = await window.emirateSupabaseApi.updateAdminContractor(id, payload);
+    } else {
+      res = await window.emirateSupabaseApi.createAdminContractor(payload);
+    }
+
+    if (!res || !res.ok) {
+      showSupplierFeedback(res?.error || 'Ошибка при сохранении контрагента.', 'error', 4000);
+      return;
+    }
+
+    showSupplierFeedback(id ? 'Данные контрагента обновлены.' : 'Контрагент успешно создан.', 'success');
+    await loadSuppliersDataFromSupabase();
+    resetSupplierForm();
+  } catch (err) {
+    showSupplierFeedback(err.message || 'Сбой сети при сохранении.', 'error', 4000);
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+async function toggleSupplierStatus(supplierId) {
+  const supplier = suppliersData.find((item) => item.id === supplierId);
+  if (!supplier) return;
+  const nextStatus = supplier.status === 'active' ? 'inactive' : 'active';
+  try {
+    const res = await window.emirateSupabaseApi.toggleAdminContractorStatus(supplierId, nextStatus);
+    if (!res || !res.ok) {
+      showSupplierFeedback(res?.error || 'Не удалось переключить статус.', 'error');
+      return;
+    }
+    supplier.status = nextStatus;
+    renderSuppliers();
+    syncIntakeCounterpartyControls();
+    showSupplierFeedback(`Статус контрагента изменен на «${nextStatus === 'active' ? 'Активный' : 'Неактивный'}».`, 'success');
+  } catch (err) {
+    showSupplierFeedback(err.message || 'Ошибка сети при смене статуса.', 'error');
+  }
+}
+
+async function deleteSupplier(supplierId) {
+  const supplier = suppliersData.find((item) => item.id === supplierId);
+  if (!supplier) return;
+  if (!confirm(`Удалить контрагента "${supplier.name}"?`)) return;
+
+  try {
+    const res = await window.emirateSupabaseApi.deleteAdminContractor(supplierId);
+    if (!res) return;
+
+    if (res.action === 'deactivated') {
+      showSupplierFeedback(res.message, 'warning', 4500);
+      await loadSuppliersDataFromSupabase();
+      return;
+    }
+
+    if (!res.ok) {
+      showSupplierFeedback(res.error || 'Ошибка при удалении.', 'error');
+      return;
+    }
+
+    showSupplierFeedback('Контрагент успешно удален.', 'success');
+    await loadSuppliersDataFromSupabase();
+    resetSupplierForm();
+  } catch (err) {
+    showSupplierFeedback(err.message || 'Ошибка при удалении.', 'error');
+  }
+}
+
+// --- LOCALSTORAGE IMPORT & DE-DUPLICATION MANAGER ---
+let localStorageSuppliersToImport = [];
+
+function checkLocalStorageSuppliersForImport() {
+  const banner = document.getElementById('supplierImportBanner');
+  const title = document.getElementById('supplierImportBannerTitle');
+  if (!banner) return;
+  try {
+    const raw = localStorage.getItem(ADMIN_SUPPLIERS_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      if (title) title.textContent = `В браузере найдено ${parsed.length} поставщиков`;
+      banner.removeAttribute('hidden');
+      return;
+    }
+  } catch (_) {}
+  banner.setAttribute('hidden', 'hidden');
+}
+
+function normalizeCanonicalPhone(phoneStr) {
+  if (!phoneStr) return '';
+  return String(phoneStr).replace(/\D/g, '');
+}
+
+function openSupplierImportModal() {
+  const modal = document.getElementById('supplierImportModal');
+  const tbody = document.getElementById('supplierImportBody');
+  const stats = document.getElementById('supplierImportStats');
+  const submitBtn = document.getElementById('supplierImportSubmitBtn');
+  const selectAll = document.getElementById('supplierImportSelectAll');
+  if (!modal || !tbody) return;
+
+  let rawList = [];
+  try {
+    const raw = localStorage.getItem(ADMIN_SUPPLIERS_KEY);
+    rawList = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(rawList)) rawList = [];
+  } catch (_) {
+    rawList = [];
   }
 
-  persistSuppliersData();
-  renderSuppliers();
-  syncIntakeCounterpartyControls();
-  fillSupplierForm(draft.id);
+  if (!rawList.length) {
+    alert('Локальные поставщики в браузере не найдены.');
+    checkLocalStorageSuppliersForImport();
+    return;
+  }
+
+  // Duplicate detection against DB and within the batch
+  const existingNames = new Set(suppliersData.map(s => String(s.name || '').trim().toLowerCase()));
+  const existingPhones = new Set(
+    suppliersData
+      .map(s => normalizeCanonicalPhone(s.phone))
+      .filter(p => p.length >= 7)
+  );
+
+  const batchSeenNames = new Set();
+  const batchSeenPhones = new Set();
+
+  localStorageSuppliersToImport = rawList.map((item, idx) => {
+    const name = String(item.name || '').trim();
+    const phone = String(item.phone || '').trim();
+    const normName = name.toLowerCase();
+    const canonPhone = normalizeCanonicalPhone(phone);
+    const status = item.status === 'inactive' ? 'inactive' : 'active';
+
+    let isDuplicate = false;
+    let duplicateReason = '';
+
+    if (existingNames.has(normName)) {
+      isDuplicate = true;
+      duplicateReason = 'Имя уже есть в базе';
+    } else if (canonPhone.length >= 7 && existingPhones.has(canonPhone)) {
+      isDuplicate = true;
+      duplicateReason = 'Телефон уже есть в базе';
+    } else if (batchSeenNames.has(normName)) {
+      isDuplicate = true;
+      duplicateReason = 'Дубликат имени в импорте';
+    } else if (canonPhone.length >= 7 && batchSeenPhones.has(canonPhone)) {
+      isDuplicate = true;
+      duplicateReason = 'Дубликат телефона в импорте';
+    }
+
+    batchSeenNames.add(normName);
+    if (canonPhone.length >= 7) batchSeenPhones.add(canonPhone);
+
+    return {
+      index: idx,
+      name,
+      phone,
+      status,
+      isDuplicate,
+      duplicateReason,
+      selected: !isDuplicate
+    };
+  });
+
+  function renderImportRows() {
+    tbody.innerHTML = localStorageSuppliersToImport.map((row) => `
+      <tr style="${row.isDuplicate ? 'background: #fffbeb;' : ''}">
+        <td style="text-align: center;">
+          <input type="checkbox" class="supplier-import-check" data-index="${row.index}" ${row.selected ? 'checked' : ''}>
+        </td>
+        <td><strong>${escapeHtml(row.name)}</strong></td>
+        <td>${escapeHtml(row.phone || '—')}</td>
+        <td><span class="status-badge ${row.status}">${row.status === 'active' ? 'Активный' : 'Неактивный'}</span></td>
+        <td>
+          ${row.isDuplicate
+            ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;background:#fef3c7;color:#92400e;">[Возможный дубликат: ${escapeHtml(row.duplicateReason)}]</span>`
+            : '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;background:#d1fae5;color:#065f46;">[Новый]</span>'}
+        </td>
+      </tr>
+    `).join('');
+
+    const selectedCount = localStorageSuppliersToImport.filter(r => r.selected).length;
+    if (stats) stats.textContent = `Выбрано для импорта: ${selectedCount} из ${localStorageSuppliersToImport.length}`;
+    if (submitBtn) {
+      submitBtn.disabled = selectedCount === 0;
+      submitBtn.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Импортировать выбранные (${selectedCount})`;
+    }
+    if (selectAll) {
+      selectAll.checked = selectedCount === localStorageSuppliersToImport.length && selectedCount > 0;
+    }
+  }
+
+  tbody.onclick = function(e) {
+    const chk = e.target.closest('.supplier-import-check');
+    if (!chk) return;
+    const idx = Number(chk.getAttribute('data-index'));
+    if (localStorageSuppliersToImport[idx]) {
+      localStorageSuppliersToImport[idx].selected = chk.checked;
+      renderImportRows();
+    }
+  };
+
+  if (selectAll) {
+    selectAll.onchange = function() {
+      const val = selectAll.checked;
+      localStorageSuppliersToImport.forEach(r => { r.selected = val; });
+      renderImportRows();
+    };
+  }
+
+  renderImportRows();
+  modal.removeAttribute('hidden');
 }
 
-function toggleSupplierStatus(supplierId) {
-  const supplier = suppliersData.find((item) => item.id === supplierId);
-  if (!supplier) return;
-  supplier.status = supplier.status === 'active' ? 'inactive' : 'active';
-  supplier.updatedAt = getDateTimeString();
-  persistSuppliersData();
-  renderSuppliers();
-  syncIntakeCounterpartyControls();
-  showSupplierFeedback(`Поставщик ${supplier.status === 'active' ? 'активирован' : 'деактивирован'}.`, 'success');
+function closeSupplierImportModal() {
+  const modal = document.getElementById('supplierImportModal');
+  if (modal) modal.setAttribute('hidden', 'hidden');
 }
 
-function deleteSupplier(supplierId) {
-  const supplier = suppliersData.find((item) => item.id === supplierId);
-  if (!supplier) return;
-  if (!confirm(`Удалить поставщика "${supplier.name}"?`)) return;
-  suppliersData = suppliersData.filter((item) => item.id !== supplierId);
-  persistSuppliersData();
-  renderSuppliers();
-  syncIntakeCounterpartyControls();
-  resetSupplierForm();
-  showSupplierFeedback('Поставщик удален.', 'success');
+async function executeSupplierImport() {
+  const selectedRows = localStorageSuppliersToImport.filter(r => r.selected);
+  if (!selectedRows.length) {
+    alert('Пожалуйста, выберите хотя бы одного поставщика для импорта.');
+    return;
+  }
+
+  const submitBtn = document.getElementById('supplierImportSubmitBtn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Импортируем...';
+  }
+
+  const rawBackup = localStorage.getItem(ADMIN_SUPPLIERS_KEY);
+
+  try {
+    const itemsToInsert = selectedRows.map(r => ({
+      name: r.name,
+      phone: r.phone || null,
+      status: r.status
+    }));
+
+    const res = await window.emirateSupabaseApi.importAdminContractorsBatch(itemsToInsert);
+
+    if (!res || !res.ok) {
+      alert('Ошибка при импорте в базу данных: ' + (res?.error || 'Неизвестная ошибка'));
+      // Keep localStorage untouched on failure!
+      return;
+    }
+
+    // SUCCESS: archive old localStorage snapshot safely
+    if (rawBackup) {
+      localStorage.setItem('emirate_admin_suppliers_v2_migrated_backup', rawBackup);
+    }
+    // Remove old key now that import succeeded
+    localStorage.removeItem(ADMIN_SUPPLIERS_KEY);
+
+    closeSupplierImportModal();
+    checkLocalStorageSuppliersForImport();
+    await loadSuppliersDataFromSupabase();
+    showSupplierFeedback(`Успешно импортировано ${res.inserted} контрагентов в Supabase.`, 'success', 4000);
+  } catch (err) {
+    alert('Сбой при выполнении импорта: ' + (err.message || String(err)));
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
 }
+
+// ==============================================================================
+// EMIRATE CO — GOODS RECEIVING / INVENTORY MODULE (PHASE 3B)
+// ==============================================================================
+
+let receiptsData = [];
+let receiptsLoading = false;
+let warehousesData = [];
+let currentEditorReceipt = null;
+let currentEditorItems = []; // Array of { product_id, product_name, sku, photo, quantity, unit_cost, sale_price, total_cost }
+let currentDetailReceipt = null;
+
+function getProductCostPrice(p) {
+  if (!p) return 0;
+  const raw = (p.payload && p.payload.costPrice != null) ? p.payload.costPrice : (p.costPrice != null ? p.costPrice : (p.costPriceUzs != null ? p.costPriceUzs : 0));
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+  if (typeof parseAdminMoneyInput === 'function') {
+    return parseAdminMoneyInput(raw) || 0;
+  }
+  return Number(String(raw || '').replace(/[^\d.]/g, '')) || 0;
+}
+
+function getProductSalePrice(p) {
+  if (!p) return 0;
+  const raw = (p.payload && p.payload.price != null) ? p.payload.price : (p.price != null ? p.price : (p.priceUzs != null ? p.priceUzs : 0));
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+  if (typeof parseAdminMoneyInput === 'function') {
+    return parseAdminMoneyInput(raw) || 0;
+  }
+  return Number(String(raw || '').replace(/[^\d.]/g, '')) || 0;
+}
+
+function formatReceiptStatusBadge(status) {
+  if (status === 'posted') {
+    return '<span class="status-badge active" style="background:#dcfce7;color:#15803d;"><span class="status-dot" style="background:#16a34a;"></span>Проведено</span>';
+  }
+  if (status === 'cancelled') {
+    return '<span class="status-badge inactive" style="background:#fee2e2;color:#b91c1c;"><span class="status-dot" style="background:#dc2626;"></span>Отменено</span>';
+  }
+  return '<span class="status-badge" style="background:#fef3c7;color:#b45309;"><span class="status-dot" style="background:#f59e0b;"></span>Черновик</span>';
+}
+
+function formatReceiptDate(val) {
+  if (!val) return '—';
+  try {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch (_) {
+    return String(val);
+  }
+}
+
+function formatReceiptDateTime(val) {
+  if (!val) return '—';
+  try {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  } catch (_) {
+    return String(val);
+  }
+}
+
+async function loadReceiptsPageData() {
+  await Promise.all([
+    loadWarehousesData(),
+    loadSuppliersDataFromSupabase()
+  ]);
+  populateReceiptFilterDropdowns();
+  await loadAdminReceipts();
+}
+
+async function loadWarehousesData() {
+  if (!window.emirateSupabaseApi?.fetchAdminWarehouses) return;
+  try {
+    const res = await window.emirateSupabaseApi.fetchAdminWarehouses();
+    if (res && res.ok && Array.isArray(res.data)) {
+      warehousesData = res.data;
+    }
+  } catch (err) {
+    console.error('[Receipts] loadWarehousesData error', err);
+  }
+}
+
+function populateReceiptFilterDropdowns() {
+  const cSelect = document.getElementById('receiptFilterContractor');
+  if (cSelect) {
+    const cur = cSelect.value;
+    cSelect.innerHTML = '<option value="all">Все контрагенты</option>' +
+      suppliersData.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+    if (cur) cSelect.value = cur;
+  }
+
+  const wSelect = document.getElementById('receiptFilterWarehouse');
+  if (wSelect) {
+    const cur = wSelect.value;
+    wSelect.innerHTML = '<option value="all">Все склады</option>' +
+      warehousesData.map(w => `<option value="${escapeHtml(w.id)}">${escapeHtml(w.name)} (${escapeHtml(w.code)})</option>`).join('');
+    if (cur) wSelect.value = cur;
+  }
+}
+
+async function loadAdminReceipts() {
+  if (!window.emirateSupabaseApi?.fetchAdminReceipts) return;
+  receiptsLoading = true;
+  renderReceiptsTable();
+
+  const filters = {
+    search: document.getElementById('receiptSearch')?.value?.trim() || '',
+    contractor_id: document.getElementById('receiptFilterContractor')?.value || 'all',
+    warehouse_id: document.getElementById('receiptFilterWarehouse')?.value || 'all',
+    status: document.getElementById('receiptFilterStatus')?.value || 'all',
+    created_from: document.getElementById('receiptFilterCreatedFrom')?.value || '',
+    created_to: document.getElementById('receiptFilterCreatedTo')?.value || '',
+    received_from: document.getElementById('receiptFilterReceivedFrom')?.value || '',
+    received_to: document.getElementById('receiptFilterReceivedTo')?.value || ''
+  };
+
+  try {
+    const res = await window.emirateSupabaseApi.fetchAdminReceipts(filters);
+    if (res && res.ok && Array.isArray(res.data)) {
+      receiptsData = res.data;
+    } else {
+      console.warn('[Receipts] loadAdminReceipts failed', res?.error);
+    }
+  } catch (err) {
+    console.error('[Receipts] loadAdminReceipts error', err);
+  } finally {
+    receiptsLoading = false;
+    renderReceiptsTable();
+  }
+}
+
+function renderReceiptsTable() {
+  const tbody = document.getElementById('receiptsBody');
+  const countText = document.getElementById('receiptsCountText');
+  if (!tbody) return;
+
+  if (receiptsLoading) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: #94a3b8; padding: 24px;">Загрузка накладных...</td></tr>';
+    return;
+  }
+
+  if (!receiptsData.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: #94a3b8; padding: 24px;">Накладных не найдено. Нажмите «+ Новая приёмка» для создания.</td></tr>';
+    if (countText) countText.textContent = 'Показано 0 накладных';
+    return;
+  }
+
+  tbody.innerHTML = receiptsData.map(r => {
+    const contractorName = r.contractor?.name || '—';
+    const warehouseName = r.warehouse?.name || '—';
+    const itemsCount = Array.isArray(r.items) ? r.items.length : 0;
+    const totalCost = Number(r.total_cost) || 0;
+    const paidAmount = Number(r.paid_amount) || 0;
+    const debtAmount = Number(r.debt_amount) || 0;
+
+    let actionButtons = '';
+    if (r.status === 'draft') {
+      actionButtons = `
+        <button class="action-btn" title="Редактировать черновик" data-action="edit-receipt" data-receipt-id="${escapeHtml(r.id)}"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="action-btn" title="Провести приёмку на склад" data-action="post-receipt" data-receipt-id="${escapeHtml(r.id)}" style="color:#16a34a;"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></button>
+        <button class="action-btn delete" title="Отменить черновик" data-action="cancel-receipt" data-receipt-id="${escapeHtml(r.id)}"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      `;
+    } else if (r.status === 'posted') {
+      actionButtons = `
+        <button class="action-btn" title="Просмотр деталей" data-action="view-receipt" data-receipt-id="${escapeHtml(r.id)}"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <button class="action-btn" title="Печать накладной" data-action="print-receipt" data-receipt-id="${escapeHtml(r.id)}"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
+        <button class="action-btn delete" title="Отменить приёмку" data-action="cancel-receipt" data-receipt-id="${escapeHtml(r.id)}"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+      `;
+    } else {
+      actionButtons = `
+        <button class="action-btn" title="Просмотр деталей" data-action="view-receipt" data-receipt-id="${escapeHtml(r.id)}"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <button class="action-btn" title="Печать накладной" data-action="print-receipt" data-receipt-id="${escapeHtml(r.id)}"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
+      `;
+    }
+
+    return `
+      <tr>
+        <td><strong style="font-family: monospace; font-size: 13px;">${escapeHtml(r.receipt_number || '—')}</strong></td>
+        <td>
+          <div style="font-weight: 500; color: #0f172a;">${escapeHtml(contractorName)}</div>
+          ${r.external_order_number ? `<div style="font-size: 11px; color: #64748b;">ТТН: ${escapeHtml(r.external_order_number)}</div>` : ''}
+        </td>
+        <td>${escapeHtml(warehouseName)}</td>
+        <td style="font-size: 12px; color: #64748b;">${formatReceiptDateTime(r.created_at)}</td>
+        <td style="font-size: 13px; font-weight: 500;">${formatReceiptDate(r.received_at)}</td>
+        <td style="text-align: right;"><span class="badge-neutral">${itemsCount}</span></td>
+        <td style="text-align: right; font-weight: 600;">${money(totalCost)}</td>
+        <td style="text-align: right; color: #16a34a;">${money(paidAmount)}</td>
+        <td style="text-align: right;">${debtAmount > 0 ? `<span style="color:#ef4444;font-weight:600;">${money(debtAmount)}</span>` : '<span style="color:#10b981;">0 UZS</span>'}</td>
+        <td style="text-align: center;">${formatReceiptStatusBadge(r.status)}</td>
+        <td>
+          <div class="action-btns" style="justify-content: flex-end;">${actionButtons}</div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  if (countText) countText.textContent = `Показано ${receiptsData.length} накладных`;
+}
+
+// --- RECEIPT EDITOR MODAL ---
+
+function showReceiptEditorFeedback(text, type = 'error') {
+  const fb = document.getElementById('receiptEditorFeedback');
+  if (!fb) return;
+  fb.hidden = false;
+  fb.className = 'supplier-feedback ' + type;
+  fb.textContent = text;
+}
+
+function hideReceiptEditorFeedback() {
+  const fb = document.getElementById('receiptEditorFeedback');
+  if (fb) fb.hidden = true;
+}
+
+async function openReceiptEditor(receiptId = null) {
+  hideReceiptEditorFeedback();
+  currentEditorReceipt = null;
+  currentEditorItems = [];
+
+  // Populate contractor dropdown (only active for new, or include current for edit)
+  const cSelect = document.getElementById('receiptEditorContractor');
+  if (cSelect) {
+    cSelect.innerHTML = '<option value="">Выберите контрагента</option>' +
+      suppliersData
+        .filter(c => receiptId || c.status === 'active')
+        .map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}${c.phone ? ' (' + escapeHtml(c.phone) + ')' : ''}</option>`).join('');
+  }
+
+  // Populate warehouse dropdown
+  const wSelect = document.getElementById('receiptEditorWarehouse');
+  if (wSelect) {
+    wSelect.innerHTML = warehousesData
+      .filter(w => receiptId || w.is_active !== false)
+      .map(w => `<option value="${escapeHtml(w.id)}">${escapeHtml(w.name)} (${escapeHtml(w.code)})</option>`).join('');
+    // Select default MAIN warehouse
+    const mainWh = warehousesData.find(w => w.code === 'MAIN');
+    if (mainWh) wSelect.value = mainWh.id;
+  }
+
+  const titleEl = document.getElementById('receiptEditorTitle');
+  const subEl = document.getElementById('receiptEditorSubNumber');
+  const idInput = document.getElementById('receiptEditorId');
+  const createdInput = document.getElementById('receiptEditorCreatedAt');
+  const receivedInput = document.getElementById('receiptEditorReceivedAt');
+  const extInput = document.getElementById('receiptEditorExtOrder');
+  const payInput = document.getElementById('receiptEditorPaymentMethod');
+  const descInput = document.getElementById('receiptEditorDescription');
+  const paidInput = document.getElementById('receiptEditorPaidAmount');
+  const postDirectBtn = document.getElementById('receiptEditorPostDirectBtn');
+
+  if (idInput) idInput.value = receiptId || '';
+  if (postDirectBtn) postDirectBtn.disabled = false;
+
+  if (!receiptId) {
+    // New draft
+    if (titleEl) titleEl.textContent = 'Новая приёмка товаров';
+    if (subEl) subEl.textContent = 'Номер накладной будет присвоен автоматически (REC-YYYY-XXXX)';
+    if (createdInput) createdInput.value = 'Автоматически при сохранении';
+    if (receivedInput) receivedInput.value = new Date().toISOString().slice(0, 10);
+    if (extInput) extInput.value = '';
+    if (payInput) payInput.value = 'debt';
+    if (descInput) descInput.value = '';
+    if (paidInput) paidInput.value = '0';
+    renderEditorItemsTable();
+    updateEditorFinancialSummary();
+  } else {
+    // Edit existing draft
+    if (titleEl) titleEl.textContent = 'Редактирование приёмки';
+    try {
+      const res = await window.emirateSupabaseApi.fetchAdminReceiptDetails(receiptId);
+      if (!res.ok || !res.data) {
+        alert('Не удалось загрузить данные приёмки: ' + (res.error || ''));
+        return;
+      }
+      const receipt = res.data;
+      if (receipt.status !== 'draft') {
+        alert('Накладная в статусе «' + receipt.status + '» защищена от редактирования.');
+        return;
+      }
+      currentEditorReceipt = receipt;
+      if (subEl) subEl.textContent = receipt.receipt_number || '';
+      if (createdInput) createdInput.value = formatReceiptDateTime(receipt.created_at);
+      if (receivedInput) receivedInput.value = receipt.received_at ? receipt.received_at.slice(0, 10) : '';
+      if (cSelect) cSelect.value = receipt.contractor_id || '';
+      if (wSelect) wSelect.value = receipt.warehouse_id || '';
+      if (extInput) extInput.value = receipt.external_order_number || '';
+      if (payInput) payInput.value = receipt.payment_method || 'debt';
+      if (descInput) descInput.value = receipt.description || '';
+      if (paidInput) paidInput.value = String(receipt.paid_amount || 0);
+
+      // Load items
+      currentEditorItems = (receipt.items || []).map(it => {
+        const prod = productsData.find(p => p.id === it.product_id);
+        return {
+          product_id: it.product_id,
+          product_name: prod ? (prod.nameRu || prod.title || prod.id) : it.product_id,
+          sku: prod ? (prod.sku || prod.article || prod.id) : it.product_id,
+          photo: prod?.photos?.[0] || '',
+          quantity: Number(it.quantity) || 1,
+          unit_cost: Number(it.unit_cost) || 0,
+          sale_price: it.sale_price != null ? Number(it.sale_price) : (prod ? getProductSalePrice(prod) : null),
+          total_cost: (Number(it.quantity) || 1) * (Number(it.unit_cost) || 0)
+        };
+      });
+
+      renderEditorItemsTable();
+      updateEditorFinancialSummary();
+    } catch (err) {
+      alert('Ошибка при загрузке приёмки: ' + err.message);
+      return;
+    }
+  }
+
+  const modal = document.getElementById('receiptEditorModal');
+  if (modal) modal.hidden = false;
+}
+
+function closeReceiptEditorModal() {
+  const modal = document.getElementById('receiptEditorModal');
+  if (modal) modal.hidden = true;
+  currentEditorReceipt = null;
+  currentEditorItems = [];
+  hideReceiptEditorFeedback();
+}
+
+function renderEditorItemsTable() {
+  const tbody = document.getElementById('receiptEditorItemsBody');
+  if (!tbody) return;
+
+  if (!currentEditorItems.length) {
+    tbody.innerHTML = '<tr id="receiptEditorEmptyRow"><td colspan="7" style="text-align: center; color: #94a3b8; padding: 24px;">Товары ещё не добавлены. Воспользуйтесь поиском выше.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = currentEditorItems.map((item, index) => {
+    const photoHtml = item.photo
+      ? `<img src="${escapeHtml(item.photo)}" alt="" style="width: 36px; height: 36px; object-fit: cover; border-radius: 6px;">`
+      : `<div style="width: 36px; height: 36px; background: #f1f5f9; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 10px;">IMG</div>`;
+
+    return `
+      <tr data-item-index="${index}">
+        <td style="vertical-align: middle;">${photoHtml}</td>
+        <td style="vertical-align: middle;">
+          <div style="font-weight: 500; font-size: 13px; color: #0f172a;">${escapeHtml(item.product_name)}</div>
+          <div style="font-size: 11px; color: #64748b;">ID: ${escapeHtml(item.product_id)} · SKU: ${escapeHtml(item.sku)}</div>
+        </td>
+        <td style="text-align: right; vertical-align: middle;">
+          <input type="number" min="1" step="1" value="${item.quantity}" class="receipt-item-qty" data-index="${index}" style="width: 80px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; text-align: right;">
+        </td>
+        <td style="text-align: right; vertical-align: middle;">
+          <input type="number" min="0" step="100" value="${item.unit_cost}" class="receipt-item-cost" data-index="${index}" style="width: 120px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; text-align: right;">
+        </td>
+        <td style="text-align: right; vertical-align: middle;">
+          <input type="number" min="0" step="100" value="${item.sale_price != null ? item.sale_price : ''}" placeholder="—" class="receipt-item-sale" data-index="${index}" style="width: 120px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; text-align: right;">
+        </td>
+        <td style="text-align: right; font-weight: 600; vertical-align: middle;">
+          <span class="receipt-line-total" data-index="${index}">${money(item.total_cost)}</span>
+        </td>
+        <td style="text-align: center; vertical-align: middle;">
+          <button type="button" class="action-btn delete remove-receipt-item-btn" data-index="${index}" title="Удалить строку" style="display: inline-flex;">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function updateEditorFinancialSummary() {
+  const total = currentEditorItems.reduce((s, it) => s + (Number(it.total_cost) || 0), 0);
+  const paidInput = document.getElementById('receiptEditorPaidAmount');
+  let paid = Number(paidInput?.value) || 0;
+  if (paid < 0) {
+    paid = 0;
+    if (paidInput) paidInput.value = '0';
+  }
+
+  const debt = Math.max(total - paid, 0);
+
+  const totalEl = document.getElementById('receiptSummaryTotal');
+  const debtEl = document.getElementById('receiptSummaryDebt');
+
+  if (totalEl) totalEl.textContent = money(total);
+  if (debtEl) {
+    debtEl.textContent = money(debt);
+    debtEl.style.color = debt > 0 ? '#dc2626' : '#16a34a';
+  }
+
+  if (paid > total) {
+    showReceiptEditorFeedback('Сумма оплаты (' + money(paid) + ') превышает общую сумму накладной (' + money(total) + ').', 'error');
+  } else {
+    hideReceiptEditorFeedback();
+  }
+}
+
+// Product search suggestions
+function handleReceiptProductSearch(query) {
+  const box = document.getElementById('receiptProductSuggestions');
+  if (!box) return;
+  const q = String(query || '').toLowerCase().trim();
+  if (q.length < 1) {
+    box.hidden = true;
+    box.innerHTML = '';
+    return;
+  }
+
+  const matches = (productsData || []).filter(p => {
+    const title = String(p.title || '').toLowerCase();
+    const nameRu = String(p.nameRu || '').toLowerCase();
+    const nameUz = String(p.nameUz || '').toLowerCase();
+    const sku = String(p.sku || p.article || '').toLowerCase();
+    const adminId = String(p.id || '').toLowerCase();
+    return title.includes(q) || nameRu.includes(q) || nameUz.includes(q) || sku.includes(q) || adminId.includes(q);
+  }).slice(0, 15);
+
+  if (!matches.length) {
+    box.innerHTML = '<div style="padding: 12px 16px; font-size: 13px; color: #94a3b8;">Товары не найдены</div>';
+    box.hidden = false;
+    return;
+  }
+
+  box.innerHTML = matches.map(p => {
+    const photo = p.photos?.[0];
+    const cost = getProductCostPrice(p);
+    const price = getProductSalePrice(p);
+    return `
+      <div class="receipt-product-suggestion-item" data-product-id="${escapeHtml(p.id)}" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.15s;">
+        ${photo ? `<img src="${escapeHtml(photo)}" alt="" style="width: 34px; height: 34px; object-fit: cover; border-radius: 6px;">` : `<div style="width: 34px; height: 34px; background: #f1f5f9; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #94a3b8;">IMG</div>`}
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 13px; font-weight: 500; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(p.nameRu || p.title || p.id)}</div>
+          <div style="font-size: 11px; color: #64748b;">ID: ${escapeHtml(p.id)} · SKU: ${escapeHtml(p.sku || p.article || '—')}</div>
+        </div>
+        <div style="text-align: right; font-size: 12px;">
+          <div style="color: #64748b;">Закупка: <strong>${money(cost)}</strong></div>
+          <div style="color: #16a34a;">Продажа: ${money(price)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  box.hidden = false;
+}
+
+function selectProductForReceipt(productId) {
+  const prod = productsData.find(p => p.id === productId);
+  if (!prod) return;
+
+  const existing = currentEditorItems.find(it => it.product_id === productId);
+  if (existing) {
+    existing.quantity += 1;
+    existing.total_cost = existing.quantity * existing.unit_cost;
+  } else {
+    const cost = getProductCostPrice(prod);
+    const sale = getProductSalePrice(prod);
+    currentEditorItems.push({
+      product_id: prod.id,
+      product_name: prod.nameRu || prod.title || prod.id,
+      sku: prod.sku || prod.article || prod.id,
+      photo: prod.photos?.[0] || '',
+      quantity: 1,
+      unit_cost: cost,
+      sale_price: sale,
+      total_cost: cost
+    });
+  }
+
+  const sInput = document.getElementById('receiptProductSearch');
+  const sBox = document.getElementById('receiptProductSuggestions');
+  if (sInput) sInput.value = '';
+  if (sBox) sBox.hidden = true;
+
+  renderEditorItemsTable();
+  updateEditorFinancialSummary();
+}
+
+// Save / Post handler from Editor
+async function handleReceiptEditorSubmit(mode = 'draft') {
+  hideReceiptEditorFeedback();
+
+  const contractorId = document.getElementById('receiptEditorContractor')?.value;
+  const warehouseId = document.getElementById('receiptEditorWarehouse')?.value;
+  const receivedAt = document.getElementById('receiptEditorReceivedAt')?.value;
+  const extOrder = document.getElementById('receiptEditorExtOrder')?.value?.trim();
+  const paymentMethod = document.getElementById('receiptEditorPaymentMethod')?.value || 'debt';
+  const description = document.getElementById('receiptEditorDescription')?.value?.trim();
+  const paidAmount = Number(document.getElementById('receiptEditorPaidAmount')?.value) || 0;
+
+  if (!contractorId) {
+    showReceiptEditorFeedback('Выберите контрагента.', 'error');
+    return;
+  }
+  if (!warehouseId) {
+    showReceiptEditorFeedback('Выберите склад поступления.', 'error');
+    return;
+  }
+  if (!receivedAt) {
+    showReceiptEditorFeedback('Укажите дату фактического прихода.', 'error');
+    return;
+  }
+
+  // Items validation
+  if (mode === 'post' && !currentEditorItems.length) {
+    showReceiptEditorFeedback('Нельзя провести накладную без товаров. Добавьте хотя бы один товар.', 'error');
+    return;
+  }
+
+  for (let i = 0; i < currentEditorItems.length; i++) {
+    const it = currentEditorItems[i];
+    if (!Number.isInteger(it.quantity) || it.quantity <= 0) {
+      showReceiptEditorFeedback(`Количество товара «${it.product_name}» должно быть целым положительным числом (> 0).`, 'error');
+      return;
+    }
+    if (!Number.isFinite(it.unit_cost) || it.unit_cost < 0) {
+      showReceiptEditorFeedback(`Цена закупки товара «${it.product_name}» не может быть отрицательной.`, 'error');
+      return;
+    }
+  }
+
+  const totalCost = currentEditorItems.reduce((s, it) => s + it.total_cost, 0);
+  if (paidAmount < 0) {
+    showReceiptEditorFeedback('Сумма оплаты не может быть отрицательной.', 'error');
+    return;
+  }
+  if (paidAmount > totalCost) {
+    showReceiptEditorFeedback(`Сумма оплаты (${money(paidAmount)}) превышает общую сумму накладной (${money(totalCost)}).`, 'error');
+    return;
+  }
+
+  const header = {
+    contractor_id: contractorId,
+    warehouse_id: warehouseId,
+    received_at: receivedAt,
+    external_order_number: extOrder,
+    payment_method: paymentMethod,
+    paid_amount: paidAmount,
+    description: description
+  };
+
+  const items = currentEditorItems.map(it => ({
+    product_id: it.product_id,
+    quantity: it.quantity,
+    unit_cost: it.unit_cost,
+    sale_price: it.sale_price
+  }));
+
+  const saveDraftBtn = document.getElementById('receiptEditorSaveDraftBtn');
+  const postBtn = document.getElementById('receiptEditorPostDirectBtn');
+  if (saveDraftBtn) saveDraftBtn.disabled = true;
+  if (postBtn) postBtn.disabled = true;
+
+  try {
+    let receiptId = currentEditorReceipt?.id;
+    let savedReceipt = null;
+
+    if (receiptId) {
+      const res = await window.emirateSupabaseApi.updateAdminReceiptDraft(receiptId, header, items);
+      if (!res.ok) throw new Error(res.error || 'Ошибка при обновлении накладной');
+      savedReceipt = res.data;
+    } else {
+      const res = await window.emirateSupabaseApi.createAdminReceiptDraft(header, items);
+      if (!res.ok) throw new Error(res.error || 'Ошибка при создании накладной');
+      savedReceipt = res.data;
+      receiptId = savedReceipt.id;
+    }
+
+    if (mode === 'post') {
+      const postRes = await window.emirateSupabaseApi.postAdminReceipt(receiptId);
+      if (!postRes.ok) throw new Error(postRes.error || 'Ошибка при проведении накладной в базе данных');
+      closeReceiptEditorModal();
+      await loadAdminReceipts();
+      alert(`Накладная ${savedReceipt.receipt_number || ''} успешно проведена на склад! Остатки обновлены.`);
+    } else {
+      closeReceiptEditorModal();
+      await loadAdminReceipts();
+    }
+  } catch (err) {
+    showReceiptEditorFeedback(err.message || 'Ошибка операции', 'error');
+  } finally {
+    if (saveDraftBtn) saveDraftBtn.disabled = false;
+    if (postBtn) postBtn.disabled = false;
+  }
+}
+
+// --- RECEIPT DETAIL MODAL & PRINT ---
+
+async function openReceiptDetails(receiptId) {
+  if (!window.emirateSupabaseApi?.fetchAdminReceiptDetails) return;
+  try {
+    const res = await window.emirateSupabaseApi.fetchAdminReceiptDetails(receiptId);
+    if (!res.ok || !res.data) {
+      alert('Не удалось загрузить накладную: ' + (res.error || ''));
+      return;
+    }
+    const r = res.data;
+    currentDetailReceipt = r;
+
+    // Numbers & badges
+    const numEl = document.getElementById('receiptDetailNumber');
+    const printNumEl = document.getElementById('printReceiptNumber');
+    const badgeEl = document.getElementById('receiptDetailStatusBadge');
+    if (numEl) numEl.textContent = r.receipt_number || '—';
+    if (printNumEl) printNumEl.textContent = r.receipt_number || '—';
+    if (badgeEl) badgeEl.innerHTML = formatReceiptStatusBadge(r.status);
+
+    // Metadata
+    const cEl = document.getElementById('receiptDetailContractor');
+    const cMeta = document.getElementById('receiptDetailContractorMeta');
+    const wEl = document.getElementById('receiptDetailWarehouse');
+    const wMeta = document.getElementById('receiptDetailWarehouseMeta');
+    const createdEl = document.getElementById('receiptDetailCreatedAt');
+    const receivedEl = document.getElementById('receiptDetailReceivedAt');
+    const extEl = document.getElementById('receiptDetailExtOrder');
+    const payEl = document.getElementById('receiptDetailPaymentMethod');
+    const descEl = document.getElementById('receiptDetailDesc');
+
+    if (cEl) cEl.textContent = r.contractor?.name || '—';
+    if (cMeta) cMeta.textContent = [r.contractor?.phone, r.contractor?.contact_person, r.contractor?.inn ? `ИНН: ${r.contractor.inn}` : ''].filter(Boolean).join(' · ');
+    if (wEl) wEl.textContent = `${r.warehouse?.name || '—'} (${r.warehouse?.code || '—'})`;
+    if (wMeta) wMeta.textContent = r.warehouse?.address || '';
+    if (createdEl) createdEl.textContent = formatReceiptDateTime(r.created_at);
+    if (receivedEl) receivedEl.textContent = formatReceiptDate(r.received_at);
+    if (extEl) extEl.textContent = r.external_order_number || '—';
+
+    const payLabels = { debt: 'В долг (отсрочка)', cash: 'Наличный расчёт', bank_transfer: 'Безналичный расчёт' };
+    if (payEl) payEl.textContent = payLabels[r.payment_method] || r.payment_method || '—';
+    if (descEl) descEl.textContent = r.description || '—';
+
+    // Items
+    const itemsBody = document.getElementById('receiptDetailItemsBody');
+    const stockTh = document.getElementById('receiptDetailStockTh');
+    if (stockTh) stockTh.style.display = r.status === 'posted' ? '' : 'none';
+
+    if (itemsBody) {
+      itemsBody.innerHTML = (r.items || []).map(it => {
+        const prod = productsData.find(p => p.id === it.product_id);
+        const name = prod ? (prod.nameRu || prod.title || prod.id) : it.product_id;
+        const sku = prod ? (prod.sku || prod.article || prod.id) : it.product_id;
+        const photo = prod?.photos?.[0];
+        const photoHtml = photo
+          ? `<img src="${escapeHtml(photo)}" alt="" style="width: 32px; height: 32px; object-fit: cover; border-radius: 6px;">`
+          : `<div style="width: 32px; height: 32px; background: #f1f5f9; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 9px;">IMG</div>`;
+
+        return `
+          <tr>
+            <td style="vertical-align: middle;">${photoHtml}</td>
+            <td style="font-weight: 500; font-size: 13px; vertical-align: middle;">${escapeHtml(name)}</td>
+            <td style="font-size: 11px; color: #64748b; vertical-align: middle;">${escapeHtml(sku)}</td>
+            <td style="text-align: right; vertical-align: middle;">${it.quantity}</td>
+            <td style="text-align: right; vertical-align: middle;">${money(it.unit_cost)}</td>
+            <td style="text-align: right; vertical-align: middle;">${it.sale_price != null ? money(it.sale_price) : '—'}</td>
+            <td style="text-align: right; font-weight: 600; vertical-align: middle;">${money(it.total_cost)}</td>
+            ${r.status === 'posted' ? `<td style="text-align: right; font-weight: 600; color: #2563eb; vertical-align: middle;">${it.current_stock ?? '—'} шт</td>` : ''}
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Financials
+    const totalEl = document.getElementById('receiptDetailTotalCost');
+    const paidEl = document.getElementById('receiptDetailPaidAmount');
+    const debtEl = document.getElementById('receiptDetailDebtAmount');
+    if (totalEl) totalEl.textContent = money(r.total_cost || 0);
+    if (paidEl) paidEl.textContent = money(r.paid_amount || 0);
+    if (debtEl) {
+      debtEl.textContent = money(r.debt_amount || 0);
+      debtEl.style.color = (Number(r.debt_amount) || 0) > 0 ? '#dc2626' : '#16a34a';
+    }
+
+    // Movements
+    const movWrap = document.getElementById('receiptDetailMovementsWrap');
+    const movBody = document.getElementById('receiptDetailMovementsBody');
+    if (movWrap && movBody) {
+      if (Array.isArray(r.movements) && r.movements.length > 0) {
+        movWrap.style.display = '';
+        movBody.innerHTML = r.movements.map(m => `
+          <tr>
+            <td style="font-weight: 500;">${escapeHtml(m.product_id)}</td>
+            <td><span class="badge-neutral">${escapeHtml(m.movement_type)}</span></td>
+            <td style="text-align: right; font-weight: 600; color: ${m.change_qty > 0 ? '#16a34a' : '#dc2626'};">${m.change_qty > 0 ? '+' : ''}${m.change_qty} шт</td>
+            <td style="color: #64748b; font-size: 12px;">${formatReceiptDateTime(m.created_at)}</td>
+          </tr>
+        `).join('');
+      } else {
+        movWrap.style.display = 'none';
+      }
+    }
+
+    // Cancel Button visibility
+    const cancelBtn = document.getElementById('receiptDetailCancelBtn');
+    if (cancelBtn) {
+      cancelBtn.style.display = r.status === 'posted' ? '' : 'none';
+    }
+
+    const modal = document.getElementById('receiptDetailModal');
+    if (modal) modal.hidden = false;
+  } catch (err) {
+    alert('Ошибка при отображении накладной: ' + err.message);
+  }
+}
+
+function closeReceiptDetailModal() {
+  const modal = document.getElementById('receiptDetailModal');
+  if (modal) modal.hidden = true;
+  currentDetailReceipt = null;
+}
+
+async function cancelReceiptAction(receiptId) {
+  const receipt = receiptsData.find(r => r.id === receiptId) || currentDetailReceipt;
+  const num = receipt?.receipt_number || receiptId;
+  const isPosted = receipt?.status === 'posted';
+
+  const confirmMsg = isPosted
+    ? `Вы уверены, что хотите отменить проведённую накладную ${num}?\n\nОстатки товаров будут списаны обратно со склада, а задолженность контрагента будет сторнирована.`
+    : `Вы уверены, что хотите отменить черновик накладной ${num}?`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await window.emirateSupabaseApi.cancelAdminReceipt(receiptId);
+    if (!res.ok) {
+      alert('Ошибка при отмене приёмки: ' + (res.error || ''));
+      return;
+    }
+    alert(`Накладная ${num} успешно отменена.`);
+    closeReceiptDetailModal();
+    closeReceiptEditorModal();
+    await loadAdminReceipts();
+  } catch (err) {
+    alert('Сбой при отмене: ' + err.message);
+  }
+}
+
+async function postReceiptDirectAction(receiptId) {
+  const receipt = receiptsData.find(r => r.id === receiptId);
+  const num = receipt?.receipt_number || receiptId;
+  if (!confirm(`Провести приёмку товаров по накладной ${num} на склад?`)) return;
+
+  try {
+    const res = await window.emirateSupabaseApi.postAdminReceipt(receiptId);
+    if (!res.ok) {
+      alert('Ошибка при проведении: ' + (res.error || ''));
+      return;
+    }
+    alert(`Накладная ${num} успешно проведена на склад! Остатки зачислены.`);
+    await loadAdminReceipts();
+  } catch (err) {
+    alert('Сбой при проведении: ' + err.message);
+  }
+}
+
+// --- RECEIVING EVENT LISTENERS ---
+
+document.getElementById('btnNewReceipt')?.addEventListener('click', () => {
+  openReceiptEditor(null);
+});
+
+document.getElementById('btnRefreshReceipts')?.addEventListener('click', () => {
+  void loadAdminReceipts();
+});
+
+document.getElementById('btnGoToReceiptsFromFinance')?.addEventListener('click', () => {
+  switchPage('receipts');
+});
+
+// Filter triggers
+['receiptSearch', 'receiptFilterContractor', 'receiptFilterWarehouse', 'receiptFilterStatus',
+ 'receiptFilterCreatedFrom', 'receiptFilterCreatedTo', 'receiptFilterReceivedFrom', 'receiptFilterReceivedTo'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const eventType = el.tagName === 'SELECT' || el.type === 'date' ? 'change' : 'input';
+  el.addEventListener(eventType, () => {
+    void loadAdminReceipts();
+  });
+});
+
+document.getElementById('receiptFilterResetBtn')?.addEventListener('click', () => {
+  const s = document.getElementById('receiptSearch'); if (s) s.value = '';
+  const c = document.getElementById('receiptFilterContractor'); if (c) c.value = 'all';
+  const w = document.getElementById('receiptFilterWarehouse'); if (w) w.value = 'all';
+  const st = document.getElementById('receiptFilterStatus'); if (st) st.value = 'all';
+  const cf = document.getElementById('receiptFilterCreatedFrom'); if (cf) cf.value = '';
+  const ct = document.getElementById('receiptFilterCreatedTo'); if (ct) ct.value = '';
+  const rf = document.getElementById('receiptFilterReceivedFrom'); if (rf) rf.value = '';
+  const rt = document.getElementById('receiptFilterReceivedTo'); if (rt) rt.value = '';
+  void loadAdminReceipts();
+});
+
+// Table action buttons delegation
+document.getElementById('receiptsTable')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const action = btn.getAttribute('data-action');
+  const receiptId = btn.getAttribute('data-receipt-id');
+  if (!receiptId) return;
+
+  if (action === 'edit-receipt') {
+    openReceiptEditor(receiptId);
+  } else if (action === 'view-receipt') {
+    openReceiptDetails(receiptId);
+  } else if (action === 'post-receipt') {
+    postReceiptDirectAction(receiptId);
+  } else if (action === 'cancel-receipt') {
+    cancelReceiptAction(receiptId);
+  } else if (action === 'print-receipt') {
+    openReceiptDetails(receiptId).then(() => {
+      setTimeout(() => window.print(), 300);
+    });
+  }
+});
+
+// Editor Modal Event Handlers
+document.getElementById('closeReceiptEditorBtn')?.addEventListener('click', closeReceiptEditorModal);
+document.getElementById('closeReceiptEditorBackdrop')?.addEventListener('click', closeReceiptEditorModal);
+document.getElementById('receiptEditorCancelBtn')?.addEventListener('click', closeReceiptEditorModal);
+
+document.getElementById('receiptEditorSaveDraftBtn')?.addEventListener('click', () => {
+  handleReceiptEditorSubmit('draft');
+});
+
+document.getElementById('receiptEditorPostDirectBtn')?.addEventListener('click', () => {
+  handleReceiptEditorSubmit('post');
+});
+
+document.getElementById('receiptProductSearch')?.addEventListener('input', (e) => {
+  handleReceiptProductSearch(e.target.value);
+});
+
+document.getElementById('receiptProductSuggestions')?.addEventListener('click', (e) => {
+  const item = e.target.closest('.receipt-product-suggestion-item');
+  if (!item) return;
+  const pid = item.getAttribute('data-product-id');
+  if (pid) selectProductForReceipt(pid);
+});
+
+// Close suggestions on outside click
+document.addEventListener('click', (e) => {
+  const sBox = document.getElementById('receiptProductSuggestions');
+  const sInput = document.getElementById('receiptProductSearch');
+  if (sBox && !sBox.contains(e.target) && e.target !== sInput) {
+    sBox.hidden = true;
+  }
+});
+
+// Editor items table delegation (quantity, price, remove)
+document.getElementById('receiptEditorItemsBody')?.addEventListener('input', (e) => {
+  const qtyInput = e.target.closest('.receipt-item-qty');
+  if (qtyInput) {
+    const idx = parseInt(qtyInput.getAttribute('data-index'), 10);
+    if (currentEditorItems[idx]) {
+      const q = parseInt(qtyInput.value, 10);
+      currentEditorItems[idx].quantity = isNaN(q) ? 0 : q;
+      currentEditorItems[idx].total_cost = currentEditorItems[idx].quantity * currentEditorItems[idx].unit_cost;
+      const row = qtyInput.closest('tr');
+      const ltEl = row?.querySelector('.receipt-line-total');
+      if (ltEl) ltEl.textContent = money(currentEditorItems[idx].total_cost);
+      updateEditorFinancialSummary();
+    }
+    return;
+  }
+
+  const costInput = e.target.closest('.receipt-item-cost');
+  if (costInput) {
+    const idx = parseInt(costInput.getAttribute('data-index'), 10);
+    if (currentEditorItems[idx]) {
+      const c = Number(costInput.value);
+      currentEditorItems[idx].unit_cost = isNaN(c) ? 0 : c;
+      currentEditorItems[idx].total_cost = currentEditorItems[idx].quantity * currentEditorItems[idx].unit_cost;
+      const row = costInput.closest('tr');
+      const ltEl = row?.querySelector('.receipt-line-total');
+      if (ltEl) ltEl.textContent = money(currentEditorItems[idx].total_cost);
+      updateEditorFinancialSummary();
+    }
+    return;
+  }
+
+  const saleInput = e.target.closest('.receipt-item-sale');
+  if (saleInput) {
+    const idx = parseInt(saleInput.getAttribute('data-index'), 10);
+    if (currentEditorItems[idx]) {
+      const s = saleInput.value !== '' ? Number(saleInput.value) : null;
+      currentEditorItems[idx].sale_price = (s != null && !isNaN(s)) ? s : null;
+    }
+    return;
+  }
+});
+
+document.getElementById('receiptEditorItemsBody')?.addEventListener('click', (e) => {
+  const rmBtn = e.target.closest('.remove-receipt-item-btn');
+  if (!rmBtn) return;
+  const idx = parseInt(rmBtn.getAttribute('data-index'), 10);
+  if (!isNaN(idx) && currentEditorItems[idx]) {
+    currentEditorItems.splice(idx, 1);
+    renderEditorItemsTable();
+    updateEditorFinancialSummary();
+  }
+});
+
+document.getElementById('receiptEditorPaidAmount')?.addEventListener('input', () => {
+  updateEditorFinancialSummary();
+});
+
+// Detail Modal Event Handlers
+document.getElementById('closeReceiptDetailBtn')?.addEventListener('click', closeReceiptDetailModal);
+document.getElementById('closeReceiptDetailBackdrop')?.addEventListener('click', closeReceiptDetailModal);
+document.getElementById('receiptDetailCloseBtn')?.addEventListener('click', closeReceiptDetailModal);
+
+document.getElementById('receiptDetailPrintBtn')?.addEventListener('click', () => {
+  window.print();
+});
+
+document.getElementById('receiptDetailCancelBtn')?.addEventListener('click', () => {
+  if (currentDetailReceipt?.id) {
+    cancelReceiptAction(currentDetailReceipt.id);
+  }
+});
 
 const ADMIN_CATEGORIES_KEY = 'emirate_admin_categories_v1';
 
@@ -3707,6 +4917,7 @@ try {
   resetBannerForm();
   setBannerReadonlyMode();
   resetSupplierForm();
+  void loadSuppliersDataFromSupabase();
   resetAssetUploadState();
 } catch (err) {
   console.error('[admin] init failed', err);
@@ -3820,13 +5031,36 @@ document.getElementById('addSupplierBtn')?.addEventListener('click', function() 
   switchPage('suppliers');
   resetSupplierForm();
   document.getElementById('supplierName')?.focus();
-  showSupplierFeedback('Режим создания поставщика включен.', 'success');
+  showSupplierFeedback('Режим создания контрагента включен.', 'success');
 });
 
 document.getElementById('supplierResetBtn')?.addEventListener('click', function() {
   resetSupplierForm();
   showSupplierFeedback('Форма очищена.', 'success');
 });
+
+// Search & filters
+document.getElementById('supplierSearch')?.addEventListener('input', function(e) {
+  supplierSearchQuery = String(e.target.value || '').trim();
+  renderSuppliers();
+});
+
+document.getElementById('supplierStatusFilter')?.addEventListener('change', function(e) {
+  supplierStatusFilterValue = e.target.value;
+  renderSuppliers();
+});
+
+document.getElementById('supplierDebtFilter')?.addEventListener('change', function(e) {
+  supplierDebtFilterValue = e.target.value;
+  renderSuppliers();
+});
+
+// Import modal triggers
+document.getElementById('openSupplierImportBtn')?.addEventListener('click', openSupplierImportModal);
+document.getElementById('closeSupplierImportBtn')?.addEventListener('click', closeSupplierImportModal);
+document.getElementById('closeSupplierImportBackdrop')?.addEventListener('click', closeSupplierImportModal);
+document.getElementById('supplierImportCancelBtn')?.addEventListener('click', closeSupplierImportModal);
+document.getElementById('supplierImportSubmitBtn')?.addEventListener('click', executeSupplierImport);
 
 document.getElementById('clientsBody')?.addEventListener('click', function(e) {
   const button = e.target.closest('button[data-action]');
@@ -4515,6 +5749,7 @@ function applyProductDraft(draft) {
   document.getElementById('pModel').value = draft.model || '';
   document.getElementById('pBrand').value = draft.brand || '';
   document.getElementById('pStatus').value = draft.status || 'active';
+  if (document.getElementById('pExpress')) document.getElementById('pExpress').value = draft.express || 'no';
   if (document.getElementById('pCondition')) document.getElementById('pCondition').value = draft.condition || 'Есть в наличии';
   document.getElementById('pPriority').value = draft.priority || '300';
   document.getElementById('pDescUz').value = draft.descUz || '';
@@ -5222,6 +6457,7 @@ function openEditorForProduct(id, options) {
   document.getElementById('pModel').value = p.model || '';
   document.getElementById('pBrand').value = p.brand || '';
   document.getElementById('pStatus').value = p.status || 'active';
+  if (document.getElementById('pExpress')) document.getElementById('pExpress').value = p.express || 'no';
   document.getElementById('pCondition').value = p.condition || 'Есть в наличии';
   document.getElementById('pPriority').value = String(Number.isFinite(Number(p.priority)) ? Number(p.priority) : 300);
   document.getElementById('pDescUz').value = p.descUz || '';
@@ -5554,6 +6790,7 @@ function clearEditorForm() {
   setVal('pModel', '');
   setVal('pBrand', '');
   setVal('pStatus', 'active');
+  setVal('pExpress', 'no');
   setVal('pCondition', 'Есть в наличии');
   setVal('pPriority', '300');
   setVal('pDescUz', '');
@@ -5751,7 +6988,7 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
   const status = document.getElementById('pStatus').value;
   const installmentStatus = 'active';
   const promo = 'no';
-  const express = 'no';
+  const express = document.getElementById('pExpress')?.value || 'no';
   const condition = document.getElementById('pCondition')?.value?.trim() || 'Есть в наличии';
   const deliveryArea = '';
   syncAllDescFieldsFromEditors();
