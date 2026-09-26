@@ -1690,7 +1690,50 @@ const EMIRATE_CATALOG_MENU = [
   },
 ];
 
-let catalogMegaActiveId = EMIRATE_CATALOG_MENU[0]?.id || "";
+function getCatalogMenuItems() {
+  const lang = localStorage.getItem("emirate_lang") || "ru";
+  if (window.emirateCategories && typeof window.emirateCategories.getRootCategories === "function") {
+    const roots = window.emirateCategories.getRootCategories().filter((cat) => cat.showInNav !== false && cat.show_in_nav !== false);
+    if (roots && roots.length) {
+      return roots.map((rootCat) => {
+        const rootName = window.emirateCategories.getCategoryDisplayName(rootCat, lang);
+        const groups = (window.emirateCategories.getCategoryChildren(rootCat.id) || []).map((groupCat) => {
+          const groupName = window.emirateCategories.getCategoryDisplayName(groupCat, lang);
+          const leafs = (window.emirateCategories.getCategoryChildren(groupCat.id) || []).map((leafCat) => {
+            const leafName = window.emirateCategories.getCategoryDisplayName(leafCat, lang);
+            return {
+              id: leafCat.id,
+              slug: leafCat.slug,
+              label: leafName,
+              category: leafCat.slug,
+              href: window.emirateCategories.buildCategoryProductsUrl(leafCat)
+            };
+          });
+          return {
+            id: groupCat.id,
+            slug: groupCat.slug,
+            title: groupName,
+            category: groupCat.slug,
+            href: window.emirateCategories.buildCategoryProductsUrl(groupCat),
+            links: leafs
+          };
+        });
+        return {
+          id: rootCat.id,
+          slug: rootCat.slug,
+          label: rootName,
+          category: rootCat.slug,
+          icon: rootCat.icon || "smartphone",
+          href: window.emirateCategories.buildCategoryProductsUrl(rootCat),
+          groups: groups
+        };
+      });
+    }
+  }
+  return EMIRATE_CATALOG_MENU;
+}
+
+let catalogMegaActiveId = "";
 
 function catalogMenuLabel(key, fallback) {
   const translations = window.TRANSLATIONS || {};
@@ -1716,27 +1759,28 @@ function renderCatalogMegaPanel(menuItem) {
     .map((group) => {
       const linksHtml = (group.links || [])
         .map((link) => {
-          const label = catalogMenuLabel(link.labelKey, link.label);
-          const href = emirateCatalogHref(link.category || menuItem.category, link.q);
+          const label = link.label || catalogMenuLabel(link.labelKey, link.label);
+          const href = link.href || emirateCatalogHref(link.slug || link.category || menuItem.category, link.q);
           return (
             '<a class="catalog-mega-link" href="' +
             href +
-            '" data-i18n="' +
-            (link.labelKey || "") +
-            '">' +
+            '"' + (link.labelKey ? ' data-i18n="' + link.labelKey + '"' : '') + '>' +
             label +
             "</a>"
           );
         })
         .join("");
-      const title = catalogMenuLabel(group.titleKey, group.title);
+      const title = group.title || catalogMenuLabel(group.titleKey, group.title);
+      const groupHref = group.href || emirateCatalogHref(group.slug || group.category || menuItem.category);
       return (
         '<div class="catalog-mega-group">' +
-        '<div class="catalog-mega-group-title" data-i18n="' +
-        (group.titleKey || "") +
-        '">' +
+        '<a class="catalog-mega-group-title" href="' +
+        groupHref +
+        '" style="display:block;text-decoration:none;color:inherit;"' +
+        (group.titleKey ? ' data-i18n="' + group.titleKey + '"' : '') +
+        '>' +
         title +
-        "</div>" +
+        "</a>" +
         linksHtml +
         "</div>"
       );
@@ -1755,11 +1799,12 @@ function renderCatalogMegaPanel(menuItem) {
 }
 
 function setCatalogMegaActive(menuId) {
-  const menuItem = EMIRATE_CATALOG_MENU.find((item) => item.id === menuId);
+  const items = getCatalogMenuItems();
+  const menuItem = items.find((item) => item.id === menuId || item.slug === menuId) || items[0];
   if (!menuItem) return;
-  catalogMegaActiveId = menuId;
+  catalogMegaActiveId = menuItem.id;
   document.querySelectorAll(".catalog-mega-sidebar-item").forEach((node) => {
-    const isActive = node.getAttribute("data-menu-id") === menuId;
+    const isActive = node.getAttribute("data-menu-id") === menuItem.id;
     node.classList.toggle("is-active", isActive);
     node.setAttribute("aria-current", isActive ? "true" : "false");
   });
@@ -1770,9 +1815,16 @@ function initCatalogMegaMenu() {
   const sidebar = document.getElementById("catalogMegaSidebar");
   if (!sidebar) return;
 
-  sidebar.innerHTML = EMIRATE_CATALOG_MENU.map((item) => {
-    const label = catalogMenuLabel(item.labelKey, item.label);
-    const icon = CATALOG_MENU_ICONS[item.icon] || "";
+  const items = getCatalogMenuItems();
+  if (!items || !items.length) return;
+
+  if (!catalogMegaActiveId || !items.some((it) => it.id === catalogMegaActiveId)) {
+    catalogMegaActiveId = items[0].id;
+  }
+
+  sidebar.innerHTML = items.map((item) => {
+    const label = item.label || (item.labelKey ? catalogMenuLabel(item.labelKey, item.label) : "");
+    const icon = CATALOG_MENU_ICONS[item.icon] || CATALOG_MENU_ICONS["smartphone"] || "";
     return (
       '<button type="button" class="catalog-mega-sidebar-item' +
       (item.id === catalogMegaActiveId ? " is-active" : "") +
@@ -1784,9 +1836,9 @@ function initCatalogMegaMenu() {
       '<span class="catalog-mega-sidebar-icon">' +
       icon +
       "</span>" +
-      '<span class="catalog-mega-sidebar-label" data-i18n="' +
-      item.labelKey +
-      '">' +
+      '<span class="catalog-mega-sidebar-label"' +
+      (item.labelKey ? ' data-i18n="' + item.labelKey + '"' : '') +
+      '>' +
       label +
       "</span>" +
       '<svg class="catalog-mega-sidebar-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>' +
@@ -1812,6 +1864,18 @@ function initCatalogMegaMenu() {
 window.emirateRenderCatalogMegaMenu = function emirateRenderCatalogMegaMenu() {
   initCatalogMegaMenu();
 };
+
+if (window.emirateCategories?.ensurePublicCategoriesLoaded) {
+  window.emirateCategories.ensurePublicCategoriesLoaded().then(() => {
+    initCatalogMegaMenu();
+    if (typeof fillHeaderNavstrip === "function") fillHeaderNavstrip();
+  }).catch(() => {});
+}
+
+document.addEventListener("emirate:langchange", () => {
+  initCatalogMegaMenu();
+  if (typeof fillHeaderNavstrip === "function") fillHeaderNavstrip();
+});
 
 if (catalogBtn && catalogDropdown) {
   const catalogBackdrop = document.getElementById("catalogDropdownBackdrop");
@@ -1920,13 +1984,12 @@ function defaultHeaderNavItems() {
     }
   }
   return [
-    { href: "catalog.html?category=" + encodeURIComponent("Смартфоны"), label: lang === "uz" ? "Smartfonlar" : "Смартфоны" },
-    { href: "catalog.html?category=" + encodeURIComponent("Ноутбуки"), label: lang === "uz" ? "Noutbuklar" : "Ноутбуки" },
-    { href: "catalog.html?category=" + encodeURIComponent("ТВ и аудио"), label: lang === "uz" ? "TV va audio" : "ТВ и аудио" },
-    { href: "catalog.html?category=" + encodeURIComponent("Бытовая техника"), label: lang === "uz" ? "Maishiy texnika" : "Бытовая техника" },
-    { href: "catalog.html?category=" + encodeURIComponent("Аксессуары"), label: lang === "uz" ? "Aksessuarlar" : "Аксессуары" },
-    { href: "catalog.html?category=" + encodeURIComponent("Товары для дома"), label: lang === "uz" ? "Uy uchun tovarlar" : "Товары для дома" },
-    { href: "catalog.html?category=" + encodeURIComponent("Красота и здоровье"), label: lang === "uz" ? "Go'zallik va salomatlik" : "Красота и здоровье" }
+    { href: "catalog.html?category=elektronika", label: lang === "uz" ? "Elektronika" : "Электроника" },
+    { href: "catalog.html?category=kompyutery-i-orgtekhnika", label: lang === "uz" ? "Kompyuterlar va orgtexnika" : "Компьютеры и оргтехника" },
+    { href: "catalog.html?category=bytovaya-tekhnika", label: lang === "uz" ? "Maishiy texnika" : "Бытовая техника" },
+    { href: "catalog.html?category=aksessuary", label: lang === "uz" ? "Aksessuarlar" : "Аксессуары" },
+    { href: "catalog.html?category=tovary-dlya-doma", label: lang === "uz" ? "Uy uchun tovarlar" : "Товары для дома" },
+    { href: "catalog.html?category=krasota-i-zdorove", label: lang === "uz" ? "Go'zallik va salomatlik" : "Красота и здоровье" }
   ];
 }
 
@@ -1957,11 +2020,21 @@ function fillHeaderNavstrip() {
       const catNameRu = String(item.cat?.nameRu || "").trim().toLowerCase();
       const catNameUz = String(item.cat?.nameUz || "").trim().toLowerCase();
       const catSlug = String(item.cat?.slug || "").trim().toLowerCase();
-      const isActive = currentCategoryParam && (
-        currentCategoryParam === catNameRu ||
-        currentCategoryParam === catNameUz ||
-        currentCategoryParam === catSlug
-      );
+      let isActive = false;
+      if (currentCategoryParam) {
+        if (
+          currentCategoryParam === catNameRu ||
+          currentCategoryParam === catNameUz ||
+          currentCategoryParam === catSlug
+        ) {
+          isActive = true;
+        } else if (window.emirateCategories?.getCategoryPath) {
+          const path = window.emirateCategories.getCategoryPath(currentCategoryParam);
+          if (path && path.length && path[0] && (path[0].id === item.id || path[0].slug === item.cat?.slug)) {
+            isActive = true;
+          }
+        }
+      }
       const activeClass = isActive ? " is-active" : "";
       const i18n = item.key ? ' data-i18n="' + item.key + '"' : "";
       const dataId = item.id ? ' data-category-id="' + String(item.id).replace(/"/g, '&quot;') + '"' : "";

@@ -59,6 +59,53 @@ function refreshCatalogLinkedCategories() {
   );
 }
 refreshCatalogLinkedCategories();
+
+const categorySubtreeCache = {};
+let activeCategoryObj = null;
+
+async function fetchAndCacheCategorySubtree(slugOrId) {
+  if (!slugOrId) return [];
+  const key = String(slugOrId).trim().toLowerCase();
+  if (categorySubtreeCache[key] && categorySubtreeCache[key].length) {
+    return categorySubtreeCache[key];
+  }
+  let ids = [];
+  try {
+    if (window.emirateSupabaseApi?.fetchCategorySubtreeIds) {
+      ids = await window.emirateSupabaseApi.fetchCategorySubtreeIds(slugOrId);
+    }
+  } catch (err) {
+    console.warn("[Catalog] fetchCategorySubtreeIds error", err);
+  }
+  if (!ids || !ids.length) {
+    ids = getSubtreeIdsForCategorySync(slugOrId);
+  }
+  categorySubtreeCache[key] = ids;
+  return ids;
+}
+
+function getSubtreeIdsForCategorySync(slugOrName) {
+  if (!slugOrName) return [];
+  const key = String(slugOrName).trim().toLowerCase();
+  if (categorySubtreeCache[key] && categorySubtreeCache[key].length) {
+    return categorySubtreeCache[key];
+  }
+  let cat = null;
+  if (window.emirateCategories?.getCategoryBySlugOrId) {
+    cat = window.emirateCategories.getCategoryBySlugOrId(slugOrName);
+  }
+  if (!cat && window.emirateCategories?.getCategoryByName) {
+    cat = window.emirateCategories.getCategoryByName(slugOrName);
+  }
+  if (!cat) return [];
+  if (window.emirateCategories?.getLocalCategorySubtreeIds) {
+    const localIds = window.emirateCategories.getLocalCategorySubtreeIds(cat.id);
+    categorySubtreeCache[key] = localIds;
+    return localIds;
+  }
+  return [cat.id];
+}
+
 let brandFilterBrand = window.emirateBrands?.resolveBrandFilterParam?.(brandFilterRaw) || null;
 let brandFilter = brandFilterBrand?.nameRu || brandFilterRaw;
 
@@ -270,8 +317,11 @@ function renderProduct(product, options = {}) {
   const matchBadge =
     matchPct != null
       ? `<span class="badge-match" title="${typeof window.emirateT === "function" ? window.emirateT("photo.match") : "Совпадение"}">${matchPct}%</span>`
-      : "";
-  const badgeHTML = [matchBadge, discountText ? `<span class="badge-sale">${discountText}</span>` : ""]
+  const isExpress = product.status === "active" && product.express === "yes";
+  const expressBadge = isExpress
+    ? `<span class="badge-delivery-24" title="${typeof window.emirateT === "function" ? window.emirateT("delivery.expressBadge") : "Доставка за 24 часа по Ташкенту"}">⚡ 24ч</span>`
+    : "";
+  const badgeHTML = [matchBadge, discountText ? `<span class="badge-sale">${discountText}</span>` : "", expressBadge]
     .filter(Boolean)
     .join("");
 
@@ -379,8 +429,10 @@ function syncCatalogPageLabels() {
     return;
   }
   if (categoryFilter && pageTitleEl) {
+    const matched = window.emirateCategories?.getCategoryBySlugOrId?.(categoryFilter) || window.emirateCategories?.getCategoryByName?.(categoryFilter);
+    const title = matched ? (window.emirateCategories?.getCategoryDisplayName?.(matched, window.emirateLang?.() || "ru") || matched.nameRu) : categoryFilter;
     pageTitleEl.removeAttribute("data-i18n");
-    pageTitleEl.textContent = categoryFilter;
+    pageTitleEl.textContent = title;
   }
 }
 
@@ -565,18 +617,19 @@ function applyFiltersAndSort() {
             const activeFilterCats = [...categories];
             if (!activeFilterCats.length && categoryFilter) {
               activeFilterCats.push(categoryFilter);
-              if (window.emirateCategories?.getCategoryByName) {
-                const matched = window.emirateCategories.getCategoryByName(categoryFilter);
-                if (matched) {
-                  if (matched.nameRu) activeFilterCats.push(matched.nameRu);
-                  if (matched.nameUz) activeFilterCats.push(matched.nameUz);
-                }
-              }
             }
             if (activeFilterCats.length) {
-              const pCat = String(p.category || "").trim().toLowerCase();
-              const isMatch = activeFilterCats.some((c) => String(c).trim().toLowerCase() === pCat);
-              if (!isMatch) return false;
+              const pCatId = p.categoryId || p.category_id;
+              if (!pCatId) return false;
+              let matchFound = false;
+              for (const filterVal of activeFilterCats) {
+                const subtree = getSubtreeIdsForCategorySync(filterVal);
+                if (subtree.includes(pCatId)) {
+                  matchFound = true;
+                  break;
+                }
+              }
+              if (!matchFound) return false;
             }
           }
           const selectedBrands = brands.length ? brands : (brandFilter ? [brandFilterBrand || brandFilter] : []);
@@ -898,6 +951,104 @@ function updateCartItemCard(productId) {
   renderViewedProducts();
 }
 
+function updateCategoryBreadcrumbsAndTitle(category) {
+  const lang = window.emirateLang?.() || "ru";
+  const titleEl = document.getElementById("catalogDefaultTitle") || pageTitleEl;
+  const breadcrumbsEl = document.getElementById("catalogBreadcrumbs");
+
+  if (!category) {
+    if (titleEl && !textSearchQuery && !isPhotoSearchMode && !isCartMode && !isFavoritesMode && !brandFilter) {
+      titleEl.textContent = lang === "uz" ? "Tovarlar katalogi" : "Каталог товаров";
+    }
+    if (breadcrumbsEl) {
+      breadcrumbsEl.innerHTML =
+        '<a href="index.html">' +
+        '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>' +
+        ' <span data-i18n="catalog.breadHome">' + (lang === "uz" ? "Bosh sahifa" : "Главная") + '</span>' +
+        '</a>' +
+        '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>' +
+        '<span data-i18n="catalog.breadCatalog">' + (lang === "uz" ? "Katalog" : "Каталог") + '</span>';
+    }
+    return;
+  }
+
+  const catName = window.emirateCategories?.getCategoryDisplayName?.(category, lang) || category.nameRu || category.slug;
+  if (titleEl) {
+    titleEl.removeAttribute("data-i18n");
+    titleEl.textContent = catName;
+  }
+  if (pageTitleEl && pageTitleEl !== titleEl) {
+    pageTitleEl.removeAttribute("data-i18n");
+    pageTitleEl.textContent = catName;
+  }
+
+  if (breadcrumbsEl && window.emirateCategories?.getCategoryPath) {
+    const path = window.emirateCategories.getCategoryPath(category);
+    let html =
+      '<a href="index.html">' +
+      '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>' +
+      ' <span data-i18n="catalog.breadHome">' + (lang === "uz" ? "Bosh sahifa" : "Главная") + '</span>' +
+      '</a>' +
+      '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>' +
+      '<a href="catalog.html" data-i18n="catalog.breadCatalog">' + (lang === "uz" ? "Katalog" : "Каталог") + '</a>';
+
+    for (let i = 0; i < path.length; i++) {
+      const step = path[i];
+      const stepName = window.emirateCategories.getCategoryDisplayName?.(step, lang) || step.nameRu;
+      html += '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>';
+      if (i === path.length - 1) {
+        html += '<span>' + String(stepName).replace(/</g, "&lt;") + '</span>';
+      } else {
+        html += '<a href="' + window.emirateCategories.buildCategoryProductsUrl(step) + '">' + String(stepName).replace(/</g, "&lt;") + '</a>';
+      }
+    }
+    breadcrumbsEl.innerHTML = html;
+  }
+}
+
+function renderCategorySidebarFilters() {
+  const container = document.getElementById("categoryFiltersContainer");
+  if (!container) return;
+  const lang = window.emirateLang?.() || "ru";
+  const roots = window.emirateCategories?.getRootCategories?.() || [];
+  if (!roots.length) return;
+
+  const currentChecked = getCheckedValues(".filter-category");
+
+  container.innerHTML = roots.map((root) => {
+    const title = window.emirateCategories.getCategoryDisplayName?.(root, lang) || root.nameRu;
+    const slug = root.slug;
+    const isChecked = currentChecked.includes(slug) || (
+      categoryFilter && (
+        categoryFilter.toLowerCase() === slug.toLowerCase() ||
+        (activeCategoryObj && activeCategoryObj.slug === slug)
+      )
+    );
+    return (
+      '<label class="filter-label">' +
+      '<input type="checkbox" class="filter-category" value="' + slug + '"' + (isChecked ? ' checked' : '') + '> ' +
+      '<span>' + String(title).replace(/</g, "&lt;") + '</span>' +
+      '</label>'
+    );
+  }).join("");
+
+  container.querySelectorAll(".filter-category").forEach((item) => {
+    item.addEventListener("change", async () => {
+      const checkedVals = getCheckedValues(".filter-category");
+      if (checkedVals.length) {
+        const firstCat = window.emirateCategories?.getCategoryBySlugOrId?.(checkedVals[0]) ||
+                         window.emirateCategories?.getCategoryByName?.(checkedVals[0]);
+        activeCategoryObj = firstCat;
+        updateCategoryBreadcrumbsAndTitle(firstCat);
+      } else if (!categoryFilter) {
+        activeCategoryObj = null;
+        updateCategoryBreadcrumbsAndTitle(null);
+      }
+      applyFiltersAndSort();
+    });
+  });
+}
+
 function applyCategoryFilterFromUrl() {
   if (catalogLinkedCategoryNames.length) {
     document.querySelectorAll(".filter-category").forEach((item) => {
@@ -905,28 +1056,33 @@ function applyCategoryFilterFromUrl() {
     });
     return;
   }
-  if (!categoryFilter || brandFilter) return;
-  const filterKey = categoryFilter.toLowerCase();
+  if (!categoryFilter || brandFilter) {
+    updateCategoryBreadcrumbsAndTitle(null);
+    return;
+  }
   let matchedCat = null;
-  if (window.emirateCategories?.getCategoryByName) {
+  if (window.emirateCategories?.getCategoryBySlugOrId) {
+    matchedCat = window.emirateCategories.getCategoryBySlugOrId(categoryFilter);
+  }
+  if (!matchedCat && window.emirateCategories?.getCategoryByName) {
     matchedCat = window.emirateCategories.getCategoryByName(categoryFilter);
   }
-  const matchNames = [filterKey];
-  if (matchedCat) {
-    if (matchedCat.nameRu) matchNames.push(matchedCat.nameRu.toLowerCase());
-    if (matchedCat.nameUz) matchNames.push(matchedCat.nameUz.toLowerCase());
-  }
+  activeCategoryObj = matchedCat;
+
+  const rootSlug = (matchedCat && window.emirateCategories?.getCategoryPath)
+    ? (window.emirateCategories.getCategoryPath(matchedCat)[0]?.slug || "")
+    : "";
 
   document.querySelectorAll(".filter-category").forEach((item) => {
-    item.checked = matchNames.includes(String(item.value || "").trim().toLowerCase());
+    const val = String(item.value || "").trim().toLowerCase();
+    item.checked = (
+      val === categoryFilter.toLowerCase() ||
+      (matchedCat && val === matchedCat.slug.toLowerCase()) ||
+      (rootSlug && val === rootSlug.toLowerCase())
+    );
   });
-  if (pageTitleEl) {
-    let title = categoryFilter;
-    if (matchedCat && window.emirateCategories?.getCategoryDisplayName) {
-      title = window.emirateCategories.getCategoryDisplayName(matchedCat, window.emirateLang?.() || "ru");
-    }
-    pageTitleEl.textContent = title;
-  }
+
+  updateCategoryBreadcrumbsAndTitle(matchedCat);
 }
 
 function renderCatalogBrandHero() {
@@ -1047,6 +1203,8 @@ function resetFilters() {
   if (minPriceEl) minPriceEl.value = "";
   if (maxPriceEl) maxPriceEl.value = "";
   if (sortSelectEl) sortSelectEl.value = "popular";
+  activeCategoryObj = null;
+  updateCategoryBreadcrumbsAndTitle(null);
   applyFiltersAndSort();
 }
 
@@ -1117,14 +1275,22 @@ if (isPhotoSearchMode) {
 } else {
   syncCatalogSeoMeta();
   void (async () => {
+    if (window.emirateCategories?.ensurePublicCategoriesLoaded) {
+      await window.emirateCategories.ensurePublicCategoriesLoaded();
+    }
+    if (categoryFilter) {
+      await fetchAndCacheCategorySubtree(categoryFilter);
+    }
     await initCatalogBrands();
     renderBrandFilters();
+    renderCategorySidebarFilters();
     applyCategoryFilterFromUrl();
     applyBrandFilterFromUrl();
     if (window.emirateSupabaseApi?.isConfigured?.()) {
       try {
         await refreshCatalogFromRemote();
         renderBrandFilters();
+        renderCategorySidebarFilters();
         applyCategoryFilterFromUrl();
         applyBrandFilterFromUrl();
         applyFiltersAndSort();
@@ -1137,6 +1303,12 @@ if (isPhotoSearchMode) {
     }
   })();
 }
+
+document.addEventListener("emirate:langchange", () => {
+  renderCategorySidebarFilters();
+  applyCategoryFilterFromUrl();
+  applyFiltersAndSort();
+});
 
 // Events
 applyFiltersBtn?.addEventListener("click", applyFiltersAndSort);

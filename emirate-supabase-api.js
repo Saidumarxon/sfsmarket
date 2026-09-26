@@ -201,7 +201,9 @@
       },
       installmentStatus: item.installmentStatus === "inactive" ? "inactive" : "active",
       express: item.express === "yes" ? "yes" : "no",
-      priority: Number(item.priority) || 300
+      priority: Number(item.priority) || 300,
+      categoryId: item.categoryId || item.category_id || null,
+      category_id: item.categoryId || item.category_id || null
     };
   }
 
@@ -221,6 +223,7 @@
     if (row.status != null) p.status = row.status;
     if (row.priority != null) p.priority = row.priority;
     if (row.title && !p.nameRu && !p.nameUz) p.nameRu = row.title;
+    p.categoryId = row.category_id || null;
     return p;
   }
 
@@ -235,7 +238,7 @@
     if (!sb) return { error: { message: "no_client" }, data: null };
     var query = sb
       .from("products")
-      .select("admin_id,title,status,priority,payload")
+      .select("admin_id,title,status,priority,payload,category_id")
       .order("priority", { ascending: true });
     if (activeOnly) query = query.eq("status", "active");
     return query;
@@ -361,7 +364,21 @@
       var title = String(payload.nameRu || payload.nameUz || payload.title || "Товар").trim() || "Товар";
       var status = payload.status === "inactive" ? "inactive" : "active";
       var priority = Number(payload.priority) || 300;
-      return { admin_id: adminId, title: title, status: status, priority: priority, payload: payload };
+      var categoryId = item.categoryId !== undefined ? (item.categoryId || null) : (item.category_id !== undefined ? (item.category_id || null) : null);
+
+      // Strict single source of truth:
+      // Strip any category_id / categoryId from the JSON payload blob
+      delete payload.categoryId;
+      delete payload.category_id;
+
+      return {
+        admin_id: adminId,
+        title: title,
+        status: status,
+        priority: priority,
+        payload: payload,
+        category_id: categoryId || null
+      };
     }).filter(Boolean);
     if (!rows.length) return { ok: true, rows: 0 };
     var res = await sb.from("products").upsert(rows, { onConflict: "admin_id" });
@@ -1179,6 +1196,130 @@
     return { ok: true, data: res.data };
   }
 
+  async function fetchAdminCategories() {
+    var sb = client();
+    if (!sb) return [];
+    var res = await sb
+      .from("categories")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .order("name_ru", { ascending: true });
+    if (res.error) {
+      console.warn("[Supabase] fetchAdminCategories", res.error);
+      return [];
+    }
+    return res.data || [];
+  }
+
+  async function createAdminCategory(categoryData) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var row = {
+      id: String(categoryData.id || "").trim(),
+      parent_id: categoryData.parent_id !== undefined ? (categoryData.parent_id || null) : (categoryData.parentId || null),
+      name_ru: String(categoryData.name_ru || categoryData.nameRu || "").trim(),
+      name_uz: String(categoryData.name_uz || categoryData.nameUz || "").trim(),
+      slug: String(categoryData.slug || "").trim(),
+      sort_order: Number.isFinite(Number(categoryData.sort_order)) ? Number(categoryData.sort_order) : (Number.isFinite(Number(categoryData.sortOrder)) ? Number(categoryData.sortOrder) : 100),
+      is_active: categoryData.is_active !== false && categoryData.isActive !== false,
+      show_in_nav: Boolean(categoryData.show_in_nav !== undefined ? categoryData.show_in_nav : categoryData.showInNav),
+      icon: String(categoryData.icon || "").trim(),
+      default_specs: Array.isArray(categoryData.default_specs) ? categoryData.default_specs : (Array.isArray(categoryData.defaultSpecs) ? categoryData.defaultSpecs : [])
+    };
+    var res = await sb.from("categories").insert([row]).select();
+    if (res.error) {
+      console.warn("[Supabase] createAdminCategory", res.error);
+      return { ok: false, error: res.error.message || String(res.error), code: res.error.code };
+    }
+    return { ok: true, data: res.data && res.data[0] };
+  }
+
+  async function updateAdminCategory(id, categoryData) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var updates = { updated_at: new Date().toISOString() };
+    if (categoryData.name_ru !== undefined || categoryData.nameRu !== undefined) {
+      updates.name_ru = String(categoryData.name_ru || categoryData.nameRu || "").trim();
+    }
+    if (categoryData.name_uz !== undefined || categoryData.nameUz !== undefined) {
+      updates.name_uz = String(categoryData.name_uz || categoryData.nameUz || "").trim();
+    }
+    if (categoryData.parent_id !== undefined || categoryData.parentId !== undefined) {
+      updates.parent_id = categoryData.parent_id !== undefined ? (categoryData.parent_id || null) : (categoryData.parentId || null);
+    }
+    if (categoryData.slug !== undefined) {
+      updates.slug = String(categoryData.slug || "").trim();
+    }
+    if (categoryData.sort_order !== undefined || categoryData.sortOrder !== undefined) {
+      updates.sort_order = Number.isFinite(Number(categoryData.sort_order)) ? Number(categoryData.sort_order) : Number(categoryData.sortOrder);
+    }
+    if (categoryData.is_active !== undefined || categoryData.isActive !== undefined) {
+      updates.is_active = categoryData.is_active !== undefined ? Boolean(categoryData.is_active) : Boolean(categoryData.isActive);
+    }
+    if (categoryData.show_in_nav !== undefined || categoryData.showInNav !== undefined) {
+      updates.show_in_nav = categoryData.show_in_nav !== undefined ? Boolean(categoryData.show_in_nav) : Boolean(categoryData.showInNav);
+    }
+    if (categoryData.icon !== undefined) {
+      updates.icon = String(categoryData.icon || "").trim();
+    }
+    if (categoryData.default_specs !== undefined || categoryData.defaultSpecs !== undefined) {
+      updates.default_specs = Array.isArray(categoryData.default_specs) ? categoryData.default_specs : (Array.isArray(categoryData.defaultSpecs) ? categoryData.defaultSpecs : []);
+    }
+    var res = await sb.from("categories").update(updates).eq("id", id).select();
+    if (res.error) {
+      console.warn("[Supabase] updateAdminCategory", res.error);
+      return { ok: false, error: res.error.message || String(res.error), code: res.error.code };
+    }
+    return { ok: true, data: res.data && res.data[0] };
+  }
+
+  async function deleteAdminCategory(id) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var res = await sb.from("categories").delete().eq("id", id);
+    if (res.error) {
+      console.warn("[Supabase] deleteAdminCategory", res.error);
+      return { ok: false, error: res.error.message || String(res.error), code: res.error.code };
+    }
+    return { ok: true };
+  }
+
+  async function fetchPublicCategories() {
+    var sb = client();
+    if (!sb) return [];
+    var res = await sb
+      .from("categories")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("name_ru", { ascending: true });
+    if (res.error) {
+      console.warn("[Supabase] fetchPublicCategories", res.error);
+      return [];
+    }
+    return res.data || [];
+  }
+
+  async function fetchCategorySubtreeIds(slugOrId) {
+    var sb = client();
+    if (!sb || !slugOrId) return [];
+    var val = String(slugOrId).trim();
+    var res = await sb.rpc("get_category_subtree_ids", { p_category_slug_or_id: val });
+    if (res.error) {
+      console.warn("[Supabase] fetchCategorySubtreeIds", res.error);
+      return [];
+    }
+    return (res.data || []).map(function (row) {
+      return (row && typeof row === "object" && row.category_id) ? row.category_id : row;
+    });
+  }
+
   window.emirateSupabaseApi = {
     isConfigured: isConfigured,
     client: client,
@@ -1223,6 +1364,12 @@
     createAdminReceiptDraft: createAdminReceiptDraft,
     updateAdminReceiptDraft: updateAdminReceiptDraft,
     postAdminReceipt: postAdminReceipt,
-    cancelAdminReceipt: cancelAdminReceipt
+    cancelAdminReceipt: cancelAdminReceipt,
+    fetchAdminCategories: fetchAdminCategories,
+    createAdminCategory: createAdminCategory,
+    updateAdminCategory: updateAdminCategory,
+    deleteAdminCategory: deleteAdminCategory,
+    fetchPublicCategories: fetchPublicCategories,
+    fetchCategorySubtreeIds: fetchCategorySubtreeIds
   };
 })();

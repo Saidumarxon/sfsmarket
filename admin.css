@@ -1175,6 +1175,125 @@ body {
   line-height: 1.45;
 }
 
+/* Phase 5C: Category Recommendation Card */
+.category-suggest-card {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  display: grid;
+  gap: 10px;
+}
+.category-suggest-card[hidden] {
+  display: none !important;
+}
+.category-suggest-card.confidence-high {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+.category-suggest-card.confidence-medium {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+.category-suggest-card.confidence-low {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+.category-suggest-head {
+  display: grid;
+  gap: 6px;
+}
+.category-suggest-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.category-suggest-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #3b82f6;
+  color: #fff;
+}
+.category-suggest-card.confidence-high .category-suggest-badge {
+  background: #16a34a;
+}
+.category-suggest-card.confidence-low .category-suggest-badge {
+  background: #d97706;
+}
+.category-suggest-confidence {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  color: #475569;
+}
+.category-suggest-path {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.category-suggest-why {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+.category-suggest-reasons {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #334155;
+  display: grid;
+  gap: 3px;
+}
+.category-suggest-empty {
+  font-size: 13px;
+  color: #64748b;
+  font-style: italic;
+  padding: 4px 0;
+}
+.category-suggest-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.btn-suggest-accept {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 0;
+  background: #16a34a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.btn-suggest-accept:hover {
+  background: #15803d;
+}
+.btn-suggest-manual {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.btn-suggest-manual:hover {
+  background: #f8fafc;
+}
+
 @media (max-width: 860px) {
   .category-stack-layout {
     grid-template-columns: 1fr;

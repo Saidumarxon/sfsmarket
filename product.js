@@ -667,6 +667,120 @@ function renderProductFacts(product, lang, skuValue) {
   }
 }
 
+function renderProductDelivery(product, lang) {
+  const deliveryCardEl = document.getElementById("productDeliveryCard");
+  const isExpress = product.status === "active" && product.express === "yes";
+
+  if (deliveryCardEl) {
+    if (isExpress) {
+      deliveryCardEl.innerHTML = `
+        <div class="product-delivery-row">
+          <span class="product-delivery-icon is-express">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </span>
+          <div>
+            <div class="product-delivery-title">${lang === "uz" ? "Toshkent bo'ylab 24 soat ichida yetkazib berish" : "Доставка за 24 часа по Ташкенту"}</div>
+            <div class="product-delivery-hint">${lang === "uz" ? "Soat 17:00 gacha buyurtma berilganda. O'zbekiston viloyatlari bo'yicha: 2–5 ish kuni." : "При заказе до 17:00 в г. Ташкент. По регионам Узбекистана: 2–5 рабочих дней."}</div>
+          </div>
+        </div>
+        <div class="product-delivery-row">
+          <span class="product-delivery-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </span>
+          <div>
+            <div class="product-delivery-title">${lang === "uz" ? "Olib ketish: Mustaqillik ko'ch., 1" : "Самовывоз: ул. Мустакиллик, 1"}</div>
+            <div class="product-delivery-hint">${lang === "uz" ? "Bepul, tayyor bo'lganda olib ketish mumkin" : "Бесплатно, можно забрать после готовности"}</div>
+          </div>
+        </div>
+      `;
+    } else {
+      deliveryCardEl.innerHTML = `
+        <div class="product-delivery-row">
+          <span class="product-delivery-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="1" y="3" width="15" height="13"/>
+              <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+              <circle cx="5.5" cy="18.5" r="2.5"/>
+              <circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+          </span>
+          <div>
+            <div class="product-delivery-title">${lang === "uz" ? "O'zbekiston bo'ylab yetkazib berish: 2–5 ish kuni" : "Доставка по Узбекистану: 2–5 рабочих дней"}</div>
+            <div class="product-delivery-hint">${lang === "uz" ? "Kuryer orqali eshikkacha" : "Курьером до двери"}</div>
+          </div>
+        </div>
+        <div class="product-delivery-row">
+          <span class="product-delivery-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </span>
+          <div>
+            <div class="product-delivery-title">${lang === "uz" ? "Olib ketish: Mustaqillik ko'ch., 1" : "Самовывоз: ул. Мустакиллик, 1"}</div>
+            <div class="product-delivery-hint">${lang === "uz" ? "Bepul, tayyor bo'lganda olib ketish mumkin" : "Бесплатно, можно забрать после готовности"}</div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // Update gallery badge
+  const galleryBadgesEl = document.querySelector(".product-gallery-badges");
+  if (galleryBadgesEl) {
+    let expressBadge = galleryBadgesEl.querySelector(".badge-delivery-24");
+    if (isExpress) {
+      if (!expressBadge) {
+        expressBadge = document.createElement("span");
+        expressBadge.className = "badge-delivery-24";
+        expressBadge.textContent = "⚡ 24ч";
+        galleryBadgesEl.appendChild(expressBadge);
+      }
+    } else if (expressBadge) {
+      expressBadge.remove();
+    }
+  }
+}
+
+function renderProductBreadcrumbs(product, lang, displayTitle) {
+  const breadcrumbsNav = document.querySelector(".product-page .breadcrumbs") || document.querySelector(".breadcrumbs");
+  if (!breadcrumbsNav) return;
+
+  const homeText = lang === "uz" ? "Bosh sahifa" : "Главная";
+  const catalogText = lang === "uz" ? "Katalog" : "Каталог";
+
+  const homeSvg = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>';
+  const chevronSvg = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>';
+
+  let html =
+    '<a href="index.html">' +
+    homeSvg +
+    ' <span data-i18n="catalog.breadHome">' + homeText + '</span>' +
+    '</a>' +
+    chevronSvg +
+    '<a href="catalog.html" data-i18n="catalog.breadCatalog">' + catalogText + '</a>';
+
+  const catId = product?.categoryId || product?.category_id;
+  if (catId && window.emirateCategories?.getCategoryPath) {
+    const path = window.emirateCategories.getCategoryPath(catId);
+    if (Array.isArray(path) && path.length) {
+      path.forEach((step) => {
+        const stepName = window.emirateCategories.getCategoryDisplayName?.(step, lang) || step.nameRu;
+        const href = window.emirateCategories.buildCategoryProductsUrl?.(step) || ("catalog.html?category=" + encodeURIComponent(step.slug || step.id));
+        html += chevronSvg + '<a href="' + href + '">' + String(stepName).replace(/</g, "&lt;") + '</a>';
+      });
+    }
+  }
+
+  html += chevronSvg + '<span>' + String(displayTitle).replace(/</g, "&lt;") + '</span>';
+  breadcrumbsNav.innerHTML = html;
+}
+
 function hydratePageProduct(product) {
   const title = product.title || "Товар";
   const displayTitle = window.emirateProductDisplayTitle?.(product) || title;
@@ -698,12 +812,13 @@ function hydratePageProduct(product) {
   if (product.memoryMeta) currentProduct.memoryMeta = product.memoryMeta;
 
   if (productTitleEl) productTitleEl.textContent = displayTitle;
-  if (breadcrumbProductEl) breadcrumbProductEl.textContent = displayTitle;
+  renderProductBreadcrumbs(product, lang, displayTitle);
   if (currentPriceEl) currentPriceEl.textContent = `${formatMoney(price)} сум`;
   if (oldPriceEl) oldPriceEl.textContent = oldPrice > price ? `${formatMoney(oldPrice)} сум` : "";
   if (skuChipEl) skuChipEl.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> ${sku}`;
   renderProductFacts(product, lang, sku);
   renderProductReviews(product, lang);
+  renderProductDelivery(product, lang);
 
   window.emirateProductSeo?.(product);
 
@@ -811,10 +926,15 @@ async function loadSimilarProducts(product) {
   window.emirateSyncFavoritesUI?.(similarGridEl);
 
   if (similarCategoryLinkEl) {
-    const category = String(product.category || "").trim();
-    if (category) {
-      similarCategoryLinkEl.href = "catalog.html?category=" + encodeURIComponent(category);
-      similarCategoryLinkEl.hidden = false;
+    const catId = product?.categoryId || product?.category_id;
+    if (catId && window.emirateCategories?.getCategoryById) {
+      const cat = window.emirateCategories.getCategoryById(catId);
+      if (cat) {
+        similarCategoryLinkEl.href = window.emirateCategories.buildCategoryProductsUrl(cat);
+        similarCategoryLinkEl.hidden = false;
+      } else {
+        similarCategoryLinkEl.href = "catalog.html";
+      }
     } else {
       similarCategoryLinkEl.href = "catalog.html";
     }
@@ -907,6 +1027,12 @@ hydratePageProduct(currentProduct);
 window.emirateAddViewedProduct?.(currentProduct);
 
 void (async () => {
+  if (window.emirateCategories?.ensurePublicCategoriesLoaded) {
+    try {
+      await window.emirateCategories.ensurePublicCategoriesLoaded();
+      hydratePageProduct(currentProduct);
+    } catch (_) {}
+  }
   const api = window.emirateSupabaseApi;
   if (!api || !api.isConfigured()) return;
   const q = new URLSearchParams(window.location.search).get("product") || "";
