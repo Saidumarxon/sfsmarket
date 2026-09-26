@@ -456,6 +456,29 @@ async function updateOrderStatus(orderId, status) {
   return res.ok;
 }
 
+function resolveCanonicalProductId(item) {
+  if (!item || typeof item !== "object") return "";
+  var title = String(item.title || item.name || "").trim();
+
+  var adminId = String(item.admin_id || "").trim();
+  if (adminId && adminId !== title) return adminId;
+  if (adminId && !title) return adminId;
+
+  var prodId = String(item.product_id || "").trim();
+  if (prodId && prodId !== title) return prodId;
+  if (prodId && !title) return prodId;
+
+  var sku = String(item.sku || "").trim();
+  if (sku && sku !== title) return sku;
+  if (sku && !title) return sku;
+
+  var rawId = String(item.id != null ? item.id : "").trim();
+  if (rawId && rawId !== title) return rawId;
+  if (rawId && !title) return rawId;
+
+  return "";
+}
+
 function sanitizeOrderPayload(input) {
   if (!input || typeof input !== "object") return null;
   const phone = String(input.phone || "").trim();
@@ -478,8 +501,14 @@ function sanitizeOrderPayload(input) {
     delivery_method: String(input.delivery_method || input.delivery || "quick_buy").trim(),
     payment_method: String(input.payment_method || input.payment || "callback").trim(),
     items: items.slice(0, 50).map(function (item) {
+      var prodId = resolveCanonicalProductId(item);
+      var rawSku = String(item.sku || "").trim();
+      var title = String(item.title || item.name || "Товар").trim();
+      var sku = (rawSku && rawSku !== title) ? rawSku : prodId;
       return {
-        title: String(item.title || item.name || "Товар").trim(),
+        product_id: prodId,
+        sku: sku,
+        title: title,
         brand: String(item.brand || "").trim(),
         category: String(item.category || "").trim(),
         price: Number(item.price) || 0,
@@ -1114,4 +1143,5 @@ module.exports = {
   validateAndGetPromoViaService,
   redeemPromoViaService,
   sanitizeOrderPayload,
+  resolveCanonicalProductId,
 };

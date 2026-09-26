@@ -131,7 +131,16 @@ checkoutFormPageEl?.addEventListener("submit", async (event) => {
     delivery_method: deliveryMethod,
     delivery_estimate: deliveryEstimate,
     payment_method: String(fd.get("payment") || "").trim(),
-    items,
+    items: items.map((item) => {
+      const canonicalId = (window.emirateResolveCanonicalProductId
+        ? window.emirateResolveCanonicalProductId(item)
+        : "") || String(item.product_id || item.admin_id || item.sku || "").trim();
+      return {
+        ...item,
+        product_id: canonicalId,
+        sku: String(item.sku || canonicalId).trim(),
+      };
+    }),
     total_amount: total,
     bonus_used: bonusUsed || 0,
     user_id: userId || null,

@@ -847,12 +847,15 @@ function onSimilarProductsGridClick(e) {
     let product = buildSimilarProductFromCard(card);
     if (!product && card) {
       const title = card.getAttribute("data-product-id") || "";
+      const canonicalId = card.getAttribute("data-canonical-product-id") || card.getAttribute("data-product-sku") || card.getAttribute("data-sku") || "";
       const price = window.emirateParsePriceValue?.(
         card.querySelector(".product-price-value")?.textContent ||
           card.querySelector(".product-price")?.textContent
       );
       const imageEl = card.querySelector(".product-image-real");
       product = {
+        product_id: canonicalId,
+        sku: canonicalId,
         title,
         price: price || 0,
         image: imageEl?.getAttribute("src") || "",

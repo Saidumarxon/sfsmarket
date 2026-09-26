@@ -70,19 +70,76 @@ function incrementCart(by = 1) {
   bumpCart();
 }
 
+function resolveCanonicalProductId(product) {
+  if (!product || typeof product !== "object") return "";
+  const title = typeof product.title === "string" ? product.title.trim() : "";
+
+  const adminId = typeof product.admin_id === "string" ? product.admin_id.trim() : "";
+  if (adminId && adminId !== title) return adminId;
+  if (adminId && !title) return adminId;
+
+  const prodId = typeof product.product_id === "string" ? product.product_id.trim() : "";
+  if (prodId && prodId !== title) return prodId;
+  if (prodId && !title) return prodId;
+
+  const sku = typeof product.sku === "string" ? product.sku.trim() : "";
+  if (sku && sku !== title) return sku;
+  if (sku && !title) return sku;
+
+  const rawId = (typeof product.id === "string" || typeof product.id === "number") ? String(product.id).trim() : "";
+  if (rawId && rawId !== title) return rawId;
+  if (rawId && !title) return rawId;
+
+  return "";
+}
+
+function lookupProductByTitle(title) {
+  const cleanTitle = String(title || "").trim();
+  if (!cleanTitle) return null;
+  if (typeof window !== "undefined" && typeof window.emirateLookupProduct === "function") {
+    try {
+      const found = window.emirateLookupProduct(cleanTitle);
+      if (found) return found;
+    } catch (_) {}
+  }
+  if (typeof localStorage !== "undefined") {
+    try {
+      const raw = localStorage.getItem("emirate_admin_products");
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          const found = list.find((p) => p && (p.title === cleanTitle || p.nameRu === cleanTitle || p.nameUz === cleanTitle));
+          if (found) return found;
+        }
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
 function normalizeCartItem(input) {
   if (typeof input === "string") {
     const title = input.trim();
     if (!title) return null;
+    const found = lookupProductByTitle(title);
+    const resolvedId = found ? resolveCanonicalProductId(found) : "";
     return {
+      admin_id: resolvedId,
+      product_id: resolvedId,
+      sku: resolvedId,
       title,
-      brand: "",
-      category: "",
-      price: 0,
-      oldPrice: 0,
-      rating: 0,
-      reviews: 0,
-      badge: "",
+      nameRu: found && typeof found.nameRu === "string" ? found.nameRu.trim() : "",
+      nameUz: found && typeof found.nameUz === "string" ? found.nameUz.trim() : "",
+      brand: found && typeof found.brand === "string" ? found.brand : "",
+      category: found && typeof found.category === "string" ? found.category : "",
+      price: found && Number.isFinite(Number(found.price)) ? Number(found.price) : 0,
+      oldPrice: found && Number.isFinite(Number(found.oldPrice)) ? Number(found.oldPrice) : 0,
+      rating: found && Number.isFinite(Number(found.rating)) ? Number(found.rating) : 0,
+      reviews: found && Number.isFinite(Number(found.reviews)) ? Number(found.reviews) : 0,
+      badge: found && typeof found.badge === "string" ? found.badge : "",
+      express: found && found.express === "yes" ? "yes" : "no",
+      image: found && typeof found.image === "string" ? found.image : "",
+      photos: found && Array.isArray(found.photos) ? found.photos : [],
       qty: 1
     };
   }
@@ -96,12 +153,55 @@ function normalizeCartItem(input) {
   };
 }
 
+function enrichCartItems() {
+  let changed = false;
+  cartItems = cartItems.map((item) => {
+    if (!item.product_id) {
+      const found = lookupProductByTitle(item.title);
+      if (found) {
+        const id = resolveCanonicalProductId(found);
+        if (id) {
+          changed = true;
+          return {
+            ...item,
+            admin_id: id,
+            product_id: id,
+            sku: (item.sku && item.sku !== item.title) ? item.sku : (found.sku || id)
+          };
+        }
+      }
+    }
+    return item;
+  });
+  if (changed) {
+    saveCartItems();
+  }
+  return cartItems;
+}
+
 function loadCartItems() {
   try {
     const raw = localStorage.getItem(CART_ITEMS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeCartItem).filter(Boolean);
+    let shouldResave = false;
+    const normalized = parsed
+      .map((item) => {
+        const hadNoId = !item || !item.product_id;
+        const norm = normalizeCartItem(item);
+        if (norm && hadNoId && norm.product_id) {
+          shouldResave = true;
+        }
+        return norm;
+      })
+      .filter(Boolean);
+
+    if (shouldResave) {
+      try {
+        localStorage.setItem(CART_ITEMS_KEY, JSON.stringify(normalized));
+      } catch (_) {}
+    }
+    return normalized;
   } catch (_) {
     return [];
   }
@@ -123,7 +223,12 @@ function addToCart(product, by = 1) {
   const incrementBy = Number(by);
   if (!item || !Number.isFinite(incrementBy) || incrementBy <= 0) return;
 
-  const idx = cartItems.findIndex((x) => x.title === item.title);
+  const idx = cartItems.findIndex((x) => {
+    if (item.product_id && x.product_id) {
+      return x.product_id === item.product_id;
+    }
+    return x.title === item.title;
+  });
   if (idx === -1) {
     cartItems.push({ ...item, qty: Math.round(incrementBy) });
   } else {
@@ -131,6 +236,8 @@ function addToCart(product, by = 1) {
     cartItems[idx] = {
       ...current,
       ...item,
+      product_id: item.product_id || current.product_id || "",
+      sku: item.sku || current.sku || item.product_id || current.product_id || "",
       qty: current.qty + Math.round(incrementBy)
     };
   }
@@ -143,7 +250,11 @@ function setCartQty(productId, nextQty) {
   const id = String(productId || "").trim();
   if (!id) return;
   const qty = Math.round(Number(nextQty));
-  const idx = cartItems.findIndex((x) => String(x.title || "").trim() === id);
+  const idx = cartItems.findIndex((x) =>
+    String(x.product_id || "").trim() === id ||
+    String(x.sku || "").trim() === id ||
+    String(x.title || "").trim() === id
+  );
   if (idx === -1) return;
 
   if (!Number.isFinite(qty) || qty <= 0) {
@@ -164,6 +275,9 @@ function clearCart() {
 }
 
 function getCartItems() {
+  if (cartItems.some((item) => !item.product_id)) {
+    enrichCartItems();
+  }
   return cartItems.map((item) => ({ ...item }));
 }
 
@@ -326,12 +440,28 @@ function normalizeViewedProduct(product) {
   const title = typeof product.title === "string" ? product.title.trim() : "";
   if (!title) return null;
 
+  let resolvedId = resolveCanonicalProductId(product);
+  let found = null;
+  if (!resolvedId) {
+    found = lookupProductByTitle(title);
+    if (found) {
+      resolvedId = resolveCanonicalProductId(found);
+    }
+  }
+
   const normalizeNumber = (value) => {
     const n = Number(value);
     return Number.isFinite(n) ? n : 0;
   };
 
+  const rawSku = typeof product.sku === "string" ? product.sku.trim() : "";
+  const foundSku = found && typeof found.sku === "string" ? found.sku.trim() : "";
+  const sku = (rawSku && rawSku !== title) ? rawSku : ((foundSku && foundSku !== title) ? foundSku : resolvedId);
+
   return {
+    admin_id: resolvedId,
+    product_id: resolvedId,
+    sku: sku,
     title,
     nameRu: typeof product.nameRu === "string" ? product.nameRu.trim() : "",
     nameUz: typeof product.nameUz === "string" ? product.nameUz.trim() : "",
@@ -976,7 +1106,12 @@ function showQuickBuySuccessMessage(orderInfo) {
 }
 
 function buildQuickBuyOrderItem(product, qty) {
+  const productId = resolveCanonicalProductId(product);
+  const rawSku = typeof product?.sku === "string" ? product.sku.trim() : "";
+  const sku = (rawSku && rawSku !== product?.title) ? rawSku : productId;
   return {
+    product_id: productId,
+    sku: sku,
     title: product.title,
     brand: product.brand || "",
     category: product.category || "",
@@ -1209,6 +1344,7 @@ window.emirateAddToCart = addToCart;
 window.emirateSetCartQty = setCartQty;
 window.emirateRemoveFromCart = removeFromCart;
 window.emirateClearCart = clearCart;
+window.emirateReloadCart = () => { cartItems = loadCartItems(); saveCartItems(); };
 window.emirateGetCartItems = getCartItems;
 window.emirateToggleFavorite = toggleFavorite;
 window.emirateIsFavorite = isFavorite;
@@ -1216,6 +1352,8 @@ window.emirateGetFavorites = () => Array.from(favoriteIds);
 window.emirateSyncFavoritesUI = syncFavoritesUI;
 window.emirateAddViewedProduct = addViewedProduct;
 window.emirateGetViewedProducts = getViewedProducts;
+window.emirateResolveCanonicalProductId = resolveCanonicalProductId;
+window.emirateEnrichCartItems = enrichCartItems;
 
 function isTashkentCity(cityStr) {
   if (!cityStr) return false;

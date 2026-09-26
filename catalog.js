@@ -290,8 +290,11 @@ function renderProduct(product, options = {}) {
             ${typeof window.emirateT === "function" ? window.emirateT("card.photo") : "Фото"}
           </div>`;
 
+  const canonicalId = (window.emirateResolveCanonicalProductId ? window.emirateResolveCanonicalProductId(product) : "") || escapeHtmlAttr(product.admin_id || product.sku || product.id || "");
+  const productSku = escapeHtmlAttr(product.sku || product.admin_id || canonicalId || "");
+
   return `
-    <article class="product-card" data-product-id="${safeProductId}"${colorId ? ` data-color-id="${escapeHtmlAttr(colorId)}"` : ""}>
+    <article class="product-card" data-product-id="${safeProductId}"${colorId ? ` data-color-id="${escapeHtmlAttr(colorId)}"` : ""} data-product-sku="${productSku}" data-canonical-product-id="${escapeHtmlAttr(canonicalId)}">
       <div class="product-card-top">
         <div class="product-image">
           <div class="product-badges">${badgeHTML}</div>
@@ -384,7 +387,10 @@ function syncCatalogPageLabels() {
 function buildFallbackProductFromCard(card) {
   const title = card?.querySelector(".product-title")?.textContent?.trim() || "";
   if (!title) return null;
+  const canonicalId = card?.getAttribute("data-canonical-product-id") || card?.getAttribute("data-product-sku") || card?.getAttribute("data-sku") || "";
   return {
+    product_id: canonicalId,
+    sku: canonicalId,
     title,
     brand: title.split(" ")[0] || "",
     category: "",
