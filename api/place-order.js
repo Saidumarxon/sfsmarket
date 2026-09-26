@@ -26,6 +26,17 @@ module.exports = async function handler(req, res) {
 
     // Recompute items subtotal authoritatively from submitted items
     const items = Array.isArray(orderRow.items) ? orderRow.items : [];
+    if (!items.length) {
+      return res.status(400).json({ ok: false, error: "empty_items" });
+    }
+
+    if (bot.validateOrderItemsAuthoritativePrices) {
+      const priceValidation = await bot.validateOrderItemsAuthoritativePrices(items);
+      if (!priceValidation.ok) {
+        return res.status(400).json(priceValidation);
+      }
+    }
+
     const subtotal = items.reduce(function (sum, item) {
       const price = Math.max(0, Number(item && item.price) || 0);
       const qty = Math.max(1, Math.min(99, Number(item && item.qty) || 1));

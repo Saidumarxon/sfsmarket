@@ -564,6 +564,76 @@ async function insertOrderViaService(orderRow) {
   };
 }
 
+async function validateOrderItemsAuthoritativePrices(items) {
+  if (!Array.isArray(items) || !items.length) {
+    return { ok: false, error: "empty_items" };
+  }
+  if (!SUPABASE_SERVICE) {
+    return { ok: false, error: "service_role_missing" };
+  }
+
+  const productIds = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const pid = String(item.product_id || item.admin_id || "").trim();
+    const title = String(item.title || item.name || "").trim();
+    if (!pid || pid === title) {
+      return { ok: false, error: "missing_canonical_product_id", itemTitle: title };
+    }
+    if (!productIds.includes(pid)) productIds.push(pid);
+  }
+
+  const endpoint =
+    SUPABASE_URL +
+    "/rest/v1/products?admin_id=in.(" +
+    productIds.map(encodeURIComponent).join(",") +
+    ")&select=admin_id,title,payload,status";
+  const res = await fetch(endpoint, {
+    headers: {
+      apikey: SUPABASE_SERVICE,
+      Authorization: "Bearer " + SUPABASE_SERVICE,
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    return { ok: false, error: "product_fetch_failed" };
+  }
+
+  const rows = await res.json();
+  const productMap = new Map();
+  if (Array.isArray(rows)) {
+    rows.forEach((r) => productMap.set(String(r.admin_id).trim(), r));
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const pid = String(item.product_id || item.admin_id || "").trim();
+    const prodRow = productMap.get(pid);
+    if (!prodRow) {
+      return { ok: false, error: "product_not_found", productId: pid };
+    }
+    if (prodRow.status && prodRow.status !== "active") {
+      return { ok: false, error: "product_inactive", productId: pid };
+    }
+    const payload = prodRow.payload && typeof prodRow.payload === "object" ? prodRow.payload : {};
+    const authPrice = Number(payload.price != null ? payload.price : prodRow.price) || 0;
+    const submittedPrice = Number(item.price) || 0;
+
+    if (authPrice > 0 && submittedPrice !== authPrice) {
+      return {
+        ok: false,
+        error: "price_tampered",
+        productId: pid,
+        authoritativePrice: authPrice,
+        submittedPrice: submittedPrice,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
 async function validateAndGetPromoViaService(code, subtotal) {
   if (!SUPABASE_SERVICE) return { ok: false, error: "service_role_missing" };
   const key = String(code || "").trim().toUpperCase();
@@ -1144,4 +1214,5 @@ module.exports = {
   redeemPromoViaService,
   sanitizeOrderPayload,
   resolveCanonicalProductId,
+  validateOrderItemsAuthoritativePrices,
 };
