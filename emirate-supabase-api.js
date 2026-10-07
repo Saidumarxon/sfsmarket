@@ -304,9 +304,17 @@
     var res = await sb
       .from("orders")
       .select(
-        "id,order_number,phone,full_name,region,city,address,comment_text,delivery_method,delivery_estimate,payment_method,items,total_amount,status,created_at"
+        "id,order_number,user_id,customer_email,phone,full_name,region,city,address,comment_text,delivery_method,delivery_estimate,payment_method,items,total_amount,status,created_at"
       )
       .order("created_at", { ascending: false });
+    if (res.error) {
+      res = await sb
+        .from("orders")
+        .select(
+          "id,order_number,user_id,phone,full_name,region,city,address,comment_text,delivery_method,delivery_estimate,payment_method,items,total_amount,status,created_at"
+        )
+        .order("created_at", { ascending: false });
+    }
     if (res.error) {
       res = await sb
         .from("orders")

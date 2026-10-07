@@ -358,6 +358,8 @@ function mapSupabaseOrderToAdminRow(row) {
     id: formatOrderPublicId(row.id, row.order_number),
     client: String(row.full_name || '—').trim() || '—',
     phone: String(row.phone || '—').trim() || '—',
+    userId: row.user_id || null,
+    customerEmail: row.customer_email || null,
     items: formatOrderItems(row.items),
     amount: formatOrderMoney(row.total_amount),
     status: normalizeOrderStatus(row.status),
@@ -689,7 +691,7 @@ function renderClients(data = clientsData) {
   }
 
   tbody.innerHTML = data.map(c => `
-    <tr>
+    <tr class="client-row" data-client-id="${escapeHtml(c.userId || c.id)}">
       <td><code>${escapeHtml(c.id)}</code></td>
       <td>
         <div class="client-name-cell">
@@ -2333,17 +2335,71 @@ function getCategorySpecsFromEditor() {
     .filter((item) => item.keyRu || item.keyUz);
 }
 
+let categoryActiveFilter = 'all'; // 'all' | 'nav' | 'root' | 'group' | 'leaf'
+
+function setCategoryFilter(filterName) {
+  categoryActiveFilter = filterName || 'all';
+  document.querySelectorAll('.category-filter-pills .btn-filter-pill').forEach((btn) => {
+    btn.classList.toggle('active', btn.getAttribute('data-cat-filter') === categoryActiveFilter);
+  });
+  renderCategories();
+}
+
 function renderCategories(data = categoriesData) {
   const tbody = document.getElementById('categoriesBody');
   const count = document.getElementById('categoriesCount');
   if (!tbody || !count) return;
 
   const idSet = new Set(data.map((item) => item.id));
-  const sorted = flattenCategoryTree('').filter((item) => idSet.has(item.id));
+  const fullSorted = flattenCategoryTree('').filter((item) => idSet.has(item.id));
+
+  // Compute counts for filter pills
+  let countNav = 0;
+  let countRoot = 0;
+  let countGroup = 0;
+  let countLeaf = 0;
+
+  fullSorted.forEach((cat) => {
+    const depth = Math.max(0, getCategoryPath(cat).length - 1);
+    if (depth === 0) countRoot++;
+    else if (depth === 1) countGroup++;
+    else countLeaf++;
+    if (cat.showInNav && depth === 0) countNav++;
+  });
+
+  const countAllEl = document.getElementById('catFilterCountAll');
+  const countNavEl = document.getElementById('catFilterCountNav');
+  const countRootEl = document.getElementById('catFilterCountRoot');
+  const countGroupEl = document.getElementById('catFilterCountGroup');
+  const countLeafEl = document.getElementById('catFilterCountLeaf');
+
+  if (countAllEl) countAllEl.textContent = String(fullSorted.length);
+  if (countNavEl) countNavEl.textContent = String(countNav);
+  if (countRootEl) countRootEl.textContent = String(countRoot);
+  if (countGroupEl) countGroupEl.textContent = String(countGroup);
+  if (countLeafEl) countLeafEl.textContent = String(countLeaf);
+
+  // Apply active filter
+  const sorted = fullSorted.filter((category) => {
+    const depth = Math.max(0, getCategoryPath(category).length - 1);
+    if (categoryActiveFilter === 'nav') {
+      return Boolean(category.showInNav && depth === 0);
+    }
+    if (categoryActiveFilter === 'root') {
+      return depth === 0;
+    }
+    if (categoryActiveFilter === 'group') {
+      return depth === 1;
+    }
+    if (categoryActiveFilter === 'leaf') {
+      return depth >= 2;
+    }
+    return true;
+  });
 
   if (!sorted.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:20px;">Нет категорий</td></tr>';
-    count.textContent = 'Показано 0 из 0';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:20px;">Нет категорий по выбранному фильтру</td></tr>';
+    count.textContent = `Показано 0 из ${categoriesData.length}`;
     return;
   }
 
@@ -3029,7 +3085,7 @@ function renderBrands(data = brandsData) {
 
   const sorted = [...data].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   if (!sorted.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:20px;">Нет брендов</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:20px;">Нет брендов</td></tr>';
     count.textContent = 'Показано 0 из 0';
     return;
   }
@@ -3038,12 +3094,16 @@ function renderBrands(data = brandsData) {
     const logo = brand.logoUrl
       ? `<img class="brand-table-logo" src="${escapeHtml(brand.logoUrl)}" alt="">`
       : '<span class="brand-table-logo brand-table-logo--empty">—</span>';
+    const urlDisplay = brand.customUrl
+      ? `<a href="${escapeHtml(brand.customUrl)}" target="_blank" class="table-link" title="${escapeHtml(brand.customUrl)}" style="color:var(--admin-primary,#00aeef);text-decoration:underline;">${escapeHtml(brand.customUrl.length > 25 ? brand.customUrl.slice(0, 22) + '...' : brand.customUrl)}</a>`
+      : `<span style="color:#94a3b8;font-size:12px;">По умолчанию</span>`;
     return `
     <tr>
       <td>${logo}</td>
       <td><strong>${escapeHtml(brand.nameRu)}</strong><div class="product-sku">${escapeHtml(brand.id)}</div></td>
       <td>${escapeHtml(brand.nameUz || '—')}</td>
       <td>${escapeHtml(brand.slug || '—')}</td>
+      <td>${urlDisplay}</td>
       <td>${escapeHtml(String(brand.sortOrder))}</td>
       <td><span class="status-badge ${brand.isActive ? 'active' : 'inactive'}"><span class="status-dot"></span>${brand.isActive ? 'Активен' : 'Неактивен'}</span></td>
       <td>${escapeHtml(formatBrandUpdatedAt(brand.updatedAt))}</td>
@@ -3076,6 +3136,7 @@ function resetBrandForm() {
   const brandId = document.getElementById('brandId');
   const brandStatus = document.getElementById('brandStatus');
   const brandSort = document.getElementById('brandSortOrder');
+  const brandCustomUrl = document.getElementById('brandCustomUrl');
   if (brandId) brandId.value = '';
   const brandNameRu = document.getElementById('brandNameRu');
   const brandNameUz = document.getElementById('brandNameUz');
@@ -3083,6 +3144,7 @@ function resetBrandForm() {
   if (brandNameRu) brandNameRu.value = '';
   if (brandNameUz) brandNameUz.value = '';
   if (brandSlug) brandSlug.value = '';
+  if (brandCustomUrl) brandCustomUrl.value = '';
   if (brandStatus) brandStatus.value = 'active';
   if (brandSort) brandSort.value = '100';
   pendingBrandLogoData = null;
@@ -3101,6 +3163,8 @@ function fillBrandForm(brandId) {
   document.getElementById('brandNameRu').value = brand.nameRu;
   document.getElementById('brandNameUz').value = brand.nameUz || '';
   document.getElementById('brandSlug').value = brand.slug || '';
+  const brandCustomUrl = document.getElementById('brandCustomUrl');
+  if (brandCustomUrl) brandCustomUrl.value = brand.customUrl || '';
   document.getElementById('brandSortOrder').value = String(brand.sortOrder || 100);
   document.getElementById('brandStatus').value = brand.isActive ? 'active' : 'inactive';
   pendingBrandLogoData = brand.logoUrl || null;
@@ -3117,6 +3181,7 @@ function saveBrand(event) {
   const nameRu = document.getElementById('brandNameRu').value.trim();
   const nameUz = document.getElementById('brandNameUz').value.trim();
   const slugInput = document.getElementById('brandSlug').value.trim();
+  const customUrl = document.getElementById('brandCustomUrl')?.value?.trim() || '';
   const sortOrder = Number(document.getElementById('brandSortOrder').value);
   const isActive = document.getElementById('brandStatus').value !== 'inactive';
   const nameGroup = document.getElementById('brandNameRu').closest('.form-group');
@@ -3141,12 +3206,13 @@ function saveBrand(event) {
         nameRu,
         nameUz: nameUz || nameRu,
         slug,
+        customUrl,
         logoUrl: pendingBrandLogoData || '',
         sortOrder,
         isActive,
         updatedAt: getDateTimeString(),
       })
-    : { id: id || `brand_${Date.now()}`, nameRu, nameUz, slug, logoUrl: pendingBrandLogoData || '', sortOrder, isActive, updatedAt: getDateTimeString() };
+    : { id: id || `brand_${Date.now()}`, nameRu, nameUz, slug, customUrl, logoUrl: pendingBrandLogoData || '', sortOrder, isActive, updatedAt: getDateTimeString() };
 
   const existingIndex = brandsData.findIndex((item) => item.id === draft.id);
   if (existingIndex === -1) {
@@ -4875,25 +4941,881 @@ function setupIntakeFilters() {
   });
 }
 
+let currentDetailClient = null;
+let currentClientOrders = [];
+let currentClientAddresses = [];
+let currentClientBonuses = [];
+let currentClientTab = 'general';
+
+function formatClientGender(gender) {
+  const g = String(gender || '').toLowerCase().trim();
+  if (g === 'male' || g === 'erkak' || g === 'm') return 'Erkak';
+  if (g === 'female' || g === 'ayol' || g === 'f') return 'Ayol';
+  return gender ? String(gender) : '—';
+}
+
+function getOrdersForClient(client) {
+  if (!client) return [];
+  const clientUserId = String(client.userId || '').trim().toLowerCase();
+  const clientPhone9 = String(client.phone || '').replace(/\D/g, '').slice(-9);
+  const clientEmail = String(client.email || '').trim().toLowerCase();
+
+  return ordersData.filter(order => {
+    if (clientUserId && order.userId && String(order.userId).toLowerCase() === clientUserId) {
+      return true;
+    }
+    if (clientPhone9 && clientPhone9.length >= 7 && order.phone) {
+      const orderPhone9 = String(order.phone).replace(/\D/g, '').slice(-9);
+      if (orderPhone9 && orderPhone9 === clientPhone9) return true;
+    }
+    if (clientEmail && clientEmail !== '—' && order.customerEmail) {
+      if (String(order.customerEmail).toLowerCase() === clientEmail) return true;
+    }
+    return false;
+  });
+}
+
+async function fetchClientAddressesFromSupabase(userId) {
+  const sb = window.emirateSupabase;
+  if (!sb || !userId) return [];
+  try {
+    const { data, error } = await sb
+      .from('customer_addresses')
+      .select('*')
+      .eq('user_id', userId)
+      .order('is_default', { ascending: false });
+    if (error) return [];
+    return data || [];
+  } catch (_) {
+    return [];
+  }
+}
+
+async function fetchClientBonusHistoryFromSupabase(userId) {
+  const sb = window.emirateSupabase;
+  if (!sb || !userId) return [];
+  try {
+    const { data, error } = await sb
+      .from('bonus_transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    if (error) return [];
+    return data || [];
+  } catch (_) {
+    return [];
+  }
+}
+
+async function fetchClientOrdersFromSupabase(client) {
+  const sb = window.emirateSupabase;
+  if (!sb || !client) return getOrdersForClient(client);
+
+  try {
+    const conditions = [];
+    if (client.userId) {
+      conditions.push(`user_id.eq.${client.userId}`);
+    }
+    const phone9 = String(client.phone || '').replace(/\D/g, '').slice(-9);
+    if (phone9 && phone9.length >= 7) {
+      conditions.push(`phone.ilike.%${phone9}%`);
+    }
+
+    if (!conditions.length) return getOrdersForClient(client);
+
+    const { data, error } = await sb
+      .from('orders')
+      .select('id,order_number,user_id,customer_email,phone,full_name,region,city,address,comment_text,delivery_method,delivery_estimate,payment_method,items,total_amount,status,created_at')
+      .or(conditions.join(','))
+      .order('created_at', { ascending: false });
+
+    if (error || !data) return getOrdersForClient(client);
+
+    return data.map(mapSupabaseOrderToAdminRow);
+  } catch (_) {
+    return getOrdersForClient(client);
+  }
+}
+
 function viewClient(clientId) {
+  openClientDetailModal(clientId);
+}
+
+function openClientDetailModal(clientId) {
   const client = clientsData.find(item => String(item.userId || item.id) === String(clientId));
   if (!client) return;
+
+  currentDetailClient = client;
+  currentClientTab = 'general';
+  currentClientOrders = getOrdersForClient(client);
+  currentClientAddresses = [];
+  currentClientBonuses = [];
+
+  const modal = document.getElementById('clientDetailModal');
+  if (!modal) return;
+
+  // Header Elements
+  const nameEl = document.getElementById('clientModalName');
+  const shortIdEl = document.getElementById('clientModalShortId');
+  const providerEl = document.getElementById('clientModalProvider');
+  const loyaltyEl = document.getElementById('clientModalLoyalty');
+  const phoneMetaEl = document.getElementById('clientModalPhoneMeta');
+  const emailMetaEl = document.getElementById('clientModalEmailMeta');
+  const registeredMetaEl = document.getElementById('clientModalRegisteredMeta');
+  const avatarWrap = document.getElementById('clientModalAvatarWrap');
+  const callBtn = document.getElementById('clientModalCallBtn');
+  const smsBtn = document.getElementById('clientModalSmsBtn');
+  const ordersBadge = document.getElementById('clientNavOrdersBadge');
+
+  if (nameEl) nameEl.textContent = client.name || 'Mijoz';
+  if (shortIdEl) shortIdEl.textContent = client.id || '—';
+  if (providerEl) providerEl.textContent = client.provider || 'Email';
+  if (loyaltyEl) loyaltyEl.textContent = client.raw?.loyalty_tier || 'Standard';
+  if (phoneMetaEl) phoneMetaEl.textContent = client.phone || 'Telefon ko‘rsatilmagan';
+  if (emailMetaEl) emailMetaEl.textContent = client.email || 'Email ko‘rsatilmagan';
+  if (registeredMetaEl) registeredMetaEl.textContent = `Ro‘yxatdan o‘tgan: ${client.date || '—'}`;
+
+  // Avatar / Initials
+  if (avatarWrap) {
+    if (client.avatar) {
+      avatarWrap.innerHTML = `<img src="${escapeHtml(client.avatar)}" alt="" referrerpolicy="no-referrer">`;
+    } else {
+      const initial = (client.name || 'M').charAt(0).toUpperCase();
+      avatarWrap.innerHTML = `<span>${escapeHtml(initial)}</span>`;
+    }
+  }
+
+  // Quick Action Links
+  const cleanPhone = String(client.phone || '').replace(/[^\d+]/g, '');
+  if (callBtn) {
+    if (cleanPhone) {
+      callBtn.href = `tel:${cleanPhone}`;
+      callBtn.style.display = 'inline-flex';
+    } else {
+      callBtn.style.display = 'none';
+    }
+  }
+  if (smsBtn) {
+    if (cleanPhone) {
+      smsBtn.href = `sms:${cleanPhone}`;
+      smsBtn.style.display = 'inline-flex';
+    } else {
+      smsBtn.style.display = 'none';
+    }
+  }
+
+  // Orders badge
+  if (ordersBadge) {
+    ordersBadge.textContent = String(Math.max(currentClientOrders.length, client.orders || 0));
+  }
+
+  // Set active tab to 'general'
+  document.querySelectorAll('#clientDetailModal .client-nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-client-tab') === 'general');
+  });
+
+  // Render Initial Tab Content
+  renderClientTabContent('general');
+
+  // Open Modal
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
+
+  // Async load fresh orders, addresses, and bonus transactions from Supabase
+  if (window.emirateSupabase) {
+    void (async () => {
+      // 1. Fresh orders
+      const freshOrders = await fetchClientOrdersFromSupabase(client);
+      if (freshOrders && freshOrders.length) {
+        currentClientOrders = freshOrders;
+        if (ordersBadge) ordersBadge.textContent = String(freshOrders.length);
+        if (currentClientTab === 'orders' || currentClientTab === 'general' || currentClientTab === 'installments' || currentClientTab === 'rating') {
+          renderClientTabContent(currentClientTab);
+        }
+      }
+
+      // 2. Customer addresses
+      if (client.userId) {
+        const addresses = await fetchClientAddressesFromSupabase(client.userId);
+        currentClientAddresses = addresses || [];
+        if (currentClientTab === 'addresses') {
+          renderClientTabContent('addresses');
+        }
+      }
+
+      // 3. Bonus transactions
+      if (client.userId) {
+        const bonuses = await fetchClientBonusHistoryFromSupabase(client.userId);
+        currentClientBonuses = bonuses || [];
+        if (currentClientTab === 'balance') {
+          renderClientTabContent('balance');
+        }
+      }
+    })();
+  }
+}
+
+function closeClientDetailModal() {
+  const modal = document.getElementById('clientDetailModal');
+  if (!modal) return;
+  modal.hidden = true;
+  currentDetailClient = null;
+  const orderModal = document.getElementById('orderDetailModal');
+  if (!orderModal || orderModal.hidden) {
+    document.body.style.overflow = '';
+  }
+}
+
+function switchClientTab(tabKey) {
+  currentClientTab = tabKey;
+  document.querySelectorAll('#clientDetailModal .client-nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-client-tab') === tabKey);
+  });
+  renderClientTabContent(tabKey);
+}
+
+function renderClientTabContent(tabKey) {
+  const container = document.getElementById('clientModalContentArea');
+  if (!container || !currentDetailClient) return;
+
+  const client = currentDetailClient;
   const raw = client.raw || {};
-  alert(
-    `Клиент: ${client.name}\n` +
-    `ID: ${client.id}\n` +
-    `Email: ${client.email}\n` +
-    `Телефон: ${client.phone}\n` +
-    `Вход: ${client.provider}\n` +
-    `Паспорт: ${raw.passport || '—'}\n` +
-    `Дата рождения: ${raw.birthday || '—'}\n` +
-    `Пол: ${raw.gender || '—'}\n` +
-    `Адрес: ${raw.address || '—'}\n` +
-    `Рабочий адрес: ${raw.work_address || '—'}\n` +
-    `Заказов: ${client.orders}\n` +
-    `Регистрация: ${client.date}\n` +
-    `Последний визит: ${client.lastSeen}`
+
+  switch (tabKey) {
+    case 'general':
+      renderClientGeneralTab(container, client, raw);
+      break;
+    case 'rating':
+      renderClientRatingTab(container, client, raw);
+      break;
+    case 'orders':
+      renderClientOrdersTab(container, client, raw);
+      break;
+    case 'installments':
+      renderClientInstallmentsTab(container, client, raw);
+      break;
+    case 'addresses':
+      renderClientAddressesTab(container, client, raw);
+      break;
+    case 'sms':
+      renderClientSmsTab(container, client, raw);
+      break;
+    case 'calls':
+      renderClientCallsTab(container, client, raw);
+      break;
+    case 'balance':
+      renderClientBalanceTab(container, client, raw);
+      break;
+    case 'cards':
+      renderClientCardsTab(container, client, raw);
+      break;
+    default:
+      renderClientGeneralTab(container, client, raw);
+      break;
+  }
+}
+
+function renderClientGeneralTab(container, client, raw) {
+  const ordersCount = Math.max(currentClientOrders.length, client.orders || 0);
+  const totalSpent = currentClientOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0) || Number(client.total) || 0;
+  const avgCheck = ordersCount > 0 ? Math.round(totalSpent / ordersCount) : 0;
+  const bonusBalance = Number(raw.bonus_balance) || 0;
+  const noteKey = 'emirate_client_note_' + (client.userId || client.id);
+  const existingNote = localStorage.getItem(noteKey) || '';
+
+  container.innerHTML = `
+    <!-- Summary Stats -->
+    <div class="client-stats-grid">
+      <div class="client-stat-card">
+        <span class="client-stat-label">Jami buyurtmalar</span>
+        <strong class="client-stat-val">${ordersCount} ta</strong>
+      </div>
+      <div class="client-stat-card">
+        <span class="client-stat-label">Jami sarflangan summa</span>
+        <strong class="client-stat-val" style="color: #16a34a;">${formatOrderMoney(totalSpent)}</strong>
+      </div>
+      <div class="client-stat-card">
+        <span class="client-stat-label">O‘rtacha chek</span>
+        <strong class="client-stat-val">${formatOrderMoney(avgCheck)}</strong>
+      </div>
+      <div class="client-stat-card">
+        <span class="client-stat-label">Bonus balansi</span>
+        <strong class="client-stat-val" style="color: #2563eb;">${formatOrderMoney(bonusBalance)}</strong>
+      </div>
+    </div>
+
+    <!-- Personal Information Card -->
+    <div class="client-section-card">
+      <h4 class="client-section-title">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Shaxsiy ma’lumotlar
+      </h4>
+      <div class="client-info-grid">
+        <div class="client-info-item">
+          <dt>To‘liq F.I.SH</dt>
+          <dd><strong>${escapeHtml(client.name)}</strong></dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Telefon raqami</dt>
+          <dd style="display: flex; align-items: center; gap: 8px;">
+            <span>${escapeHtml(client.phone)}</span>
+            ${client.phone && client.phone !== '—' ? `
+              <a href="tel:${escapeHtml(client.phone.replace(/[^\d+]/g, ''))}" style="color: #2563eb;" title="Qo'ng'iroq qilish">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+              </a>
+            ` : ''}
+          </dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Elektron pochta</dt>
+          <dd>${escapeHtml(client.email)}</dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Pasport / JSHSHIR (PINFL)</dt>
+          <dd><code>${escapeHtml(raw.passport || '—')}</code></dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Tug‘ilgan sana</dt>
+          <dd>${escapeHtml(raw.birthday || '—')}</dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Jinsi</dt>
+          <dd>${escapeHtml(formatClientGender(raw.gender))}</dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Tizimga kirish usuli</dt>
+          <dd><span class="client-modal-provider-badge">${escapeHtml(client.provider)}</span></dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Sodiqlik darajasi</dt>
+          <dd><span class="client-modal-loyalty-badge">${escapeHtml(raw.loyalty_tier || 'standard')}</span></dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Ro‘yxatdan o‘tgan sana</dt>
+          <dd>${escapeHtml(client.date)}</dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Oxirgi faollik</dt>
+          <dd>${escapeHtml(client.lastSeen)}</dd>
+        </div>
+        <div class="client-info-item" style="grid-column: 1 / -1;">
+          <dt>Foydalanuvchi ID (UUID)</dt>
+          <dd style="font-family: monospace; font-size: 12px; color: #64748b;">${escapeHtml(client.userId || '—')}</dd>
+        </div>
+      </div>
+    </div>
+
+    <!-- Addresses Overview Card -->
+    <div class="client-section-card">
+      <h4 class="client-section-title">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Manzillar
+      </h4>
+      <div class="client-info-grid">
+        <div class="client-info-item" style="grid-column: 1 / -1;">
+          <dt>Asosiy yashash manzili</dt>
+          <dd>${escapeHtml(raw.address || 'Ko‘rsatilmagan')}</dd>
+        </div>
+        <div class="client-info-item" style="grid-column: 1 / -1;">
+          <dt>Ish joyi manzili</dt>
+          <dd>${escapeHtml(raw.work_address || 'Ko‘rsatilmagan')}</dd>
+        </div>
+      </div>
+    </div>
+
+    <!-- Internal Admin Notes -->
+    <div class="client-section-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h4 class="client-section-title" style="margin: 0;">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Mijoz haqida admin ichki eslatmasi
+        </h4>
+        <span id="clientInternalNoteSaved" style="font-size: 12px; color: #16a34a; font-weight: 600;" hidden>✓ Saqlandi</span>
+      </div>
+      <textarea id="clientInternalNoteInput" class="admin-input" rows="3" placeholder="Mijoz bo‘yicha ichki eslatma (masalan: yetkazish qulay vaqtlari, xushmuomalalik talablari, doimiy chegirmalar)..." style="width: 100%; resize: vertical; margin-bottom: 10px; font-family: inherit;">${escapeHtml(existingNote)}</textarea>
+      <button type="button" class="btn-add btn-sm" id="clientSaveNoteBtn" data-client-id="${escapeHtml(client.userId || client.id)}">
+        Eslatmani saqlash
+      </button>
+    </div>
+  `;
+}
+
+function renderClientRatingTab(container, client, raw) {
+  const ordersCount = Math.max(currentClientOrders.length, client.orders || 0);
+  const completedOrders = currentClientOrders.filter(o => o.status === 'successful').length;
+  const cancelledOrders = currentClientOrders.filter(o => o.status === 'cancelled').length;
+
+  let score = 70;
+  if (client.phone && client.phone !== '—') score += 10;
+  if (client.email && client.email !== '—') score += 10;
+  if (raw.passport) score += 5;
+  if (raw.address) score += 5;
+  if (completedOrders > 0) score += Math.min(20, completedOrders * 5);
+  if (cancelledOrders > 0) score -= Math.min(25, cancelledOrders * 10);
+  score = Math.max(20, Math.min(100, score));
+
+  const scoreAngle = Math.round((score / 100) * 360);
+  const statusColor = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
+  const statusText = score >= 80 ? 'Ishonchli xaridor' : score >= 50 ? 'O‘rtacha faollik' : 'Kam faol xaridor';
+
+  const completionPct = [client.phone, client.email, raw.passport, raw.address, raw.birthday]
+    .filter(Boolean).length * 20;
+
+  const successRate = ordersCount > 0 ? Math.round((completedOrders / ordersCount) * 100) : 100;
+
+  container.innerHTML = `
+    <div class="client-rating-card">
+      <div class="client-rating-score-circle" style="--score-angle: ${scoreAngle}deg;">
+        <span class="client-rating-score-text" style="color: ${statusColor};">${score}</span>
+      </div>
+      <div class="client-rating-details">
+        <div class="client-rating-status" style="color: ${statusColor};">${statusText}</div>
+        <div class="client-rating-sub">Mijozning xaridlar tarixi, to‘lov intizomi va anketaning to‘ldirilganlik ko‘rsatkichi</div>
+
+        <div class="client-rating-bar-row">
+          <span class="client-rating-bar-label">Buyurtmalar muvaffaqiyati:</span>
+          <div class="client-rating-bar-track">
+            <div class="client-rating-bar-fill" style="width: ${successRate}%; background: #10b981;"></div>
+          </div>
+          <span class="client-rating-bar-val">${successRate}%</span>
+        </div>
+
+        <div class="client-rating-bar-row">
+          <span class="client-rating-bar-label">Profil to‘liqligi:</span>
+          <div class="client-rating-bar-track">
+            <div class="client-rating-bar-fill" style="width: ${completionPct}%; background: #2563eb;"></div>
+          </div>
+          <span class="client-rating-bar-val">${completionPct}%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="client-section-card">
+      <h4 class="client-section-title">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Skoring va xavfsizlik tahlili
+      </h4>
+      <div class="client-info-grid">
+        <div class="client-info-item">
+          <dt>Muvaffaqiyatli buyurtmalar</dt>
+          <dd><strong style="color: #16a34a;">${completedOrders} ta</strong></dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Bekor qilingan buyurtmalar</dt>
+          <dd><strong style="color: #dc2626;">${cancelledOrders} ta</strong></dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Pasport tekshiruvi</dt>
+          <dd>${raw.passport ? '<span style="color: #16a34a;">✓ Kiritilgan</span>' : '<span style="color: #64748b;">Ko‘rsatilmagan</span>'}</dd>
+        </div>
+        <div class="client-info-item">
+          <dt>Tavakkalchilik darajasi</dt>
+          <dd>${score >= 80 ? '<span style="color: #16a34a; font-weight: 600;">Past xavf</span>' : '<span style="color: #f59e0b; font-weight: 600;">Standart</span>'}</dd>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderClientOrdersTab(container, client, raw) {
+  if (!currentClientOrders.length) {
+    container.innerHTML = `
+      <div class="client-empty-state">
+        <div class="client-empty-icon">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        </div>
+        <h4 class="client-empty-title">Hozircha buyurtmalar yo‘q</h4>
+        <p class="client-empty-desc">Ushbu mijoz hali do‘kondan buyurtma berishga ulgurmagan. Buyurtma berilganda u to‘liq ma’lumotlari bilan shu yerda paydo bo‘ladi.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const rows = currentClientOrders.map(o => `
+    <tr>
+      <td><strong>${escapeHtml(o.id)}</strong></td>
+      <td>${escapeHtml(o.date)}</td>
+      <td><div style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(o.items)}">${escapeHtml(o.items)}</div></td>
+      <td>${escapeHtml(paymentLabels[o.payment] || o.payment || '—')}</td>
+      <td>${escapeHtml(deliveryLabels[o.delivery] || o.delivery || '—')}</td>
+      <td><strong>${escapeHtml(o.amount)}</strong></td>
+      <td><span class="status-badge ${escapeHtml(o.status)}">${escapeHtml(statusMap[o.status] || o.status)}</span></td>
+      <td>
+        <button type="button" class="action-btn" title="Batafsil ko'rish" data-action="view-order-detail" data-order-id="${escapeHtml(o.uuid || o.id)}">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+
+  container.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a;">Barcha buyurtmalar (${currentClientOrders.length} ta)</h4>
+    </div>
+    <div style="border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+      <table class="admin-table" style="width: 100%; margin: 0; font-size: 13px;">
+        <thead style="background: #f8fafc;">
+          <tr>
+            <th>Buyurtma №</th>
+            <th>Sana</th>
+            <th>Tovarlar</th>
+            <th>To‘lov</th>
+            <th>Yetkazib berish</th>
+            <th>Summa</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderClientInstallmentsTab(container, client, raw) {
+  const installmentOrders = currentClientOrders.filter(o =>
+    /nasiya|muddatli|installment|murobaha/i.test(o.payment || '')
   );
+
+  if (!installmentOrders.length) {
+    container.innerHTML = `
+      <div class="client-empty-state">
+        <div class="client-empty-icon">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+        </div>
+        <h4 class="client-empty-title">Murobaha yoki muddatli to‘lov buyurtmalari mavjud emas</h4>
+        <p class="client-empty-desc">Mijoz tomonidan muddatli to‘lov (Murobaha / Nasiya) orqali xarid qilingan buyurtmalar, oylik to‘lovlar grafigi va to‘lov holati shu yerda ko‘rinadi.</p>
+        <div style="margin-top: 14px;">
+          <span class="client-address-badge-default" style="background: #ecfdf5; color: #047857; font-size: 12px; padding: 4px 12px;">Qarzdorlik mavjud emas — 0 UZS</span>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const items = installmentOrders.map(o => `
+    <div class="client-section-card" style="margin-bottom: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <strong>Buyurtma ${escapeHtml(o.id)}</strong>
+        <span class="status-badge ${escapeHtml(o.status)}">${escapeHtml(statusMap[o.status] || o.status)}</span>
+      </div>
+      <div class="client-info-grid">
+        <div class="client-info-item"><dt>Sana</dt><dd>${escapeHtml(o.date)}</dd></div>
+        <div class="client-info-item"><dt>Umumiy summa</dt><dd><strong>${escapeHtml(o.amount)}</strong></dd></div>
+        <div class="client-info-item"><dt>To‘lov turi</dt><dd>${escapeHtml(o.payment)}</dd></div>
+        <div class="client-info-item"><dt>Tovarlar</dt><dd>${escapeHtml(o.items)}</dd></div>
+      </div>
+      <div style="margin-top: 12px; text-align: right;">
+        <button type="button" class="btn-filter-reset" data-action="view-order-detail" data-order-id="${escapeHtml(o.uuid || o.id)}" style="font-size: 13px;">
+          Buyurtmani ko‘rish
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  container.innerHTML = `
+    <h4 style="margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #0f172a;">Murobaha buyurtmalari (${installmentOrders.length} ta)</h4>
+    ${items}
+  `;
+}
+
+function renderClientAddressesTab(container, client, raw) {
+  const addresses = [];
+
+  (currentClientAddresses || []).forEach(a => {
+    addresses.push({
+      title: a.title || 'Yetkazib berish manzili',
+      region: a.region || '',
+      city: a.city || '',
+      street: a.street_address || '',
+      apt: a.apartment_office || '',
+      isDefault: !!a.is_default
+    });
+  });
+
+  if (!addresses.length && (raw.address || raw.work_address)) {
+    if (raw.address) {
+      addresses.push({
+        title: 'Asosiy yashash manzili',
+        region: '',
+        city: '',
+        street: raw.address,
+        apt: '',
+        isDefault: true
+      });
+    }
+    if (raw.work_address) {
+      addresses.push({
+        title: 'Ish joyi manzili',
+        region: '',
+        city: '',
+        street: raw.work_address,
+        apt: '',
+        isDefault: false
+      });
+    }
+  }
+
+  if (!addresses.length) {
+    container.innerHTML = `
+      <div class="client-empty-state">
+        <div class="client-empty-icon">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <h4 class="client-empty-title">Saqlangan manzillar yo‘q</h4>
+        <p class="client-empty-desc">Mijoz o‘z profilida yoki buyurtma berish jarayonida manzil saqlamagan.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const cards = addresses.map(a => `
+    <div class="client-address-card ${a.isDefault ? 'is-default' : ''}">
+      <div class="client-address-header">
+        <span class="client-address-title">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          ${escapeHtml(a.title)}
+        </span>
+        ${a.isDefault ? '<span class="client-address-badge-default">Asosiy manzil</span>' : ''}
+      </div>
+      <p class="client-address-text">
+        ${[a.region, a.city, a.street, a.apt].filter(Boolean).map(escapeHtml).join(', ')}
+      </p>
+    </div>
+  `).join('');
+
+  container.innerHTML = `
+    <h4 style="margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #0f172a;">Mijoz manzillari (${addresses.length} ta)</h4>
+    ${cards}
+  `;
+}
+
+function renderClientSmsTab(container, client, raw) {
+  const cleanPhone = String(client.phone || '').replace(/[^\d+]/g, '');
+
+  const templates = [
+    {
+      title: 'Buyurtma tasdiqlandi',
+      text: `Assalomu alaykum, ${client.name}! Sizning Emirate Co do‘konidagi buyurtmangiz tasdiqlandi va tayyorlanmoqda.`
+    },
+    {
+      title: 'Yetkazib berilmoqda',
+      text: `Hurmatli ${client.name}, sizning buyurtmangiz kuryerga topshirildi va tez orada manzilingizga yetkaziladi. Emirate Co`
+    },
+    {
+      title: 'Buyurtma yetkazildi',
+      text: `Buyurtmangiz muvaffaqiyatli yetkazildi! Xaridingiz uchun rahmat. Emirate Co xizmatidan mamnun bo‘ldingiz degan umiddamiz.`
+    },
+    {
+      title: 'Bonus hisoblandi',
+      text: `Hisobingizga yangi xarid uchun keshbek bonuslari qo‘shildi. Keyingi xaridlaringizda bonuslardan foydalanishingiz mumkin!`
+    }
+  ];
+
+  const templateRows = templates.map((t, idx) => `
+    <div class="sms-template-item">
+      <div>
+        <div style="font-weight: 600; font-size: 13px; color: #0f172a; margin-bottom: 2px;">${escapeHtml(t.title)}</div>
+        <div class="sms-template-text" id="smsText_${idx}">${escapeHtml(t.text)}</div>
+      </div>
+      <button type="button" class="btn-sms-copy" data-action="copy-sms" data-target="smsText_${idx}">
+        Nusxa olish
+      </button>
+    </div>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="client-section-card">
+      <h4 class="client-section-title">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Mijoz bilan to‘g‘ridan-to‘g‘ri aloqa
+      </h4>
+      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <span style="font-size: 15px; font-weight: 600; color: #0f172a;">${escapeHtml(client.phone || 'Telefon yo‘q')}</span>
+        ${cleanPhone ? `
+          <a href="sms:${escapeHtml(cleanPhone)}" class="btn-client-quick-action" style="color: #2563eb; border-color: #93c5fd;">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            SMS yuborish
+          </a>
+          <a href="https://t.me/${escapeHtml(cleanPhone)}" target="_blank" rel="noopener noreferrer" class="btn-client-quick-action" style="color: #0284c7; border-color: #bae6fd;">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Telegram ochish
+          </a>
+          <a href="tel:${escapeHtml(cleanPhone)}" class="btn-client-quick-action" style="color: #16a34a; border-color: #bbf7d0;">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+            Telefon qilish
+          </a>
+        ` : ''}
+      </div>
+    </div>
+
+    <div class="client-section-card">
+      <h4 class="client-section-title">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Tayyor SMS andozalari
+      </h4>
+      ${templateRows}
+    </div>
+  `;
+}
+
+function renderClientCallsTab(container, client, raw) {
+  const cleanPhone = String(client.phone || '').replace(/[^\d+]/g, '');
+  const callKey = 'emirate_client_calls_' + (client.userId || client.id);
+  let logs = [];
+  try {
+    logs = JSON.parse(localStorage.getItem(callKey) || '[]');
+  } catch (_) {}
+
+  const logRows = logs.map(l => `
+    <div class="call-log-item">
+      <div class="call-log-meta">
+        <span>${escapeHtml(l.date || '—')}</span>
+        <span>${escapeHtml(l.admin || 'Operator')}</span>
+      </div>
+      <div class="call-log-content">${escapeHtml(l.text || '')}</div>
+    </div>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="client-section-card">
+      <h4 class="client-section-title">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+        Mijoz bilan qo‘ng‘iroq
+      </h4>
+      <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+        <span style="font-size: 16px; font-weight: 700; color: #0f172a;">${escapeHtml(client.phone || 'Telefon yo‘q')}</span>
+        ${cleanPhone ? `
+          <a href="tel:${escapeHtml(cleanPhone)}" class="btn-add btn-sm" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+            Qo‘ng‘iroq qilish
+          </a>
+        ` : ''}
+      </div>
+    </div>
+
+    <!-- Call Logger -->
+    <div class="client-section-card">
+      <h4 class="client-section-title">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Qo‘ng‘iroq natijasi va qaydlar
+      </h4>
+      <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+        <input type="text" id="clientCallLogInput" class="admin-input" placeholder="Mijoz bilan suhbat natijasini yozing..." style="flex: 1;">
+        <button type="button" class="btn-add btn-sm" id="clientSaveCallBtn" data-client-id="${escapeHtml(client.userId || client.id)}">
+          Qaydni saqlash
+        </button>
+      </div>
+
+      <div style="max-height: 240px; overflow-y: auto;">
+        ${logRows || '<p style="color: #94a3b8; font-size: 13px; margin: 0;">Hozircha qo‘ng‘iroq qaydlari mavjud emas.</p>'}
+      </div>
+    </div>
+  `;
+}
+
+function renderClientBalanceTab(container, client, raw) {
+  const bonusBalance = Number(raw.bonus_balance) || 0;
+  const loyaltyTier = raw.loyalty_tier || 'standard';
+  const isPlus = !!raw.is_emirate_plus;
+
+  let bonusRows = '';
+  if (currentClientBonuses.length) {
+    bonusRows = currentClientBonuses.map(b => {
+      const isPlusAmount = Number(b.amount) > 0;
+      const amountFormatted = (isPlusAmount ? '+' : '') + formatOrderMoney(b.amount);
+      const color = isPlusAmount ? '#16a34a' : '#dc2626';
+      return `
+        <tr>
+          <td>${escapeHtml(formatClientDate(b.created_at))}</td>
+          <td>${escapeHtml(b.type || 'Tranzaksiya')}</td>
+          <td><strong style="color: ${color};">${escapeHtml(amountFormatted)}</strong></td>
+          <td>${escapeHtml(formatOrderMoney(b.balance_after || 0))}</td>
+          <td>${escapeHtml(b.description || '—')}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  container.innerHTML = `
+    <div class="client-stats-grid">
+      <div class="client-stat-card">
+        <span class="client-stat-label">Bonus balansi</span>
+        <strong class="client-stat-val" style="color: #2563eb;">${formatOrderMoney(bonusBalance)}</strong>
+      </div>
+      <div class="client-stat-card">
+        <span class="client-stat-label">Sodiqlik darajasi</span>
+        <strong class="client-stat-val" style="text-transform: capitalize;">${escapeHtml(loyaltyTier)}</strong>
+      </div>
+      <div class="client-stat-card">
+        <span class="client-stat-label">Emirate Plus a’zoligi</span>
+        <strong class="client-stat-val" style="color: ${isPlus ? '#16a34a' : '#64748b'};">${isPlus ? 'Faol' : 'Nofaol'}</strong>
+      </div>
+    </div>
+
+    <div class="client-section-card">
+      <h4 class="client-section-title">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        Keshbek va bonus tranzaksiyalari tarixi
+      </h4>
+      ${currentClientBonuses.length ? `
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+          <table class="admin-table" style="width: 100%; margin: 0; font-size: 13px;">
+            <thead style="background: #f8fafc;">
+              <tr><th>Sana</th><th>Turi</th><th>Summa</th><th>Qoldiq</th><th>Izoh</th></tr>
+            </thead>
+            <tbody>${bonusRows}</tbody>
+          </table>
+        </div>
+      ` : `
+        <p style="color: #94a3b8; font-size: 13px; margin: 0;">Bonus tranzaksiyalari tarixi mavjud emas.</p>
+      `}
+    </div>
+  `;
+}
+
+function renderClientCardsTab(container, client, raw) {
+  const methodCounts = {};
+  currentClientOrders.forEach(o => {
+    const m = o.payment || 'Naqd';
+    methodCounts[m] = (methodCounts[m] || 0) + 1;
+  });
+
+  const methodEntries = Object.entries(methodCounts);
+
+  const breakdownRows = methodEntries.length ? methodEntries.map(([method, count]) => `
+    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px;">
+      <span style="font-weight: 500; color: #334155;">${escapeHtml(paymentLabels[method] || method)}</span>
+      <strong>${count} ta buyurtma</strong>
+    </div>
+  `).join('') : '<p style="color: #94a3b8; font-size: 13px; margin: 0;">To‘lovlar tarixi mavjud emas.</p>';
+
+  container.innerHTML = `
+    <div class="client-section-card">
+      <h4 class="client-section-title">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        To‘lov usullari statistikasi
+      </h4>
+      <div style="margin-bottom: 8px;">
+        ${breakdownRows}
+      </div>
+    </div>
+
+    <div class="client-section-card" style="background: #f0fdf4; border-color: #bbf7d0;">
+      <div style="display: flex; gap: 12px; align-items: flex-start;">
+        <svg width="22" height="22" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink: 0; margin-top: 2px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <div>
+          <strong style="color: #166534; font-size: 14px; display: block; margin-bottom: 4px;">Xavfsiz to‘lovlar va ma’lumotlar himoyasi</strong>
+          <p style="margin: 0; font-size: 13px; color: #15803d; line-height: 1.5;">
+            Barcha to‘lov operatsiyalari O‘zbekiston Respublikasi qonunchiligi va xalqaro PCI DSS xavfsizlik talablariga mos ravishda litsenziyalangan to‘lov shlyuzlari (Payme, Click, Uzum) orqali tokenlashtirilgan tarzda o‘tadi. Mijozlarning to‘liq karta ma'lumotlari admin panelda ochiq holda saqlanmaydi.
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function orderDetailRow(label, value) {
@@ -5148,13 +6070,98 @@ document.getElementById('supplierImportCancelBtn')?.addEventListener('click', cl
 document.getElementById('supplierImportSubmitBtn')?.addEventListener('click', executeSupplierImport);
 
 document.getElementById('clientsBody')?.addEventListener('click', function(e) {
-  const button = e.target.closest('button[data-action]');
-  if (!button) return;
-  const action = button.getAttribute('data-action');
-  const clientId = button.getAttribute('data-client-id');
-  if (!clientId) return;
+  const row = e.target.closest('tr[data-client-id]');
+  if (!row) return;
+  const clientId = row.getAttribute('data-client-id');
+  if (clientId) viewClient(clientId);
+});
 
-  if (action === 'view-client') viewClient(clientId);
+document.getElementById('clientDetailModal')?.addEventListener('click', function(e) {
+  // Tab navigation
+  const tabBtn = e.target.closest('.client-nav-item[data-client-tab]');
+  if (tabBtn) {
+    const tabKey = tabBtn.getAttribute('data-client-tab');
+    if (tabKey) switchClientTab(tabKey);
+    return;
+  }
+
+  // Order detail click from orders tab
+  const orderViewBtn = e.target.closest('[data-action="view-order-detail"]');
+  if (orderViewBtn) {
+    const orderId = orderViewBtn.getAttribute('data-order-id');
+    if (orderId) openOrderDetailModal(orderId);
+    return;
+  }
+
+  // SMS template copy button
+  const copyBtn = e.target.closest('[data-action="copy-sms"]');
+  if (copyBtn) {
+    const targetId = copyBtn.getAttribute('data-target');
+    const textEl = document.getElementById(targetId);
+    if (textEl && navigator.clipboard) {
+      navigator.clipboard.writeText(textEl.textContent.trim()).then(() => {
+        const orig = copyBtn.textContent;
+        copyBtn.textContent = 'Nusxalandi!';
+        copyBtn.style.color = '#16a34a';
+        setTimeout(() => {
+          copyBtn.textContent = orig;
+          copyBtn.style.color = '';
+        }, 2000);
+      });
+    }
+    return;
+  }
+
+  // Save client internal note button
+  const noteBtn = e.target.closest('#clientSaveNoteBtn');
+  if (noteBtn) {
+    const clientId = noteBtn.getAttribute('data-client-id');
+    const textarea = document.getElementById('clientInternalNoteInput');
+    const savedMsg = document.getElementById('clientInternalNoteSaved');
+    if (clientId && textarea) {
+      try {
+        localStorage.setItem('emirate_client_note_' + clientId, textarea.value.trim());
+        if (savedMsg) {
+          savedMsg.hidden = false;
+          setTimeout(() => { savedMsg.hidden = true; }, 2500);
+        }
+      } catch (_) {}
+    }
+    return;
+  }
+
+  // Save client call log button
+  const callBtn = e.target.closest('#clientSaveCallBtn');
+  if (callBtn) {
+    const clientId = callBtn.getAttribute('data-client-id');
+    const input = document.getElementById('clientCallLogInput');
+    if (clientId && input && input.value.trim()) {
+      try {
+        const key = 'emirate_client_calls_' + clientId;
+        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+        let adminUser = 'Admin';
+        try {
+          adminUser = JSON.parse(localStorage.getItem('emirate_admin') || '{}').user || 'Admin';
+        } catch (_) {}
+        existing.unshift({
+          text: input.value.trim(),
+          date: new Date().toLocaleString('ru-RU', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          }),
+          admin: adminUser
+        });
+        localStorage.setItem(key, JSON.stringify(existing.slice(0, 50)));
+        input.value = '';
+        renderClientTabContent('calls');
+      } catch (_) {}
+    }
+    return;
+  }
+});
+
+document.querySelectorAll('[data-close-client-modal]').forEach((el) => {
+  el.addEventListener('click', closeClientDetailModal);
 });
 
 document.getElementById('ordersBody')?.addEventListener('click', function(e) {
@@ -5194,7 +6201,12 @@ document.querySelectorAll('[data-close-order-modal]').forEach((el) => {
 
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Escape') return;
-  closeOrderDetailModal();
+  const orderModal = document.getElementById('orderDetailModal');
+  if (orderModal && !orderModal.hidden) {
+    closeOrderDetailModal();
+  } else {
+    closeClientDetailModal();
+  }
   closeAllOrderStatusPickers();
 });
 
@@ -5279,6 +6291,14 @@ document.getElementById('categoriesBody')?.addEventListener('click', function(e)
   }
   if (action === 'delete-category') {
     deleteCategory(categoryId);
+  }
+});
+
+document.querySelector('.category-filter-pills')?.addEventListener('click', function(e) {
+  const pill = e.target.closest('[data-cat-filter]');
+  if (pill) {
+    const filterName = pill.getAttribute('data-cat-filter');
+    setCategoryFilter(filterName);
   }
 });
 

@@ -593,12 +593,18 @@ function renderHeroBanners() {
       return `<div class="hero-slide hero-slide--banner ${index === 0 ? "active" : ""}">${content}</div>`;
     }
 
+    const btnText = banner.primaryText || (lang === "uz" ? "Katalogga o'tish" : "Перейти в каталог");
+    const btnUrl = (banner.primaryUrl && banner.primaryUrl !== "#") ? banner.primaryUrl : "catalog.html";
     return `
       <div class="hero-slide hero-slide--fallback ${index === 0 ? "active" : ""}">
         <div class="hero-slide-text">
           <span class="hero-tag">${escapeHtmlText(banner.tag)}</span>
           <h1>${escapeHtmlText(banner.title)}</h1>
-          <p>${escapeHtmlText(banner.desc)}</p>
+          ${banner.desc ? `<p>${escapeHtmlText(banner.desc)}</p>` : ""}
+          <div class="hero-slide-actions">
+            <a href="${escapeHtmlAttr(btnUrl)}" class="hero-action-btn hero-action-btn--primary">${escapeHtmlText(btnText)}</a>
+            ${banner.secondaryText ? `<a href="${escapeHtmlAttr(banner.secondaryUrl || 'catalog.html')}" class="hero-action-btn hero-action-btn--secondary">${escapeHtmlText(banner.secondaryText)}</a>` : ""}
+          </div>
         </div>
       </div>
     `;
@@ -609,8 +615,12 @@ function renderHeroBanners() {
     .join("");
 
   const arrowsHtml = safeBanners.length > 1
-    ? `<button class="hero-nav-btn hero-nav-btn--prev" type="button" aria-label="Предыдущий слайд">‹</button>
-       <button class="hero-nav-btn hero-nav-btn--next" type="button" aria-label="Следующий слайд">›</button>`
+    ? `<button class="hero-nav-btn hero-nav-btn--prev" type="button" aria-label="Предыдущий слайд">
+         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+       </button>
+       <button class="hero-nav-btn hero-nav-btn--next" type="button" aria-label="Следующий слайд">
+         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+       </button>`
     : "";
 
   heroSlider.classList.add("hero-slider--carousel");
@@ -679,7 +689,13 @@ function renderProductCard(product) {
     ? window.emirateProductHref(product)
     : `product.html?product=${encodeURIComponent(product.title)}`;
   const discountText = String(product.discount || "").trim();
-  const badgeHTML = discountText ? `<span class="badge-sale">${discountText}</span>` : "";
+  const isExpress = product.status === "active" && product.express === "yes";
+  const expressBadge = isExpress
+    ? `<span class="badge-delivery-24" title="Доставка за 24 часа по Ташкенту">⚡ 24ч</span>`
+    : "";
+  const badgeHTML = [discountText ? `<span class="badge-sale">${discountText}</span>` : "", expressBadge]
+    .filter(Boolean)
+    .join("");
 
   const media = window.emirateResolveProductMedia?.(product) || {
     image: product.image,
@@ -771,6 +787,9 @@ function refreshHomeListings() {
   renderHomeBrands();
   if (typeof renderNativeHomeFeed === "function") {
     renderNativeHomeFeed();
+  }
+  if (typeof initSmartFeed === "function") {
+    void initSmartFeed();
   }
 }
 window.emirateRefreshHomeListings = refreshHomeListings;
@@ -893,6 +912,9 @@ async function initHomeStorefront() {
     renderInitialCarousels();
     updateCategorySectionsVisibility();
     renderNativeHomeFeed();
+    if (typeof initSmartFeed === "function") {
+      void initSmartFeed();
+    }
     finishHomeShellMode();
     return;
   }
@@ -930,6 +952,9 @@ async function initHomeStorefront() {
     renderInitialCarousels();
     updateCategorySectionsVisibility();
     renderNativeHomeFeed();
+    if (typeof initSmartFeed === "function") {
+      void initSmartFeed();
+    }
     if (typeof translatePage === "function") {
       translatePage();
     }
@@ -1029,6 +1054,233 @@ function renderNativeHomeFeed() {
   setupFeedObserver();
 }
 
+// ===== GENERAL PRODUCTS SMART FEED (Умумий товарлар) =====
+const SMART_FEED_BATCH = 5;
+let smartFeedProducts = [];
+let smartFeedIndex = 0;
+let smartFeedObserver = null;
+let _purchasedTitlesCache = null;
+let _purchasedTitlesLoading = false;
+
+function getViewedTitlesSet() {
+  if (!window._smartFeedViewedCache) {
+    const viewed = window.emirateGetViewedProducts?.() || [];
+    window._smartFeedViewedCache = new Set(
+      viewed.map((v) => String(v?.title || "").trim()).filter(Boolean)
+    );
+  }
+  return window._smartFeedViewedCache;
+}
+
+function getCategoryAffinityMap() {
+  if (!window._smartFeedAffinityCache) {
+    const viewed = window.emirateGetViewedProducts?.() || [];
+    const map = {};
+    viewed.forEach((v) => {
+      const cat = String(v?.category || "").trim().toLowerCase();
+      if (cat) map[cat] = (map[cat] || 0) + 1;
+    });
+    window._smartFeedAffinityCache = map;
+  }
+  return window._smartFeedAffinityCache;
+}
+
+function getPurchasedTitlesSet() {
+  return _purchasedTitlesCache || new Set();
+}
+
+async function loadPurchasedTitles() {
+  if (_purchasedTitlesCache !== null || _purchasedTitlesLoading) return;
+  _purchasedTitlesLoading = true;
+  try {
+    const orders = (await window.emirateAuth?.loadCustomerOrders?.()) || [];
+    const titles = new Set();
+    orders.forEach((order) => {
+      const items = order?.items;
+      if (Array.isArray(items)) {
+        items.forEach((item) => {
+          if (item?.title) titles.add(String(item.title).trim());
+          if (item?.name) titles.add(String(item.name).trim());
+        });
+      }
+    });
+    _purchasedTitlesCache = titles;
+  } catch (_) {
+    _purchasedTitlesCache = new Set();
+  } finally {
+    _purchasedTitlesLoading = false;
+  }
+}
+
+function scoreSmartFeedProduct(product) {
+  let score = 0;
+
+  // 1. Promo & discount boost
+  const discountText = String(product.discount || "").trim();
+  if (discountText) score += 15;
+  if (product.badge === "sale") score += 12;
+  if (product.badge === "hit") score += 8;
+  if (product.badge === "new") score += 5;
+
+  // 2. Express 24h delivery boost
+  if (product.express === "yes") score += 6;
+
+  // 3. Priority field (lower number in admin = higher priority)
+  const priority = Number(product.priority) || 300;
+  score += Math.max(0, 30 - Math.floor(priority / 10));
+
+  // 4. Products with real photos
+  if (product.image) score += 10;
+
+  // 5. Already viewed penalty (prioritize fresh unviewed products)
+  const viewedTitles = getViewedTitlesSet();
+  if (viewedTitles.has(String(product.title || "").trim())) {
+    score -= 20;
+  }
+
+  // 6. Category affinity boost (user interest)
+  const categoryAffinity = getCategoryAffinityMap();
+  const cat = String(product.category || "").trim().toLowerCase();
+  if (cat && categoryAffinity[cat]) {
+    score += Math.min(categoryAffinity[cat] * 3, 15);
+  }
+
+  // 7. Purchased penalty (don't prioritize already purchased goods)
+  const purchasedTitles = getPurchasedTitlesSet();
+  if (purchasedTitles.has(String(product.title || "").trim())) {
+    score -= 25;
+  }
+
+  // 8. Slight controlled random jitter (±5) for refreshing the grid on each session
+  score += Math.floor(Math.random() * 11) - 5;
+
+  return score;
+}
+
+function buildSmartFeedProducts() {
+  window._smartFeedViewedCache = null;
+  window._smartFeedAffinityCache = null;
+
+  let all = Array.from(allProductsByTitle.values());
+  if (!all.length) {
+    all = collectAllHomeProducts();
+  }
+  if (!all.length) return [];
+
+  const seen = new Set();
+  const unique = [];
+  all.forEach((item) => {
+    const title = String(item?.title || "").trim();
+    if (!title || seen.has(title)) return;
+    seen.add(title);
+    unique.push(item);
+  });
+
+  const scored = unique.map((product) => ({
+    product,
+    score: scoreSmartFeedProduct(product)
+  }));
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored.map((s) => s.product);
+}
+
+function loadSmartFeedBatch() {
+  const grid = document.getElementById("smartFeedGrid");
+  const section = document.getElementById("smartFeedSection");
+  if (!grid || smartFeedIndex >= smartFeedProducts.length) return false;
+
+  const batch = smartFeedProducts.slice(smartFeedIndex, smartFeedIndex + SMART_FEED_BATCH);
+  smartFeedIndex += batch.length;
+
+  const html = listingsForRender(batch).map(renderProductCard).join("");
+  grid.insertAdjacentHTML("beforeend", html);
+  window.emirateSyncFavoritesUI?.(grid);
+
+  if (section) {
+    section.hidden = false;
+    section.style.display = "";
+  }
+
+  if (typeof translatePage === "function") {
+    translatePage();
+  }
+
+  return smartFeedIndex < smartFeedProducts.length;
+}
+
+function setupSmartFeedObserver() {
+  const trigger = document.getElementById("smartFeedTrigger");
+  const grid = document.getElementById("smartFeedGrid");
+  if (!grid || !trigger) return;
+
+  if (smartFeedObserver) {
+    smartFeedObserver.disconnect();
+    smartFeedObserver = null;
+  }
+
+  if (smartFeedIndex >= smartFeedProducts.length) return;
+
+  smartFeedObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      const hasMore = loadSmartFeedBatch();
+      if (!hasMore && smartFeedObserver) {
+        smartFeedObserver.disconnect();
+        smartFeedObserver = null;
+      }
+    });
+  }, {
+    rootMargin: "400px 0px",
+    threshold: 0
+  });
+
+  smartFeedObserver.observe(trigger);
+}
+
+async function initSmartFeed() {
+  const section = document.getElementById("smartFeedSection");
+  const grid = document.getElementById("smartFeedGrid");
+  if (!section || !grid) return;
+
+  if (isNativeHome()) {
+    section.hidden = true;
+    return;
+  }
+
+  if (!allProductsByTitle.size) {
+    rebuildAllProductsIndex();
+  }
+
+  if (window.emirateAuth?.getActiveUserId?.()) {
+    try {
+      await Promise.race([
+        loadPurchasedTitles(),
+        new Promise((resolve) => setTimeout(resolve, 350))
+      ]);
+    } catch (_) {}
+  }
+
+  smartFeedProducts = buildSmartFeedProducts();
+  smartFeedIndex = 0;
+  grid.innerHTML = "";
+
+  if (!smartFeedProducts.length) {
+    section.hidden = true;
+    return;
+  }
+
+  section.hidden = false;
+  section.style.display = "";
+
+  // Initial render: 2 batches of 5 = 10 items (2 full rows)
+  loadSmartFeedBatch();
+  loadSmartFeedBatch();
+  setupSmartFeedObserver();
+}
+
+window.emirateInitSmartFeed = initSmartFeed;
+
 // ===== ADD TO CART =====
 document.addEventListener("click", (e) => {
   const productLink = e.target.closest(".product-link");
@@ -1038,6 +1290,8 @@ document.addEventListener("click", (e) => {
     const product = productTitle ? allProductsByTitle.get(productTitle) : null;
     if (product) {
       window.emirateAddViewedProduct?.(product);
+      window._smartFeedViewedCache = null;
+      window._smartFeedAffinityCache = null;
       saveSelectedProduct(product);
     }
   }

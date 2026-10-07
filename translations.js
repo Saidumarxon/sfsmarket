@@ -144,6 +144,7 @@ window.TRANSLATIONS = {
   "section.allBrands":      { ru: "\u0412\u0441\u0435 \u2192", uz: "Hammasi \u2192" },
   "section.recommended":    { ru: "\u0420\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0443\u0435\u043c \u0432\u0430\u043c", uz: "Sizga tavsiya qilamiz" },
   "section.homeAll":        { ru: "\u0412\u0441\u0435 \u0442\u043e\u0432\u0430\u0440\u044b", uz: "Barcha mahsulotlar" },
+  "section.generalProducts": { ru: "\u041e\u0431\u0449\u0438\u0435 \u0442\u043e\u0432\u0430\u0440\u044b", uz: "Umumiy tovarlar" },
 
   "offer.tag":              { ru: "\u0422\u043e\u043b\u044c\u043a\u043e \u0434\u043e \u0432\u043e\u0441\u043a\u0440\u0435\u0441\u0435\u043d\u044c\u044f", uz: "Faqat yakshanba kunigacha" },
   "offer.title":            { ru: "\u0421\u0443\u043f\u0435\u0440\u0446\u0435\u043d\u044b \u043d\u0430 \u0441\u043c\u0430\u0440\u0442\u0444\u043e\u043d\u044b \u0438 \u043d\u043e\u0443\u0442\u0431\u0443\u043a\u0438", uz: "Smartfon va noutbuklarga super narxlar" },

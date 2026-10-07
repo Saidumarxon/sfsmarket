@@ -1,0 +1,652 @@
+<USER_REQUEST>
+EMIRATECO — PHASE 3B
+RECEIVING / GOODS INTAKE — LOCAL IMPLEMENTATION
+
+PHASE 3A AUDIT COMPLETED.
+
+Confirmed:
+- products.admin_id = text
+- receipt_items.product_id = text FK → products.admin_id
+- no competing stock system exists
+- stock source of truth = stock_balances + stock_movements
+- receipts / receipt_items / contractor_transactions already exist
+- post_receipt() and cancel_receipt() already exist and are atomic
+- Phase 1 = 21/21 PASS
+- Phase 2B = 18/18 PASS
+
+==================================================
+STRICT EXECUTION MODE
+==================================================
+
+LOCAL ONLY.
+
+DO NOT:
+- modify LIVE DB
+- deploy Vercel
+- commit
+- push
+- change checkout
+- change orders
+- change loyalty
+- change auth
+- connect sales/order flow to stock
+- create a second stock mechanism
+- create a second contractor finance mechanism
+- alter existing Phase 1 RPC logic unless absolutely required
+- silently change unrelated UI
+
+Preserve existing admin layout and styling.
+
+Before changing any file:
+inspect the existing structure and implement the smallest scoped change.
+
+==================================================
+1. RECEIVING NAVIGATION
+==================================================
+
+Add/open a dedicated admin section:
+
+"Приёмка товаров"
+
+Prefer integrating it into the existing admin navigation structure.
+
+Do NOT redesign the sidebar.
+
+Page:
+
+#page-receipts
+
+If the existing finance/intake prototype can be replaced safely,
+keep old code only where required for backward compatibility.
+
+Do not maintain two competing receiving systems.
+
+==================================================
+2. RECEIPTS REGISTRY
+==================================================
+
+Create a receiving registry.
+
+Header:
+
+Приёмка товаров
+
+Actions:
+
+[+ Новая приёмка]
+[Обновить]
+
+Filters:
+
+- search:
+  receipt_number
+  external_order_number
+
+- contractor
+
+- warehouse
+
+- created_at date range
+
+- received_at date range
+
+- status:
+  Все
+  Черновик
+  Проведено
+  Отменено
+
+Table:
+
+- Номер
+- Контрагент
+- Склад
+- Дата создания
+- Дата прихода
+- Позиций
+- Сумма
+- Оплачено
+- Долг
+- Статус
+- Действия
+
+Use existing admin UI style.
+
+Do not introduce a new visual design system.
+
+==================================================
+3. RECEIPT API
+==================================================
+
+In emirate-supabase-api.js implement:
+
+fetchAdminReceipts(filters)
+
+fetchAdminReceiptDetails(receiptId)
+
+createAdminReceiptDraft(header, items)
+
+updateAdminReceiptDraft(receiptId, header, items)
+
+postAdminReceipt(receiptId)
+
+cancelAdminReceipt(receiptId)
+
+fetchAdminWarehouses()
+
+Use existing authenticated admin access pattern.
+
+Do NOT expose service-role credentials to browser.
+
+All writes must remain admin-only.
+
+==================================================
+4. RECEIPT DRAFT
+==================================================
+
+Create draft with:
+
+- contractor_id
+- warehouse_id
+- received_at
+- external_order_number
+- payment_method
+- currency
+- exchange_rate
+- paid_amount
+- description
+
+Do NOT allow client to manually define:
+
+- receipt_number
+- total_cost
+- debt_amount
+
+receipt_number must remain DB-generated.
+
+Financial totals must be authoritative in DB.
+
+==================================================
+5. TWO DATES
+==================================================
+
+Show:
+
+Дата создания:
+created_at
+
+This is read-only.
+
+Show:
+
+Дата фактического прихода:
+received_at
+
+This is editable in draft.
+
+Default:
+
+today.
+
+Never merge these two dates.
+
+==================================================
+6. CONTRACTOR
+==================================================
+
+Contractor selector must use:
+
+public.contractors
+
+Show:
+
+- name
+- phone where useful
+
+Only active contractors should be selectable
+for NEW receipts.
+
+Existing posted/cancelled receipts must still display
+their historical contractor.
+
+Do not duplicate contractor data into receipt.
+
+==================================================
+7. WAREHOUSE
+==================================================
+
+Load warehouses using:
+
+fetchAdminWarehouses()
+
+Default:
+
+Основной склад / MAIN
+
+Only active warehouses selectable for new receipts.
+
+Do not hardcode warehouse UUID.
+
+==================================================
+8. PRODUCT SEARCH
+==================================================
+
+Use existing:
+
+productsData
+
+and actual product structure.
+
+Search by:
+
+- title
+- nameRu
+- nameUz
+- SKU
+- admin_id
+
+Show autocomplete.
+
+Selected row:
+
+- image
+- product name
+- SKU
+- quantity
+- purchase cost
+- sale price
+- line total
+
+==================================================
+9. PRODUCT VALUES
+==================================================
+
+When selecting a product:
+
+purchase cost default:
+
+product.payload.costPrice
+
+sale price default:
+
+product.payload.price
+
+BUT BOTH MUST REMAIN EDITABLE
+while receipt is draft.
+
+Do not modify the product catalog merely because
+receipt sale_price or unit_cost changes.
+
+receipt_items.sale_price is a historical snapshot.
+
+==================================================
+10. RECEIPT ITEMS
+==================================================
+
+Each row:
+
+Product
+Quantity
+Purchase cost
+Sale price
+Line total
+Remove
+
+Validation:
+
+quantity > 0
+quantity integer
+
+unit_cost >= 0
+
+Line total:
+
+quantity * unit_cost
+
+Client may display calculated totals,
+but DB remains authoritative.
+
+At least one item required before posting.
+
+==================================================
+11. FINANCIAL BLOCK
+==================================================
+
+Show:
+
+Total goods:
+Σ(quantity × unit_cost)
+
+Paid:
+input
+
+Debt:
+Total - Paid
+
+Validation:
+
+0 <= paid <= total
+
+Do not create a new financial ledger.
+
+Use:
+
+public.contractor_transactions
+
+through existing post_receipt() logic.
+
+==================================================
+12. SAVE DRAFT
+==================================================
+
+[Сохранить черновик]
+
+Must:
+
+- create/update receipt
+- save items
+- keep status = draft
+- NOT modify stock
+- NOT create stock movements
+- NOT create contractor accrual
+
+Draft can be edited repeatedly.
+
+==================================================
+13. POST RECEIPT
+==================================================
+
+[Провести приёмку]
+
+Before posting:
+
+- contractor exists
+- warehouse exists
+- received_at valid
+- at least one item
+- all quantities valid
+- all costs valid
+- paid <= total
+
+Then call:
+
+public.post_receipt(receiptId)
+
+Do NOT reproduce the posting logic in JavaScript.
+
+The DB RPC is authoritative.
+
+After successful posting:
+
+- status = posted
+- stock updated
+- stock movement created
+- contractor accrual created
+- payment transaction created if paid > 0
+- debt finalized
+
+Refresh registry and details.
+
+==================================================
+14. POSTED RECEIPT
+==================================================
+
+When status = posted:
+
+ALL document fields read-only.
+
+Allowed actions:
+
+- Просмотр
+- Печать
+- Отменить приёмку
+
+No direct editing.
+
+Do not allow client-side mutation of:
+
+- quantity
+- unit_cost
+- total
+- paid
+- contractor
+- warehouse
+
+==================================================
+15. CANCEL RECEIPT
+==================================================
+
+For draft:
+
+cancel directly via:
+
+cancelAdminReceipt()
+
+No stock effect.
+
+For posted:
+
+call:
+
+public.cancel_receipt(receiptId)
+
+Do NOT manually reverse stock in JavaScript.
+
+Display DB error clearly if cancellation is rejected
+because available stock is insufficient.
+
+After successful cancellation:
+
+- status = cancelled
+- stock reversed
+- adjustment movements created
+- accrual reversed
+- debt updated/zeroed according to existing RPC
+
+==================================================
+16. DETAIL VIEW
+==================================================
+
+Create:
+
+#receiptDetailModal
+
+Show:
+
+Header:
+- receipt number
+- status
+- contractor
+- warehouse
+- created_at
+- received_at
+- external document number
+- payment method
+
+Items:
+- image
+- product
+- SKU
+- quantity
+- purchase cost
+- sale price
+- line total
+
+Financial:
+- total
+- paid
+- debt
+
+For posted receipts also show:
+
+- current stock for each product/warehouse
+- receipt movement information where available
+
+Do not invent audit data that is not stored.
+
+==================================================
+17. PRINT
+==================================================
+
+Add a simple print-friendly receipt view.
+
+Do NOT create a PDF library.
+
+Use browser print CSS/window.print() if compatible
+with current admin architecture.
+
+Printed document should contain:
+
+- receipt number
+- contractor
+- warehouse
+- created date
+- received date
+- items
+- quantities
+- purchase costs
+- totals
+- paid
+- debt
+
+==================================================
+18. OLD INTAKE PROTOTYPE
+==================================================
+
+The old:
+
+#page-finance
+.intake-card
+
+must no longer act as a second independent receiving database.
+
+Do not leave two systems that can create contradictory
+receiving records.
+
+If necessary:
+
+- preserve old finance page
+- replace its intake UI with a link/open action to
+  "Приёмка товаров"
+
+But do not delete unrelated finance functionality.
+
+==================================================
+19. SECURITY
+==================================================
+
+Do NOT:
+
+- weaken RLS
+- use anon/public write access
+- expose service role key
+- trust client total_cost
+- trust client debt_amount
+- trust client receipt_number
+- trust client stock quantity
+
+All authoritative financial and stock effects must come
+from existing DB constraints/RPC.
+
+==================================================
+20. TESTS
+==================================================
+
+Create:
+
+scratch/test-receiving-phase3.cjs
+
+At minimum:
+
+1. create draft
+2. created_at and received_at independent
+3. add product item
+4. quantity > 0
+5. unit_cost >= 0
+6. sale_price snapshot
+7. line total
+8. paid <= total
+9. debt calculation
+10. draft has no stock effect
+11. post receipt
+12. stock increases
+13. stock movement created
+14. contractor accrual created
+15. payment transaction created when paid > 0
+16. second post rejected
+17. cancel draft
+18. cancel posted receipt
+19. stock reversal
+20. financial reversal
+21. insufficient available stock blocks cancellation
+22. non-admin rejected
+23. concurrent post protected
+24. invalid product rejected
+25. posted receipt cannot be edited
+26. cancelled receipt cannot be edited
+
+Also run:
+
+Phase 1:
+scratch/test-receiving-local.cjs
+
+Phase 2B:
+scratch/test-contractors-phase2b.cjs
+
+Stage 2C-2
+
+Stage 2B-2
+
+Stage 2C-3A
+
+==================================================
+21. REGRESSION SAFETY
+==================================================
+
+Do not modify:
+
+api/place-order.js
+checkout.html
+checkout.js
+catalog.html
+catalog.js
+common.js
+
+unless a genuine dependency is discovered.
+
+If any such file must change,
+STOP and report why before making the change.
+
+==================================================
+22. FINAL REPORT
+==================================================
+
+Report:
+
+1. changed files
+2. untouched files
+3. new API methods
+4. receiving UI behavior
+5. old intake prototype handling
+6. tests
+7. regression tests
+8. stock behavior
+9. financial/debt behavior
+10. security checks
+11. screenshots if available
+12. known limitations
+
+IMPORTANT:
+
+LOCAL ONLY.
+
+NO LIVE DB.
+NO VERCEL.
+NO COMMIT.
+NO PUSH.
+
+STOP AFTER IMPLEMENTATION + TEST REPORT.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-09-25T17:59:58+05:00.
+</ADDITIONAL_METADATA>

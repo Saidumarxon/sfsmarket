@@ -81,11 +81,13 @@
     var brand = record || {};
     var nameRu = String(brand.nameRu || brand.name || "").trim();
     var slug = String(brand.slug || slugifyBrand(nameRu)).trim() || slugifyBrand(nameRu);
+    var customUrl = String(brand.customUrl || brand.custom_url || brand.url || "").trim();
     return {
       id: brand.id || "brand_" + (slug || Math.floor(Math.random() * 9000 + 1000)),
       nameRu: nameRu,
       nameUz: String(brand.nameUz || nameRu).trim(),
       slug: slug,
+      customUrl: customUrl,
       logoUrl: String(brand.logoUrl || "").trim(),
       sortOrder: Number.isFinite(Number(brand.sortOrder)) ? Number(brand.sortOrder) : 100,
       isActive: brand.isActive !== false && brand.status !== "inactive",
@@ -182,6 +184,8 @@
 
   function buildBrandCatalogUrl(brand) {
     if (!brand) return "catalog.html";
+    var custom = String(brand.customUrl || brand.custom_url || brand.url || "").trim();
+    if (custom) return custom;
     var slug = brand.slug || slugifyBrand(brand.nameRu || brand.nameUz || "");
     return "catalog.html?brand=" + encodeURIComponent(slug || brand.nameRu || brand.nameUz || "");
   }
