@@ -307,14 +307,26 @@ function readAdminProducts() {
               })();
         const price = marked.price;
         const oldPrice = marked.oldPrice;
-        const uploadedPhotos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
+        let uploadedPhotos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
+        if (!uploadedPhotos.length && Array.isArray(item.colors)) {
+          for (const cv of item.colors) {
+            if (Array.isArray(cv?.photos) && cv.photos.length) {
+              const cp = cv.photos.filter(Boolean);
+              if (cp.length) {
+                uploadedPhotos = cp;
+                break;
+              }
+            }
+          }
+        }
         const media = window.emirateResolveProductMedia?.({
           title,
           sku: item.id || "",
           brand: item.brand || "",
           category: item.category || "Смартфоны",
           photos: uploadedPhotos,
-          image: uploadedPhotos[0] || ""
+          image: uploadedPhotos[0] || "",
+          colors: item.colors
         }) || { image: uploadedPhotos[0] || "", photos: uploadedPhotos };
         return {
           title,

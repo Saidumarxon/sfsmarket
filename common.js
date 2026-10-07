@@ -840,6 +840,19 @@ function emirateResolveProductMedia(product) {
   if (!photos.length && item.image) {
     photos = [String(item.image).trim()];
   }
+  if (!photos.length && Array.isArray(item.colors)) {
+    for (const variant of item.colors) {
+      if (Array.isArray(variant?.photos) && variant.photos.length) {
+        const variantPhotos = variant.photos
+          .map((url) => String(url || "").trim())
+          .filter(Boolean);
+        if (variantPhotos.length) {
+          photos = variantPhotos;
+          break;
+        }
+      }
+    }
+  }
   const fromUpload = photos.length > 0;
   return {
     image: photos[0] || "",
@@ -2065,11 +2078,13 @@ function ensureStorefrontHeaderChrome() {
 
 window.addEventListener("storage", function (e) {
   if (e.key === "emirate_admin_categories_v1") {
+    window.emirateCategories?.invalidateCategoriesCache?.();
     fillHeaderNavstrip();
   }
 });
 
 window.addEventListener("emirate:categories-changed", function () {
+  window.emirateCategories?.invalidateCategoriesCache?.();
   fillHeaderNavstrip();
 });
 

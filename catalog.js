@@ -147,14 +147,26 @@ function loadAdminProductsForCatalog() {
       .filter((item) => item && item.status !== "inactive")
       .map((item) => {
         const marked = applyStorefrontPrices(item);
-        const uploadedPhotos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
+        let uploadedPhotos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
+        if (!uploadedPhotos.length && Array.isArray(item.colors)) {
+          for (const cv of item.colors) {
+            if (Array.isArray(cv?.photos) && cv.photos.length) {
+              const cp = cv.photos.filter(Boolean);
+              if (cp.length) {
+                uploadedPhotos = cp;
+                break;
+              }
+            }
+          }
+        }
         const media = window.emirateResolveProductMedia?.({
           title: item.nameRu || item.nameUz || "Товар",
           sku: item.id || "",
           brand: item.brand || "",
           category: item.category || "Аксессуары",
           photos: uploadedPhotos,
-          image: uploadedPhotos[0] || ""
+          image: uploadedPhotos[0] || "",
+          colors: item.colors
         }) || { image: uploadedPhotos[0] || "", photos: uploadedPhotos };
         return {
         title: item.nameRu || item.nameUz || "Товар",
@@ -317,6 +329,7 @@ function renderProduct(product, options = {}) {
   const matchBadge =
     matchPct != null
       ? `<span class="badge-match" title="${typeof window.emirateT === "function" ? window.emirateT("photo.match") : "Совпадение"}">${matchPct}%</span>`
+      : "";
   const isExpress = product.status === "active" && product.express === "yes";
   const expressBadge = isExpress
     ? `<span class="badge-delivery-24" title="${typeof window.emirateT === "function" ? window.emirateT("delivery.expressBadge") : "Доставка за 24 часа по Ташкенту"}">⚡ 24ч</span>`

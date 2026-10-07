@@ -247,6 +247,11 @@
     return _publicCategoriesPromise;
   }
 
+  function invalidateCategoriesCache() {
+    _publicCategoriesCache = null;
+    _publicCategoriesPromise = null;
+  }
+
   function getLoadedCategories(list) {
     var rawList = list || _publicCategoriesCache || loadCategoriesData();
     if (Array.isArray(rawList)) {
@@ -820,6 +825,7 @@
     getLocalCategorySubtreeIds: getLocalCategorySubtreeIds,
     getCategoryPath: getCategoryPath,
     ensurePublicCategoriesLoaded: ensurePublicCategoriesLoaded,
+    invalidateCategoriesCache: invalidateCategoriesCache,
     suggestProductCategory: suggestProductCategory,
     TAXONOMY_RULES: TAXONOMY_RULES
   };

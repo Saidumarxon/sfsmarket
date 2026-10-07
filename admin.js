@@ -2627,6 +2627,10 @@ async function toggleCategoryStatus(categoryId) {
   }
   category.isActive = nextActive;
   category.is_active = nextActive;
+  try {
+    localStorage.setItem(ADMIN_CATEGORIES_KEY, JSON.stringify(categoriesData));
+  } catch (_) {}
+  window.dispatchEvent(new CustomEvent('emirate:categories-changed'));
   renderCategories();
   renderCategoryStackLevels();
   showCategoryFeedback(`Категория ${nextActive ? 'активирована' : 'деактивирована'}.`, 'success');
@@ -2643,6 +2647,10 @@ async function toggleCategoryNav(categoryId) {
   }
   category.showInNav = nextNav;
   category.show_in_nav = nextNav;
+  try {
+    localStorage.setItem(ADMIN_CATEGORIES_KEY, JSON.stringify(categoriesData));
+  } catch (_) {}
+  window.dispatchEvent(new CustomEvent('emirate:categories-changed'));
   renderCategories();
   showCategoryFeedback(`Отображение в навигации: ${nextNav ? 'ВКЛ (ON)' : 'ВЫКЛ (OFF)'}.`, 'success');
 }
@@ -3774,6 +3782,21 @@ function normalizeProductRecord(product) {
   const colors = Array.isArray(p.colors) ? p.colors : [];
   const colorMeta = p.colorMeta && typeof p.colorMeta === 'object' ? p.colorMeta : {};
   const categoryId = p.categoryId !== undefined ? (p.categoryId || null) : (p.category_id !== undefined ? (p.category_id || null) : null);
+  let photos = Array.isArray(p.photos) ? p.photos.filter(Boolean) : [];
+  if (!photos.length && p.image) {
+    photos = [String(p.image).trim()];
+  }
+  if (!photos.length && Array.isArray(colors)) {
+    for (const c of colors) {
+      if (Array.isArray(c?.photos) && c.photos.length) {
+        const cPhotos = c.photos.filter(Boolean);
+        if (cPhotos.length) {
+          photos = cPhotos;
+          break;
+        }
+      }
+    }
+  }
   return {
     ...p,
     categoryId: categoryId,
@@ -3785,7 +3808,7 @@ function normalizeProductRecord(product) {
     condition: p.condition || 'Есть в наличии',
     deliveryArea: p.deliveryArea || '',
     priority: Number.isFinite(priority) ? priority : 300,
-    photos: Array.isArray(p.photos) ? p.photos : [],
+    photos: photos,
     descUz: String(p.descUz || '').trim(),
     descRu: String(p.descRu || '').trim(),
     seoTitleRu: String(p.seoTitleRu || '').trim(),
@@ -4187,14 +4210,28 @@ async function loadAdminProductsFromSupabase() {
   }
 }
 
+function getProductThumbUrl(p) {
+  if (Array.isArray(p?.photos) && p.photos.length && p.photos[0]) return p.photos[0];
+  if (p?.image) return p.image;
+  if (Array.isArray(p?.colors)) {
+    for (const c of p.colors) {
+      if (Array.isArray(c?.photos) && c.photos.length && c.photos[0]) {
+        return c.photos[0];
+      }
+    }
+  }
+  return '';
+}
+
 function renderProductRow(p) {
+  const thumbUrl = getProductThumbUrl(p);
   return `
     <tr>
       <td>
         <div class="product-cell">
           <div class="product-thumb">
-            ${p.photos?.[0]
-              ? `<img src="${p.photos[0]}" alt="Фото товара">`
+            ${thumbUrl
+              ? `<img src="${thumbUrl}" alt="Фото товара" loading="lazy" decoding="async" onerror="this.style.display='none'">`
               : `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`
             }
           </div>
@@ -7644,6 +7681,14 @@ function openEditorForProduct(id, options) {
   renderMemoryVariantsList();
   resetMemoryVariantForm();
   uploadedPhotos = Array.isArray(p.photos) ? [...p.photos] : [];
+  if (!uploadedPhotos.length && Array.isArray(p.colors)) {
+    for (const c of p.colors) {
+      if (Array.isArray(c?.photos) && c.photos.length) {
+        uploadedPhotos = [...c.photos.filter(Boolean)];
+        break;
+      }
+    }
+  }
   renderPhotoPreviews();
   renderProductEditorPreviews();
 
@@ -8223,6 +8268,15 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
   const dateStr = `${dd}.${mm}.${yyyy}`;
   let focusPersistId = editingProductId;
   let removedMediaUrls = [];
+  let effectivePhotos = [...uploadedPhotos];
+  if (!effectivePhotos.length && Array.isArray(colors)) {
+    for (const c of colors) {
+      if (Array.isArray(c?.photos) && c.photos.length) {
+        effectivePhotos = [...c.photos.filter(Boolean)];
+        break;
+      }
+    }
+  }
 
   if (editingProductId) {
     const idx = productsData.findIndex(p => p.id === editingProductId);
@@ -8268,7 +8322,7 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
         brand,
         model,
         date: dateStr,
-        photos: [...uploadedPhotos]
+        photos: effectivePhotos
       });
       const previousUrls = collectProductMediaUrls(previousProduct);
       const nextUrls = collectProductMediaUrls(productsData[idx]);
@@ -8317,7 +8371,7 @@ document.getElementById('productSaveBtn').addEventListener('click', async functi
       brand,
       model,
       date: dateStr,
-      photos: [...uploadedPhotos]
+      photos: effectivePhotos
     }));
   }
 

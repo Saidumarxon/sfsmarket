@@ -95,6 +95,18 @@
             parseMoneyText(item.oldPrice) || parseMoneyText(item.price)
           );
     var uploadedPhotos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
+    if (!uploadedPhotos.length && Array.isArray(item.colors)) {
+      for (var ci = 0; ci < item.colors.length; ci++) {
+        var cv = item.colors[ci];
+        if (cv && Array.isArray(cv.photos) && cv.photos.length) {
+          var colorPhotos = cv.photos.filter(Boolean);
+          if (colorPhotos.length) {
+            uploadedPhotos = colorPhotos;
+            break;
+          }
+        }
+      }
+    }
     var media = window.emirateResolveProductMedia
       ? window.emirateResolveProductMedia({
           title: item.nameRu || item.nameUz || "Товар",
@@ -102,7 +114,8 @@
           brand: item.brand || "",
           category: item.category || "Аксессуары",
           photos: uploadedPhotos,
-          image: uploadedPhotos[0] || ""
+          image: uploadedPhotos[0] || "",
+          colors: item.colors
         })
       : { image: uploadedPhotos[0] || "", photos: uploadedPhotos };
     return {
@@ -224,6 +237,15 @@
     if (row.priority != null) p.priority = row.priority;
     if (row.title && !p.nameRu && !p.nameUz) p.nameRu = row.title;
     p.categoryId = row.category_id || null;
+    if ((!Array.isArray(p.photos) || !p.photos.length) && Array.isArray(p.colors)) {
+      for (var ci = 0; ci < p.colors.length; ci++) {
+        var cv = p.colors[ci];
+        if (cv && Array.isArray(cv.photos) && cv.photos.length) {
+          p.photos = cv.photos.filter(Boolean);
+          if (p.photos.length) break;
+        }
+      }
+    }
     return p;
   }
 

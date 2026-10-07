@@ -91,6 +91,11 @@
         </a>
       </div>
     </div>
+
+    <!-- ===== HEADER NAVSTRIP (Asaxiy/Uzum style categories bar) ===== -->
+    <nav class="header-navstrip" aria-label="Категории">
+      <div class="container header-navstrip-inner" id="headerNavstripList"></div>
+    </nav>
   </header>
 
   <!-- ===== CATALOG MEGA MENU ===== -->
@@ -149,6 +154,33 @@
       </div>
     </section>
 
+    <!-- ===== ACCESSORIES ===== -->
+    <section class="container section category-section" data-category="accessories">
+      <div class="section-header">
+        <h2 data-i18n="cat.accessories">Аксессуары</h2>
+        <a href="catalog.html" class="section-link" data-i18n="section.allProducts">Все товары →</a>
+      </div>
+      <div class="carousel-wrapper">
+        <button class="carousel-arrow carousel-arrow--left" type="button" aria-label="Назад">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="carousel-track" id="carouselAccessories"></div>
+        <button class="carousel-arrow carousel-arrow--right" type="button" aria-label="Вперёд">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== GENERAL PRODUCTS SMART FEED ===== -->
+    <section class="container section" id="smartFeedSection" hidden>
+      <div class="section-header">
+        <h2 data-i18n="section.generalProducts">Общие товары</h2>
+        <a href="catalog.html" class="section-link" data-i18n="section.allProducts">Все товары →</a>
+      </div>
+      <div class="products-grid" id="smartFeedGrid"></div>
+    </section>
+    <div id="smartFeedTrigger" style="height:1px"></div>
+
     <!-- ===== LAPTOPS ===== -->
     <section class="container section category-section" data-category="laptops">
       <div class="section-header">
@@ -182,33 +214,6 @@
         </button>
       </div>
     </section>
-
-    <!-- ===== ACCESSORIES ===== -->
-    <section class="container section category-section" data-category="accessories">
-      <div class="section-header">
-        <h2 data-i18n="cat.accessories">Аксессуары</h2>
-        <a href="catalog.html" class="section-link" data-i18n="section.allProducts">Все товары →</a>
-      </div>
-      <div class="carousel-wrapper">
-        <button class="carousel-arrow carousel-arrow--left" type="button" aria-label="Назад">
-          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <div class="carousel-track" id="carouselAccessories"></div>
-        <button class="carousel-arrow carousel-arrow--right" type="button" aria-label="Вперёд">
-          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-      </div>
-    </section>
-
-    <!-- ===== GENERAL PRODUCTS SMART FEED ===== -->
-    <section class="container section" id="smartFeedSection" hidden>
-      <div class="section-header">
-        <h2 data-i18n="section.generalProducts">Умумий товарлар</h2>
-        <a href="catalog.html" class="section-link" data-i18n="section.allProducts">Все товары →</a>
-      </div>
-      <div class="products-grid" id="smartFeedGrid"></div>
-    </section>
-    <div id="smartFeedTrigger" style="height:1px"></div>
 
     <!-- ===== PERKS ===== -->
     <section class="container section section--perks">
