@@ -942,7 +942,12 @@ async function initHomeStorefront() {
         rebuildAllProductsIndex();
       }
     });
-    await Promise.all([bannersPromise, productsPromise]);
+    const sectionsPromise = window.emirateHomeSections?.ensurePublicHomeSectionsLoaded
+      ? window.emirateHomeSections.ensurePublicHomeSectionsLoaded().then(() => {
+          window.emirateHomeSections?.applyHomeSectionsToDOM?.();
+        })
+      : Promise.resolve();
+    await Promise.all([bannersPromise, productsPromise, sectionsPromise]);
   } catch (err) {
     console.warn("[Supabase] home storefront", err);
   } finally {
@@ -950,6 +955,7 @@ async function initHomeStorefront() {
     setHomeStorefrontLoading(false);
     renderHeroBanners();
     renderInitialCarousels();
+    window.emirateHomeSections?.applyHomeSectionsToDOM?.();
     updateCategorySectionsVisibility();
     renderNativeHomeFeed();
     if (typeof initSmartFeed === "function") {
@@ -1248,6 +1254,14 @@ async function initSmartFeed() {
     return;
   }
 
+  const homeSections = window.emirateHomeSections?.loadHomeSections?.() || [];
+  const feedConfig = homeSections.find((s) => s.id === "smart_feed");
+  if (feedConfig && feedConfig.isActive === false) {
+    section.hidden = true;
+    section.style.display = "none";
+    return;
+  }
+
   if (!allProductsByTitle.size) {
     rebuildAllProductsIndex();
   }
@@ -1280,6 +1294,14 @@ async function initSmartFeed() {
 }
 
 window.emirateInitSmartFeed = initSmartFeed;
+
+window.addEventListener("emirate:home-sections-changed", function () {
+  window.emirateHomeSections?.applyHomeSectionsToDOM?.();
+  updateCategorySectionsVisibility();
+  if (typeof initSmartFeed === "function") {
+    void initSmartFeed();
+  }
+});
 
 // ===== ADD TO CART =====
 document.addEventListener("click", (e) => {

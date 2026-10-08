@@ -98,6 +98,7 @@ const pageTitles = {
   brands: 'Бренды',
   promos: 'Промокоды',
   catalogs: 'Каталоги',
+  'home-sections': 'Витрина (Секции)',
   'product-editor': 'Продукты › Добавить',
 };
 
@@ -135,6 +136,10 @@ function switchPage(pageName) {
 
   if (pageName === 'products') {
     updateProductDraftUi();
+  }
+
+  if (pageName === 'home-sections') {
+    renderHomeSectionsAdmin();
   }
 
   if (pageName === 'catalogs') {
@@ -3521,6 +3526,178 @@ function deleteStoreCatalog(catalogId) {
   showCatalogFeedback('Каталог удалён.', 'success');
 }
 
+// ===== STOREFRONT HOME SECTIONS (Vitrina) =====
+let homeSectionsData = (window.emirateHomeSections?.loadHomeSections?.() || []).slice();
+let homeSectionFeedbackTimer = null;
+
+function showHomeSectionsFeedback(message, type = 'success', timeoutMs = 3000) {
+  const node = document.getElementById('homeSectionsFeedback');
+  if (!node) return;
+  node.textContent = message;
+  node.classList.remove('success', 'error');
+  node.classList.add(type === 'error' ? 'error' : 'success');
+  node.removeAttribute('hidden');
+  if (homeSectionFeedbackTimer) clearTimeout(homeSectionFeedbackTimer);
+  homeSectionFeedbackTimer = setTimeout(() => {
+    node.setAttribute('hidden', 'hidden');
+    node.classList.remove('success', 'error');
+  }, timeoutMs);
+}
+
+function persistHomeSectionsAdmin() {
+  if (window.emirateHomeSections?.persistHomeSections) {
+    window.emirateHomeSections.persistHomeSections(homeSectionsData);
+  }
+}
+
+function renderHomeSectionsAdmin() {
+  const tbody = document.getElementById('homeSectionsBody');
+  if (!tbody) return;
+
+  if (!homeSectionsData.length && window.emirateHomeSections?.loadHomeSections) {
+    homeSectionsData = window.emirateHomeSections.loadHomeSections();
+  }
+
+  homeSectionsData.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+
+  tbody.innerHTML = homeSectionsData.map((sec, idx) => {
+    const isFirst = idx === 0;
+    const isLast = idx === homeSectionsData.length - 1;
+    const typeBadge = sec.type === 'smart_feed'
+      ? '<span class="status-badge" style="background:#f0fdf4; color:#15803d; border-color:#bbf7d0;">Умная лента</span>'
+      : (sec.type === 'brands'
+        ? '<span class="status-badge" style="background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe;">Бренды</span>'
+        : '<span class="status-badge" style="background:#f8fafc; color:#475569; border-color:#e2e8f0;">Карусель</span>');
+
+    const statusBadge = sec.isActive
+      ? `<button type="button" class="status-badge active" style="cursor:pointer;" title="Отображается на витрине. Нажмите, чтобы скрыть" data-action="toggle-section-active" data-section-id="${escapeHtml(sec.id)}"><span class="status-dot"></span>ON</button>`
+      : `<button type="button" class="status-badge inactive" style="cursor:pointer;" title="Скрыто с витрины. Нажмите, чтобы показать" data-action="toggle-section-active" data-section-id="${escapeHtml(sec.id)}"><span class="status-dot"></span>OFF</button>`;
+
+    return `
+      <tr>
+        <td>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button type="button" class="action-btn" title="Переместить выше" data-action="move-section-up" data-section-id="${escapeHtml(sec.id)}"${isFirst ? ' disabled style="opacity:0.3; cursor:not-allowed;"' : ''}>
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg>
+            </button>
+            <span style="font-weight:600; min-width:18px; text-align:center;">${idx + 1}</span>
+            <button type="button" class="action-btn" title="Переместить ниже" data-action="move-section-down" data-section-id="${escapeHtml(sec.id)}"${isLast ? ' disabled style="opacity:0.3; cursor:not-allowed;"' : ''}>
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+        </td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <strong>${escapeHtml(sec.id)}</strong>
+            ${typeBadge}
+          </div>
+          <div class="product-sku" style="margin-top:2px;">${escapeHtml(sec.description || '')}</div>
+        </td>
+        <td><strong>${escapeHtml(sec.titleRu || '—')}</strong></td>
+        <td>${escapeHtml(sec.titleUz || '—')}</td>
+        <td>
+          <div style="font-size:13px; color:#334155;">${escapeHtml(sec.linkTextRu || '')}</div>
+          <div class="product-sku">${escapeHtml(sec.linkUrl || '')}</div>
+        </td>
+        <td>${statusBadge}</td>
+        <td>
+          <div class="action-btns">
+            <button type="button" class="action-btn" title="Редактировать" data-action="edit-section" data-section-id="${escapeHtml(sec.id)}">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function moveHomeSection(sectionId, direction) {
+  const idx = homeSectionsData.findIndex((s) => s.id === sectionId);
+  if (idx === -1) return;
+  const targetIdx = idx + direction;
+  if (targetIdx < 0 || targetIdx >= homeSectionsData.length) return;
+
+  const temp = homeSectionsData[idx];
+  homeSectionsData[idx] = homeSectionsData[targetIdx];
+  homeSectionsData[targetIdx] = temp;
+
+  homeSectionsData.forEach((sec, i) => {
+    sec.sortOrder = i + 1;
+  });
+
+  persistHomeSectionsAdmin();
+  renderHomeSectionsAdmin();
+  showHomeSectionsFeedback('Порядок секций обновлен и применён на витрине!', 'success');
+}
+
+function toggleHomeSectionActive(sectionId) {
+  const sec = homeSectionsData.find((s) => s.id === sectionId);
+  if (!sec) return;
+  sec.isActive = !sec.isActive;
+  persistHomeSectionsAdmin();
+  renderHomeSectionsAdmin();
+  showHomeSectionsFeedback(`Секция «${sec.titleRu || sec.id}» ${sec.isActive ? 'включена на витрине' : 'скрыта с витрины'}.`, 'success');
+}
+
+function openHomeSectionEditModal(sectionId) {
+  const sec = homeSectionsData.find((s) => s.id === sectionId);
+  if (!sec) return;
+
+  const modal = document.getElementById('homeSectionEditModal');
+  const backdrop = document.getElementById('homeSectionModalBackdrop');
+  if (!modal) return;
+
+  document.getElementById('editSectionId').value = sec.id;
+  document.getElementById('editSectionTitleRu').value = sec.titleRu || '';
+  document.getElementById('editSectionTitleUz').value = sec.titleUz || '';
+  document.getElementById('editSectionLinkTextRu').value = sec.linkTextRu || 'Все товары →';
+  document.getElementById('editSectionLinkTextUz').value = sec.linkTextUz || 'Barcha tovarlar →';
+  document.getElementById('editSectionLinkUrl').value = sec.linkUrl || 'catalog.html';
+  document.getElementById('editSectionStatus').value = sec.isActive ? 'true' : 'false';
+
+  document.getElementById('homeSectionModalTitle').textContent = `Редактировать секцию «${sec.titleRu || sec.id}»`;
+
+  modal.hidden = false;
+  if (backdrop) backdrop.hidden = false;
+}
+
+function closeHomeSectionEditModal() {
+  const modal = document.getElementById('homeSectionEditModal');
+  const backdrop = document.getElementById('homeSectionModalBackdrop');
+  if (modal) modal.hidden = true;
+  if (backdrop) backdrop.hidden = true;
+}
+
+function saveHomeSectionEdit(e) {
+  e.preventDefault();
+  const id = document.getElementById('editSectionId')?.value;
+  const sec = homeSectionsData.find((s) => s.id === id);
+  if (!sec) return;
+
+  sec.titleRu = document.getElementById('editSectionTitleRu').value.trim();
+  sec.titleUz = document.getElementById('editSectionTitleUz').value.trim() || sec.titleRu;
+  sec.linkTextRu = document.getElementById('editSectionLinkTextRu').value.trim();
+  sec.linkTextUz = document.getElementById('editSectionLinkTextUz').value.trim() || sec.linkTextRu;
+  sec.linkUrl = document.getElementById('editSectionLinkUrl').value.trim();
+  sec.isActive = document.getElementById('editSectionStatus').value === 'true';
+
+  persistHomeSectionsAdmin();
+  renderHomeSectionsAdmin();
+  closeHomeSectionEditModal();
+  showHomeSectionsFeedback('Настройки секции сохранены!', 'success');
+}
+
+function resetHomeSectionsToDefault() {
+  if (!confirm('Вернуть порядок и названия всех секций витрины по умолчанию?')) return;
+  if (window.emirateHomeSections?.DEFAULT_HOME_SECTIONS) {
+    homeSectionsData = window.emirateHomeSections.DEFAULT_HOME_SECTIONS.map((s, i) => window.emirateHomeSections.normalizeHomeSection(s, i));
+    persistHomeSectionsAdmin();
+    renderHomeSectionsAdmin();
+    showHomeSectionsFeedback('Секции сброшены к исходным настройкам!', 'success');
+  }
+}
+
 function syncProductBrandSelect(selectedValue = '') {
   const select = document.getElementById('pBrand');
   if (!select) return;
@@ -5953,6 +6130,7 @@ try {
   renderCatalogCategoryPicker([]);
   renderStoreCatalogs();
   resetCatalogForm();
+  renderHomeSectionsAdmin();
   renderProducts();
   renderBanners();
   renderIntake();
@@ -6468,6 +6646,37 @@ document.getElementById('catalogsBody')?.addEventListener('click', function(e) {
     deleteStoreCatalog(catalogId);
   }
 });
+
+// ===== HOME SECTIONS (Vitrina) EVENTS =====
+document.getElementById('homeSectionsBody')?.addEventListener('click', function(e) {
+  const button = e.target.closest('button[data-action]');
+  if (!button) return;
+  const action = button.getAttribute('data-action');
+  const sectionId = button.getAttribute('data-section-id');
+  if (!sectionId) return;
+
+  if (action === 'move-section-up') {
+    moveHomeSection(sectionId, -1);
+    return;
+  }
+  if (action === 'move-section-down') {
+    moveHomeSection(sectionId, 1);
+    return;
+  }
+  if (action === 'toggle-section-active') {
+    toggleHomeSectionActive(sectionId);
+    return;
+  }
+  if (action === 'edit-section') {
+    openHomeSectionEditModal(sectionId);
+  }
+});
+
+document.getElementById('homeSectionEditForm')?.addEventListener('submit', saveHomeSectionEdit);
+document.getElementById('homeSectionModalCloseBtn')?.addEventListener('click', closeHomeSectionEditModal);
+document.getElementById('homeSectionModalCancelBtn')?.addEventListener('click', closeHomeSectionEditModal);
+document.getElementById('homeSectionModalBackdrop')?.addEventListener('click', closeHomeSectionEditModal);
+document.getElementById('resetHomeSectionsBtn')?.addEventListener('click', resetHomeSectionsToDefault);
 
 document.getElementById('clientsRefreshBtn')?.addEventListener('click', function() {
   void loadClientsFromSupabase();

@@ -457,13 +457,15 @@
       console.warn("[Supabase] pullAdminBannersRaw", res.error);
       return null;
     }
-    return (res.data || []).map(function (row) {
-      var p = row.payload && typeof row.payload === "object" ? Object.assign({}, row.payload) : {};
-      p.id = row.admin_id;
-      p.isActive = row.is_active != null ? row.is_active : p.isActive !== false;
-      p.priority = row.priority != null ? row.priority : p.priority;
-      return p;
-    });
+    return (res.data || [])
+      .filter(function (row) { return row.admin_id !== "config_home_sections"; })
+      .map(function (row) {
+        var p = row.payload && typeof row.payload === "object" ? Object.assign({}, row.payload) : {};
+        p.id = row.admin_id;
+        p.isActive = row.is_active != null ? row.is_active : p.isActive !== false;
+        p.priority = row.priority != null ? row.priority : p.priority;
+        return p;
+      });
   }
 
   async function pushAdminBannersPayload(bannersArray) {
@@ -489,6 +491,37 @@
       return { ok: false, error: res.error.message || String(res.error) };
     }
     return { ok: true, rows: rows.length };
+  }
+
+  async function fetchPublicHomeSections() {
+    var sb = client();
+    if (!sb) return null;
+    var res = await sb
+      .from("banners")
+      .select("payload")
+      .eq("admin_id", "config_home_sections")
+      .maybeSingle();
+    if (res.error || !res.data || !res.data.payload) return null;
+    return res.data.payload.sections || null;
+  }
+
+  async function pushAdminHomeSectionsPayload(sectionsArray) {
+    var sb = client();
+    if (!sb) return { ok: false, error: "no_client" };
+    var sessionRes = await sb.auth.getSession();
+    if (!sessionRes.data || !sessionRes.data.session) return { ok: false, error: "no_session" };
+    var row = {
+      admin_id: "config_home_sections",
+      is_active: false,
+      priority: 9999,
+      payload: { sections: sectionsArray, updatedAt: new Date().toISOString() }
+    };
+    var res = await sb.from("banners").upsert([row], { onConflict: "admin_id" });
+    if (res.error) {
+      console.warn("[Supabase] pushAdminHomeSectionsPayload", res.error);
+      return { ok: false, error: res.error.message || String(res.error) };
+    }
+    return { ok: true };
   }
 
   async function deleteAdminBanner(adminId) {
@@ -1372,6 +1405,8 @@
     pullAdminBannersRaw: pullAdminBannersRaw,
     pushAdminBannersPayload: pushAdminBannersPayload,
     deleteAdminBanner: deleteAdminBanner,
+    fetchPublicHomeSections: fetchPublicHomeSections,
+    pushAdminHomeSectionsPayload: pushAdminHomeSectionsPayload,
     fetchPublicBrands: fetchPublicBrands,
     pullAdminBrandsRaw: pullAdminBrandsRaw,
     pushAdminBrandsPayload: pushAdminBrandsPayload,
