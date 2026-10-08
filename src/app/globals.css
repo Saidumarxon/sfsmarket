@@ -857,6 +857,8 @@ img { max-width: 100%; display: block; }
   flex: 0 0 calc((100% - 48px) / 5);
   min-width: 0;
   scroll-snap-align: start;
+  align-self: stretch;
+  height: auto;
 }
 
 /* 3 cards on tablets */
@@ -870,6 +872,8 @@ img { max-width: 100%; display: block; }
 @media (max-width: 680px) {
   .carousel-track .product-card {
     flex: 0 0 calc((100% - 16px) / 2);
+    align-self: stretch;
+    height: auto;
   }
 
   .carousel-arrow {
@@ -1093,6 +1097,7 @@ img { max-width: 100%; display: block; }
   display: flex;
   align-items: baseline;
   gap: 6px;
+  min-height: 33px;
   margin-bottom: 4px;
 }
 

@@ -3291,6 +3291,8 @@ html.capacitor-app .hero-banner-img {
   flex: 0 0 calc((100% - 48px) / 5);
   min-width: 0;
   scroll-snap-align: start;
+  align-self: stretch;
+  height: auto;
 }
 
 /* 3 cards on tablets */
@@ -3314,6 +3316,8 @@ html.capacitor-app .hero-banner-img {
     min-width: 0;
     padding: 10px 10px 12px;
     border-radius: 16px;
+    align-self: stretch;
+    height: auto;
   }
 
   .carousel-track .product-actions {
@@ -3656,6 +3660,7 @@ html[data-theme="dark"] .product-delivery-hint {
   align-items: flex-start;
   justify-content: flex-start;
   gap: 2px;
+  min-height: 33px;
 }
 
 .product-price {
@@ -3711,6 +3716,8 @@ html[data-theme="dark"] .product-delivery-hint {
   font-weight: 600;
   color: #ea580c;
   line-height: 1.2;
+  box-sizing: border-box;
+  min-height: 22px;
 }
 
 .product-installment--muted {
@@ -4746,6 +4753,15 @@ html[data-theme="dark"] .product-delivery-hint {
     white-space: nowrap;
   }
 
+  .carousel-track .product-price-row {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 2px;
+    min-height: 33px;
+  }
+
   .carousel-track .product-price-value,
   .carousel-track .product-price-currency {
     white-space: nowrap;
@@ -4796,6 +4812,7 @@ html[data-theme="dark"] .product-delivery-hint {
     flex-wrap: wrap;
     align-items: baseline;
     gap: 4px 6px;
+    min-height: 33px;
   }
 
   .product-price {
